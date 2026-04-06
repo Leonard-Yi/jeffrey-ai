@@ -1,8 +1,8 @@
 # Jeffrey.AI 项目开发记录
 
-**最后更新**: 2026-04-05
-**项目状态**: MVP 核心功能已完成，新增动态人脉表格 + 多介绍人支持 + 建议页
-**会话 ID**: 005 (建议页功能)
+**最后更新**: 2026-04-06
+**项目状态**: 代码库重构 + 版本控制初始化 + 清理完成
+**会话 ID**: 006 (代码重构 + Git 初始化)
 
 ---
 
@@ -1316,3 +1316,133 @@ taskkill //F //PID <PID>    # 杀死进程
 | MiniMax null 兼容性 | ✅ 已修复 |
 | Build 无错误 | ✅ |
 | Dev server 正常运行 | ✅ (http://localhost:3000) |
+
+---
+
+## 会话 006: 代码库重构 + 版本控制初始化 (2026-04-06)
+
+### 背景问题
+仓库存在以下问题：
+- 每个 API route 重复创建 Prisma 实例（代码冗余）
+- `dbService.ts` 和 `analyze/db.ts` 有重复的 `mergeTags` 函数
+- Schema 定义在多处重复
+- `ignoreBuildErrors: true` 隐藏 TypeScript 错误
+- 调试文件 `debug_search.ts` 在根目录
+- `force-graph` 依赖未使用
+- 项目未初始化 Git
+
+### 执行的重构
+
+#### 1. 创建共享 Prisma 单例
+**新增文件**: `src/lib/db.ts`
+```typescript
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+#### 2. 统一 mergeTags 函数
+**新增文件**: `src/lib/dbUtils.ts`
+- 将 `mergeTags` 提取到共享工具函数
+- 保持 `RECENCY_BIAS = 0.3`
+
+#### 3. 更新 API Routes
+所有以下文件已更新使用共享 Prisma 单例：
+- `src/app/api/analyze/route.ts`
+- `src/app/api/analyze/db.ts`
+- `src/app/api/search/route.ts`
+- `src/app/api/suggestions/icebreaker/route.ts`
+- `src/app/api/suggestions/reminders/route.ts`
+- `src/app/api/members/route.ts`
+- `src/app/api/members/[id]/route.ts`
+- `src/app/api/members/table/route.ts`
+- `src/app/api/interactions/[id]/actionItems/route.ts`
+- `src/app/api/debug/route.ts`
+- `src/lib/graphService.ts`
+
+#### 4. Schema 统一
+- `analyze/route.ts` 现在从 `schemas/core.ts` 导入 `WeightedTagSchema` 和 `ActionItemSchema`
+
+#### 5. 其他清理
+- `next.config.js`: `ignoreBuildErrors: false`
+- 删除 `debug_search.ts`
+- 卸载 `force-graph` 依赖
+
+### 版本控制初始化
+
+#### 1. Git 初始化
+```bash
+git init
+git config user.email "developer@jeffrey.ai"
+git config user.name "Jeffrey Developer"
+```
+
+#### 2. .gitignore 创建
+忽略：node_modules, .env, .next, dist, *.log, *.db
+
+#### 3. 初始提交
+```bash
+git add -A
+git commit -m "chore: initial commit"
+git tag -a v1.0.0 -m "v1.0.0: 初始稳定版本"
+```
+
+#### 4. 版本控制策略文档
+**新增文件**: `docs/version-control-strategy.md`
+
+内容包含：
+- 分支模型 (Git Flow 简化版)
+- 提交规范 (feat/fix/docs 等)
+- 语义化版本规则
+- 回滚策略
+- 保护规则
+
+#### 5. CLAUDE.md 更新
+添加版本控制快速参考
+
+### 修改文件清单
+
+| 文件 | 操作 |
+|------|------|
+| `src/lib/db.ts` | 新增 |
+| `src/lib/dbUtils.ts` | 新增 |
+| `src/lib/graphService.ts` | 更新 |
+| `src/services/dbService.ts` | 更新 |
+| `src/app/api/analyze/db.ts` | 更新 |
+| `src/app/api/analyze/route.ts` | 更新 |
+| `src/app/api/*.ts` (9个) | 更新 |
+| `next.config.js` | 更新 |
+| `package.json` | 更新 |
+| `debug_search.ts` | 删除 |
+| `docs/version-control-strategy.md` | 新增 |
+| `CLAUDE.md` | 更新 |
+| `.gitignore` | 新增 |
+
+### Git 状态
+
+```
+326f65f docs: 添加版本控制策略到 CLAUDE.md
+6b76125 chore: initial commit
+---
+v1.0.0
+```
+
+### 验证结果
+- ✅ TypeScript 编译无错误
+- ✅ `npm run build` 构建成功
+- ✅ `npm start` 生产服务器运行正常
+- ✅ 无遗留僵尸进程
+
+### LLM Provider 确认
+- **MiniMax** — 生产环境 LLM（`analyze/route.ts`、`suggestions/*`）
+- **DashScope** — Embeddings（`embedding.ts`）+ 测试（`llmExtractor.ts`）
+
+### 后续建议
+1. 下次开发前创建功能分支：`git checkout -b feature/my-feature`
+2. 重要更改前确认 `npm run build` 成功
+3. 参考 `docs/version-control-strategy.md` 进行版本发布
