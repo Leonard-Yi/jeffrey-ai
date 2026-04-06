@@ -107,3 +107,46 @@ DATABASE_URL=        # PostgreSQL connection string
 - **Chinese-first** — system prompts, vibe tags, and test data are all in Mandarin
 - **Test isolation** — full pipeline tests prefix all records with `__test__` and clean up before/after to avoid polluting real data
 - `tsx` is used as the TypeScript runtime (no build step needed for development)
+
+## Version Control
+
+See [docs/version-control-strategy.md](docs/version-control-strategy.md) for the full strategy.
+
+### Branch Model
+```
+main          ← 生产环境（受保护，禁止直接推送）
+    ↑
+feature/*    ← 新功能分支
+hotfix/*     ← 紧急修复分支
+```
+
+### Commit Format
+```
+<类型>(<范围>): <简短描述>
+
+类型: feat | fix | docs | style | refactor | perf | test | chore
+```
+
+### Quick Commands
+```bash
+# 创建功能分支
+git checkout -b feature/my-feature
+
+# 提交更改
+git add -A && git commit -m "feat(analyze): 添加新功能"
+
+# 切回 main 并拉取最新
+git checkout main && git pull
+
+# 查看提交历史
+git log --oneline -10
+```
+
+### Rollback
+```bash
+# 回滚单个提交
+git revert <commit-hash>
+
+# 回滚到指定版本
+git checkout v1.0.0 && npm run build && npm start
+```
