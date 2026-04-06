@@ -1,0 +1,41 @@
+{
+  "name": "jeffrey-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 30081",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test:extract": "npx tsx --env-file=.env src/test/testExtractor.ts",
+    "test:pipeline": "npx tsx --env-file=.env src/test/fullPipelineTest.ts",
+    "test:graph": "npx tsx --env-file=.env scripts/test-graph.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
+    "dotenv": "^17.3.1",
+    "next": "^16.2.1",
+    "openai": "^4.47.0",
+    "pg": "^8.20.0",
+    "prisma": "^7.6.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-force-graph-2d": "^1.29.1",
+    "zod": "^3.23.0",
+    "zod-to-json-schema": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.20.0",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.0"
+  },
+  "description": "",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

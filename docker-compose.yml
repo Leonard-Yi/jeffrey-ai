@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:15
+    container_name: jeffrey_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: jeffrey_db_main
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

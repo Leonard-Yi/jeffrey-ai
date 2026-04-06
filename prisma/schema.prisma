@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Person {
+  id                String              @id @default(uuid())
+  name              String
+  /// WeightedTag[] stored as JSONB: [{ name, weight }]
+  careers           Json                @default("[]")
+  /// WeightedTag[] stored as JSONB: [{ name, weight }]
+  interests         Json                @default("[]")
+  /// string[] stored as a native Postgres text array
+  vibeTags          String[]            @default([])
+  /// Cities where the person is based, for geographic clustering
+  baseCities        String[]            @default([])
+  /// Favorite places person visits, for place-based connections
+  favoritePlaces    String[]            @default([])
+  /// 0–100 intimacy/activity score, updated after each interaction
+  relationshipScore Float               @default(0)
+  lastContactDate   DateTime
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  /// Multiple introducers stored as a native Postgres text array
+  introducedByIds  String[]            @default([])
+  /// Optional reference to the person who introduced this contact
+  introducedById    String?
+  /// Pre-computed search text for LLM-based semantic matching
+  searchText        String              @default("")
+  /// Embedding vector for semantic search (MiniMax embe-01, stored as JSON float array)
+  embedding         Json                @default("[]")
+  interactions      InteractionPerson[]
+  introducedBy      Person?             @relation("Introduction", fields: [introducedById], references: [id])
+  introductions     Person[]            @relation("Introduction")
+  tags              PersonTag[]
+
+  @@index([name])
+  @@index([introducedById])
+}
+
+model Interaction {
+  id           String              @id @default(uuid())
+  date         DateTime
+  location     String?
+  contextType  String
+  sentiment    String
+  /// ActionItem[] stored as JSONB: [{ description, ownedBy, resolved }]
+  actionItems  Json                @default("[]")
+  /// string[] stored as native text array
+  coreMemories String[]
+  createdAt    DateTime            @default(now())
+  persons      InteractionPerson[]
+}
+
+model InteractionPerson {
+  personId      String
+  interactionId String
+  interaction   Interaction @relation(fields: [interactionId], references: [id])
+  person        Person      @relation(fields: [personId], references: [id])
+
+  @@id([personId, interactionId])
+}
+
+model PersonTag {
+  id       String @id @default(uuid())
+  personId String
+  category String
+  name     String
+  weight   Float  @default(1.0)
+  person   Person @relation(fields: [personId], references: [id])
+
+  @@index([name])
+  @@index([category, name])
+}
