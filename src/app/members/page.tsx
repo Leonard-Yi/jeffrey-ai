@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect } from "react";
 import PersonModal from "@/components/PersonModal";
 import Header from "@/components/Header";
+import MergeConfirmDialog from "@/components/MergeConfirmDialog";
+import type { WeightedTag } from "@/lib/embedding";
 
 type ColumnDef = {
   key: string;
@@ -38,6 +40,15 @@ export default function MembersPage() {
   const [filterCareer, setFilterCareer] = useState("");
   const [filterCity, setFilterCity] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergePersons, setMergePersons] = useState<Array<{
+    id: string; name: string;
+    careers: WeightedTag[]; interests: WeightedTag[]; vibeTags: string[];
+    relationshipScore: number; lastContactDate: string;
+    interactionCount: number;
+  }>>([]);
+  const [merging, setMerging] = useState(false);
 
   const fetchTable = useCallback(async () => {
     setLoading(true);
@@ -66,6 +77,47 @@ export default function MembersPage() {
   };
 
   const handleSaved = () => {
+    fetchTable();
+  };
+
+  const handleMergeClick = async () => {
+    if (selectedIds.length < 2) return;
+    // Fetch full details for selected persons
+    const persons = await Promise.all(
+      selectedIds.map(async (id) => {
+        const res = await fetch(`/api/members/${id}`);
+        const data = await res.json();
+        return {
+          id: data.person.id,
+          name: data.person.name,
+          careers: data.person.careers as WeightedTag[],
+          interests: data.person.interests as WeightedTag[],
+          vibeTags: data.person.vibeTags as string[],
+          relationshipScore: data.person.relationshipScore,
+          lastContactDate: data.person.lastContactDate,
+          interactionCount: (data.person.interactions?.length ?? 0) as number,
+        };
+      })
+    );
+    // Sort by relationshipScore descending - first one is default survivor
+    persons.sort((a, b) => b.relationshipScore - a.relationshipScore);
+    setMergePersons(persons);
+    setMergeDialogOpen(true);
+  };
+
+  const handleMergeConfirm = async (survivorId: string, victimIds: string[]) => {
+    setMerging(true);
+    const res = await fetch("/api/persons/merge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ survivorId, victimIds }),
+    });
+    if (!res.ok) {
+      throw new Error("Merge failed");
+    }
+    setMerging(false);
+    setMergeDialogOpen(false);
+    setSelectedIds([]);
     fetchTable();
   };
 
@@ -162,7 +214,7 @@ export default function MembersPage() {
 
   return (
     <div style={{ backgroundColor: "#f5f3ef", minHeight: "100vh" }}>
-      <Header totalCount={rows.length} />
+      <Header />
 
       {/* Page Content */}
       <div style={{ padding: "24px 32px" }}>
@@ -187,6 +239,7 @@ export default function MembersPage() {
           gap: "12px",
           marginBottom: "20px",
           flexWrap: "wrap",
+          alignItems: "center",
         }}
       >
         <input
@@ -233,6 +286,34 @@ export default function MembersPage() {
         >
           搜索
         </button>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Merge button */}
+        {selectedIds.length >= 2 && (
+          <button
+            onClick={handleMergeClick}
+            style={{
+              padding: "8px 20px",
+              backgroundColor: "#dc2626",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            合并 {selectedIds.length} 条
+          </button>
+        )}
+
+        {selectedIds.length > 0 && selectedIds.length < 2 && (
+          <span style={{ fontSize: "13px", color: "#9a8a7a" }}>
+            再选一条才能合并
+          </span>
+        )}
       </form>
 
       {/* Table */}
@@ -274,6 +355,27 @@ export default function MembersPage() {
           <table style={{ minWidth: "900px", borderCollapse: "collapse" }}>
             <thead>
               <tr>
+                <th
+                  style={{
+                    padding: "12px 16px",
+                    backgroundColor: "#f9f7f3",
+                    borderBottom: "1px solid #e0d9cf",
+                    width: "40px",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length === rows.length && rows.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds(rows.map((r) => r.id));
+                      } else {
+                        setSelectedIds([]);
+                      }
+                    }}
+                    style={{ cursor: "pointer", accentColor: "#c8a96e" }}
+                  />
+                </th>
                 {columns.map((col) => (
                   <th
                     key={col.key}
@@ -312,20 +414,41 @@ export default function MembersPage() {
                     padding: "10px 16px",
                     borderBottom: rowIdx < rows.length - 1 ? "1px solid #f0ece4" : "none",
                     cursor: "pointer",
-                    backgroundColor: "transparent",
+                    backgroundColor: selectedIds.includes(row.id) ? "#fef7ec" : "transparent",
                     transition: "background-color 0.15s ease",
                   }}
                   onMouseEnter={(e) => {
-                    if (selectedId !== row.id) {
+                    if (!selectedIds.includes(row.id)) {
                       e.currentTarget.style.backgroundColor = "#faf8f4";
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (selectedId !== row.id) {
+                    if (!selectedIds.includes(row.id)) {
                       e.currentTarget.style.backgroundColor = "transparent";
                     }
                   }}
                 >
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      borderBottom: rowIdx < rows.length - 1 ? "1px solid #f0ece4" : "none",
+                      backgroundColor: selectedIds.includes(row.id) ? "#fef7ec" : "transparent",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(row.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds([...selectedIds, row.id]);
+                        } else {
+                          setSelectedIds(selectedIds.filter((id) => id !== row.id));
+                        }
+                      }}
+                      style={{ cursor: "pointer", accentColor: "#c8a96e" }}
+                    />
+                  </td>
                   {columns.map((col) => (
                     <td
                       key={col.key}
@@ -335,8 +458,7 @@ export default function MembersPage() {
                           rowIdx < rows.length - 1 ? "1px solid #f0ece4" : "none",
                         fontSize: "14px",
                         color: "#3a2a1a",
-                        backgroundColor:
-                          selectedId === row.id ? "#fef7ec" : "transparent",
+                        backgroundColor: selectedIds.includes(row.id) ? "#fef7ec" : "transparent",
                       }}
                     >
                       {renderCell(row, col)}
@@ -355,6 +477,19 @@ export default function MembersPage() {
         onClose={() => setSelectedId(null)}
         onSaved={handleSaved}
       />
+
+      {/* Merge Confirm Dialog */}
+      {mergeDialogOpen && mergePersons.length >= 2 && (
+        <MergeConfirmDialog
+          survivor={mergePersons[0]}
+          victims={mergePersons.slice(1)}
+          onConfirm={handleMergeConfirm}
+          onCancel={() => {
+            setMergeDialogOpen(false);
+            setSelectedIds([]);
+          }}
+        />
+      )}
       </div>
     </div>
   );

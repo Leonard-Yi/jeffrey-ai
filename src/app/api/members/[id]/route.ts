@@ -30,18 +30,46 @@ export async function GET(
   try {
     const { id } = await context.params;
 
+    // Fetch person with only needed fields, excluding massive embedding arrays
     const person = await prisma.person.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        careers: true,
+        interests: true,
+        vibeTags: true,
+        baseCities: true,
+        favoritePlaces: true,
+        relationshipScore: true,
+        lastContactDate: true,
+        createdAt: true,
+        updatedAt: true,
+        introducedById: true,
+        introducedByIds: true,
+        searchText: true,
+        deletedAt: true,
+        mergedIntoId: true,
+        aliases: true,
         introducedBy: {
           select: { id: true, name: true },
         },
         interactions: {
           include: {
             interaction: {
-              include: {
+              select: {
+                id: true,
+                date: true,
+                location: true,
+                contextType: true,
+                sentiment: true,
+                actionItems: true,
+                coreMemories: true,
+                createdAt: true,
                 persons: {
-                  include: {
+                  select: {
+                    personId: true,
+                    interactionId: true,
                     person: {
                       select: { id: true, name: true },
                     },

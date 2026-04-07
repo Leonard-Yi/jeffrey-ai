@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Header from '@/components/Header';
+import AmbiguousPrompt from '@/components/AmbiguousPrompt';
+import NameResolutionPrompt from '@/components/NameResolutionPrompt';
 
 // 语音识别类型
 interface SpeechRecognitionInstance {
@@ -23,6 +25,8 @@ interface Person {
   careers: Array<{ name: string; weight: number }>;
   interests: Array<{ name: string; weight: number }>;
   vibeTags: string[];
+  ambiguous?: boolean;
+  ambiguousWith?: string[];
 }
 
 interface ActionItem {
@@ -32,11 +36,12 @@ interface ActionItem {
 }
 
 interface ExtractionResponse {
-  status: 'complete' | 'pending';
+  status: 'complete' | 'pending' | 'ambiguous';
   jeffreyComment: string;
   persons: Person[];
   followUpQuestion?: string;
   actionItems: ActionItem[];
+  ambiguousPersons?: Person[];
 }
 
 interface RecentEntry {
@@ -47,6 +52,13 @@ interface RecentEntry {
   relativeTime: string;
 }
 
+// 对话历史中的单条消息
+interface ChatMessage {
+  role: 'user' | 'jeffrey';
+  content: string;
+  timestamp: string;
+}
+
 const JeffreyInputPage = () => {
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -55,11 +67,18 @@ const JeffreyInputPage = () => {
   const [persons, setPersons] = useState<Person[]>([]);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
-  const [status, setStatus] = useState<'complete' | 'pending' | null>(null);
+  const [status, setStatus] = useState<'complete' | 'pending' | 'ambiguous' | null>(null);
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([]);
   const [selectedQuickReply, setSelectedQuickReply] = useState<string | null>(null);
   const [customReply, setCustomReply] = useState('');
   const [originalInputText, setOriginalInputText] = useState('');
+  const [existingPersons, setExistingPersons] = useState<Array<{ id: string; name: string; careers: Array<{ name: string }> }>>([]);
+  const [ambiguousPersons, setAmbiguousPersons] = useState<Person[]>([]);
+  const [showResolutionPrompt, setShowResolutionPrompt] = useState(false);
+  const [nameResolutions, setNameResolutions] = useState<Array<{ mentionedName: string; candidates: Array<{ id: string; name: string; similarity: number; matchType: "exact" | "embedding"; careers: unknown[] }> }>>([]);
+  const [pendingText, setPendingText] = useState('');
+  const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
+  const [dialogueComplete, setDialogueComplete] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pathname = usePathname();
@@ -86,6 +105,14 @@ const JeffreyInputPage = () => {
         console.error('Failed to parse recent entries', e);
       }
     }
+
+    // Fetch existing persons for ambiguous merge lookup
+    fetch('/api/members/table')
+      .then((r) => r.json())
+      .then((data) => {
+        setExistingPersons(data.rows || []);
+      })
+      .catch(() => {});
   }, []);
 
   // 初始化语音识别
@@ -134,6 +161,161 @@ const JeffreyInputPage = () => {
     }
   };
 
+  // Apply resolved name replacements to text
+  const applyNameResolutions = (text: string, resolvedNames: Map<string, string>): string => {
+    let result = text;
+    for (const [originalName, matchedName] of resolvedNames) {
+      if (originalName !== matchedName) {
+        result = result.replace(new RegExp(originalName, 'g'), matchedName);
+      }
+    }
+    return result;
+  };
+
+  // Handle resolution confirmation: replace names and proceed to analyze
+  const handleResolutionConfirm = async (resolvedNames: Map<string, string>) => {
+    setShowResolutionPrompt(false);
+    const resolvedText = applyNameResolutions(pendingText, resolvedNames);
+    setInputText(resolvedText);
+    setOriginalInputText(resolvedText);
+
+    // Now proceed with the resolved text
+    setIsProcessing(true);
+    try {
+      const payload = JSON.stringify({ text: resolvedText });
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: payload
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error ${response.status}`);
+      }
+
+      const data: ExtractionResponse = await response.json();
+      setJeffreyComment(data.jeffreyComment);
+      setPersons(data.persons);
+      setFollowUpQuestion(data.followUpQuestion || '');
+      setActionItems(data.actionItems);
+      setStatus(data.status);
+      setAmbiguousPersons(data.ambiguousPersons || []);
+
+      if (data.status === 'complete') {
+        const newEntry: RecentEntry = {
+          id: Date.now().toString(),
+          text: resolvedText.substring(0, 60) + (resolvedText.length > 60 ? '...' : ''),
+          timestamp: new Date().toLocaleString(),
+          status: data.status,
+          relativeTime: '刚刚'
+        };
+        const updatedEntries = [newEntry, ...recentEntries.slice(0, 4)];
+        setRecentEntries(updatedEntries);
+        localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updatedEntries));
+        setDialogueComplete(true);
+      } else if (data.status === 'pending' && data.followUpQuestion) {
+        const jeffreyMessage: ChatMessage = {
+          role: 'jeffrey',
+          content: data.followUpQuestion,
+          timestamp: new Date().toLocaleString('zh-CN'),
+        };
+        setConversationHistory([jeffreyMessage]);
+        setDialogueComplete(false);
+      }
+    } catch (error) {
+      console.error('Error after resolution:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Skip resolution and proceed directly to analyze
+  const handleResolutionSkip = () => {
+    setShowResolutionPrompt(false);
+    // Proceed with original text as-is
+    handleSubmitWithText(pendingText, false);
+  };
+
+  // Internal: submit a specific text to analyze (used after resolution)
+  const handleSubmitWithText = async (textToSubmit: string, isFollowUp = false) => {
+    if (!textToSubmit.trim()) return;
+
+    try {
+      setIsProcessing(true);
+
+      // Add user message to conversation history
+      const userMessage: ChatMessage = {
+        role: 'user',
+        content: textToSubmit,
+        timestamp: new Date().toLocaleString('zh-CN'),
+      };
+      if (isFollowUp) {
+        setConversationHistory(prev => [...prev, userMessage]);
+      }
+
+      const payload = JSON.stringify({ text: textToSubmit });
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: payload
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error ${response.status}`);
+      }
+
+      const data: ExtractionResponse = await response.json();
+      setJeffreyComment(data.jeffreyComment);
+      setPersons(data.persons);
+      setFollowUpQuestion(data.followUpQuestion || '');
+      setActionItems(data.actionItems);
+      setStatus(data.status);
+      setAmbiguousPersons(data.ambiguousPersons || []);
+
+      if (data.status === 'complete') {
+        // Add Jeffrey's response to conversation history
+        const jeffreyMessage: ChatMessage = {
+          role: 'jeffrey',
+          content: data.jeffreyComment || '信息已保存到数据库。',
+          timestamp: new Date().toLocaleString('zh-CN'),
+        };
+        setConversationHistory(prev => [...prev, jeffreyMessage]);
+
+        if (!isFollowUp) {
+          // First time complete - save to recent entries but keep dialogue open
+          const newEntry: RecentEntry = {
+            id: Date.now().toString(),
+            text: textToSubmit.substring(0, 60) + (textToSubmit.length > 60 ? '...' : ''),
+            timestamp: new Date().toLocaleString(),
+            status: data.status,
+            relativeTime: '刚刚'
+          };
+          const updatedEntries = [newEntry, ...recentEntries.slice(0, 4)];
+          setRecentEntries(updatedEntries);
+          localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updatedEntries));
+          // Mark dialogue as complete since no follow-up was needed
+          setDialogueComplete(true);
+        } else {
+          // After follow-up complete - dialogue is done
+          setDialogueComplete(true);
+        }
+      } else if (data.status === 'pending' && data.followUpQuestion) {
+        // Add Jeffrey's follow-up question to conversation history
+        const jeffreyMessage: ChatMessage = {
+          role: 'jeffrey',
+          content: data.followUpQuestion,
+          timestamp: new Date().toLocaleString('zh-CN'),
+        };
+        setConversationHistory(prev => [...prev, jeffreyMessage]);
+        setDialogueComplete(false);
+      }
+    } catch (error) {
+      console.error('Error submitting:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSubmit = async (followUpReply?: string) => {
     // 确保使用正确的原文本
     const baseText = originalInputText || inputText;
@@ -159,47 +341,29 @@ const JeffreyInputPage = () => {
         setOriginalInputText(inputText);
       }
 
-      const payload = JSON.stringify({ text: textToSubmit });
-      console.log('[Jeffrey.AI] Request payload:', payload);
+      // Step 1: Pre-check for name resolution (only for initial submissions, not follow-up replies)
+      if (!followUpReply) {
+        const resolveRes = await fetch('/api/persons/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: textToSubmit }),
+        });
 
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: payload
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', response.status, errorText);
-        throw new Error(`API Error ${response.status}: ${errorText}`);
+        if (resolveRes.ok) {
+          const resolveData = await resolveRes.json();
+          if (resolveData.resolutions?.length > 0) {
+            // Found potential matches - show confirmation prompt
+            setNameResolutions(resolveData.resolutions);
+            setPendingText(textToSubmit);
+            setShowResolutionPrompt(true);
+            setIsProcessing(false);
+            return; // Wait for user confirmation
+          }
+        }
       }
 
-      const data: ExtractionResponse = await response.json();
-
-      setJeffreyComment(data.jeffreyComment);
-      setPersons(data.persons);
-      setFollowUpQuestion(data.followUpQuestion || '');
-      setActionItems(data.actionItems);
-      setStatus(data.status);
-
-      // 只有当状态为 complete 时才添加到历史记录
-      if (data.status === 'complete') {
-        const newEntry: RecentEntry = {
-          id: Date.now().toString(),
-          text: inputText.substring(0, 60) + (inputText.length > 60 ? '...' : ''),
-          timestamp: new Date().toLocaleString(),
-          status: data.status,
-          relativeTime: '刚刚'
-        };
-
-        const updatedEntries = [newEntry, ...recentEntries.slice(0, 4)];
-        setRecentEntries(updatedEntries);
-        localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updatedEntries));
-
-        // 清空输入
-        setInputText('');
-        setOriginalInputText('');
-      }
+      // Step 2: No resolutions needed or follow-up reply - proceed to analyze
+      await handleSubmitWithText(textToSubmit, !!followUpReply);
 
       // 追问回复发送后，清空回复相关状态
       if (followUpReply) {
@@ -211,7 +375,9 @@ const JeffreyInputPage = () => {
     } catch (error) {
       console.error('Error submitting:', error);
     } finally {
-      setIsProcessing(false);
+      if (!showResolutionPrompt) {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -226,6 +392,13 @@ const JeffreyInputPage = () => {
     setSelectedQuickReply(null);
     setCustomReply('');
     setIsProcessing(false);
+    setAmbiguousPersons([]);
+    setShowResolutionPrompt(false);
+    setNameResolutions([]);
+    setPendingText('');
+    setAmbiguousPersons([]);
+    setConversationHistory([]);
+    setDialogueComplete(false);
   };
 
   const handleQuickReply = (reply: string) => {
@@ -245,7 +418,7 @@ const JeffreyInputPage = () => {
 
   return (
     <div className="min-h-screen bg-[#f5f3ef]">
-      <Header totalCount={recentEntries.length} />
+      <Header />
 
       {/* 主内容区 */}
       <main className="flex flex-col lg:flex-row gap-4 p-4 max-w-[1600px] mx-auto">
@@ -374,6 +547,41 @@ const JeffreyInputPage = () => {
             </div>
           )}
 
+          {/* 对话历史 */}
+          {conversationHistory.length > 0 && (
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-gray-400 text-xs font-medium uppercase tracking-wider">对话记录</h3>
+                {dialogueComplete && (
+                  <span className="text-xs text-green-600 font-medium">✓ 对话已完成</span>
+                )}
+              </div>
+              <div className="space-y-4 max-h-80 overflow-y-auto">
+                {conversationHistory.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[85%] rounded-xl px-4 py-3 ${
+                        msg.role === 'user'
+                          ? 'bg-amber-100 text-gray-800 rounded-br-md'
+                          : 'bg-gray-100 text-gray-700 rounded-bl-md'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-medium ${
+                          msg.role === 'user' ? 'text-amber-700' : 'text-gray-500'
+                        }`}>
+                          {msg.role === 'user' ? '你' : 'Jeffrey'}
+                        </span>
+                        <span className="text-xs text-gray-400">{msg.timestamp}</span>
+                      </div>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 已提取人物 */}
           {persons.length > 0 && (
             <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
@@ -421,8 +629,41 @@ const JeffreyInputPage = () => {
             </div>
           )}
 
-          {/* 追问区 */}
-          {status === 'pending' && followUpQuestion && (
+          {/* 姓名预检区 - 在提交前让用户确认疑似匹配 */}
+          {showResolutionPrompt && nameResolutions.length > 0 && (
+            <NameResolutionPrompt
+              resolutions={nameResolutions}
+              allPersons={existingPersons}
+              onConfirm={handleResolutionConfirm}
+              onSkip={handleResolutionSkip}
+            />
+          )}
+
+          {/* Ambiguous 区 */}
+          {status === 'ambiguous' && ambiguousPersons.length > 0 && (
+            <AmbiguousPrompt
+              ambiguousPersons={ambiguousPersons as Parameters<typeof AmbiguousPrompt>[0]['ambiguousPersons']}
+              existingPersons={existingPersons}
+              onConfirmMerge={async (name, existingId, ambiguousName) => {
+                // User confirmed: the new person IS the existing person.
+                // Clear ambiguous state and re-submit with confirmation appended to original text.
+                setAmbiguousPersons([]);
+                setStatus(null);
+                // Use handleSubmit with followUpReply to append confirmation to originalText
+                await handleSubmit(`是的，${name}就是之前录入的${ambiguousName}，请合并到已有档案。`);
+              }}
+              onCreateNew={(name) => {
+                // User says it's NOT the same person - create a new entry.
+                // Re-submit as new person with explicit instruction.
+                setAmbiguousPersons([]);
+                setStatus(null);
+                handleSubmit(`用户确认：${name}不是之前录入的同一人，是新创建的条目。`);
+              }}
+            />
+          )}
+
+          {/* 追问区 - 当对话未完成且有待回复问题时显示 */}
+          {status === 'pending' && followUpQuestion && !dialogueComplete && (
             <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <h3 className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">JEFFREY 的追问</h3>
               <p className="text-gray-600 italic leading-relaxed mb-4">"{followUpQuestion}"</p>

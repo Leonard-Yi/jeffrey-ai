@@ -1,8 +1,8 @@
 # Jeffrey.AI 项目开发记录
 
-**最后更新**: 2026-04-06
-**项目状态**: 代码库重构 + 版本控制初始化 + 清理完成
-**会话 ID**: 006 (代码重构 + Git 初始化)
+**最后更新**: 2026-04-07
+**项目状态**: 同人识别功能完成
+**会话 ID**: 007 (同人识别：手动合并 + 自动预检)
 
 ---
 
@@ -452,7 +452,7 @@ docker exec -it jeffrey_db psql -U admin -d jeffrey_db_main
 | LLM 提取服务 | ✅ 100% | Qwen + Tool Calling + 完备性检查 |
 | 数据持久化 | ✅ 100% | Prisma + 权重合并 |
 | 图数据服务 | ✅ 100% | 7 种关系边计算 + 过滤器 |
-| API 路由 | ✅ 100% | /analyze + /graph + /debug + /members |
+| API 路由 | ✅ 100% | /analyze + /graph + /debug + /members + /search |
 | 输入页面 | ✅ 100% | 文本 + 语音 + 结果展示 |
 | 图谱页面 | ✅ 100% | react-force-graph-2d + 节点详情 + 过滤器 |
 | 建议页面 | ✅ 100% | 三大模块：关系维护提醒、待办承诺、破冰助手 |
@@ -462,41 +462,40 @@ docker exec -it jeffrey_db psql -U admin -d jeffrey_db_main
 | 图谱→弹窗联动 | ✅ 100% | 节点点击 → 查看完整档案 |
 | 待办行动项增强 | ✅ 100% | 颜色区分归属 + 描述编辑 + 完成切换 |
 | 多介绍人支持 | ✅ 100% | 多选复选框 + 姓名显示 + 导航跳转 |
+| 全局搜索入口 | ✅ 100% | Header 搜索框 + /api/search 向量搜索 |
+| **同人识别-手动合并** | ✅ 100% | 表格多选 + MergeConfirmDialog + 软删除 + 标签迁移 |
+| **同人识别-自动预检** | ✅ 100% | 提交前姓名向量匹配 + NameResolutionPrompt + 用户确认 |
 | 用户认证 | ❌ 0% | 未开始 |
 
 ---
 
 ## 七、下一步工作 (优先级排序)
 
-### P0 — 让应用更完整
+### P0 — 待开发
 
-1. **建议页面** ✅ 已完成
-   - 基于 `coreMemories` 和历史互动
-   - LLM 生成个性化破冰开场白（MiniMax-M2.7）
-   - 互动建议推荐
-
-### P0 — 待完成
-2. **语义搜索**
-
-### P1 — 核心功能完善
-
-3. **语义搜索**
-   - 搜索框："我认识哪些做 X 的人"
-   - 后端解析查询 → Prisma 查询
-   - 返回匹配的人物列表
-
-4. **待办提醒**
+1. **待办提醒**
    - 基于 `actionItems.resolved = false`
    - 按 `ownedBy = "me"` 过滤
    - 显示待办列表，支持标记完成
 
+2. **语义搜索** ✅ 已完成
+   - Header 全局搜索框
+   - `/api/search` 向量搜索 (cosine similarity)
+   - 搜索结果下拉展示
+
+### P1 — 核心功能完善
+
+3. **同人识别** ✅ 已完成（2026-04-07）
+   - 手动合并：人脉表格多选 → 合并按钮 → MergeConfirmDialog
+   - 自动预检：提交前 /api/persons/resolve → 向量相似度 → NameResolutionPrompt
+
 ### P2 — 工程化与部署
 
-5. **用户认证**
+4. **用户认证**
    - 简单的登录/注册
    - 数据库加 `User` 表，`Person.userId` 外键
 
-6. **部署**
+5. **部署**
    - Vercel 部署 Next.js
    - Railway/Render 部署 PostgreSQL
    - 环境变量配置
@@ -1446,3 +1445,239 @@ v1.0.0
 1. 下次开发前创建功能分支：`git checkout -b feature/my-feature`
 2. 重要更改前确认 `npm run build` 成功
 3. 参考 `docs/version-control-strategy.md` 进行版本发布
+
+---
+
+## 会话 007: 同人识别功能实现 (2026-04-07)
+
+### 功能概述
+
+同人识别（Same Person Detection）解决用户在不同场景下用不同称呼指代同一人的问题（如"老王""王总""王老板"都指向同一个人），防止数据库中出现重复条目。
+
+**实现的两种方案**：
+
+| 方案 | 触发时机 | 实现状态 |
+|------|----------|----------|
+| **手动合并** | 用户在成员表格页面多选 → 合并按钮 → 确认弹窗 | ✅ 已完成 |
+| **自动检测（预检）** | 提交录入前，提取文本中的姓名 → 向量相似度匹配 → 用户确认后替代 analyze | ✅ 已完成 |
+
+### 方案 1: 手动合并
+
+#### 数据库变更 (`prisma/schema.prisma`)
+
+```prisma
+model Person {
+  // ... 现有字段 ...
+  deletedAt        DateTime?   // 软删除标记
+  mergedIntoId     String?     // 合并到的目标人物 ID（为空 = 未被合并）
+  mergedInto       Person?     @relation("PersonMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom       Person[]    @relation("PersonMerge")
+  aliases          String[]    @default([])  // 被合并的曾用名
+  @@index([mergedIntoId])
+  @@index([deletedAt])
+}
+```
+
+**合并规则**：
+- ** survivor **（接收方）：保留，更新标签、热度等
+- ** victim **（被合并方）：软删除（`deletedAt` = now），`mergedIntoId` → survivor
+- ** aliases **：victim 的姓名 + victim 所有 aliases → survivor 的 aliases
+- ** 标签合并**：recency bias 0.7/0.3 权重合并
+- ** InteractionPerson **：迁移到 survivor（通过 delete + create 避免 @@id 冲突）
+- ** PersonTag **：按人名迁移并合并权重
+- ** 搜索文本**：rebuild `searchText` 和 `embedding`
+
+#### 后端 API
+
+**POST /api/persons/merge**
+```typescript
+// Request
+{ survivorId: string, victimIds: string[] }
+
+// Response
+{ success: true, survivor: { id, name, aliases, ... }, mergedCount: number }
+```
+
+**关键逻辑**（transaction 内执行）：
+1. 收集所有 victim 的 aliases（包括 victim.name 自身）
+2. 合并 tags：`mergeTags(survivorTags, victimTags)`
+3. union 数组字段：`vibeTags`、`baseCities`、`favoritePlaces`、`coreMemories`
+4. 软删除 victim：`deletedAt: new Date()`
+5. 迁移 InteractionPerson：delete 旧 + create 新（避免 @@id 冲突）
+6. 迁移 PersonTag：按 `personId` 更新或 create
+7. 更新 survivor：`aliases`、`careers`、`interests`、`vibeTags` 等
+8. rebuild `searchText` + 重新生成 `embedding`
+
+#### 前端 UI
+
+**Members 表格页面** (`src/app/members/page.tsx`)：
+- 新增复选框列
+- 选中行高亮：`#fef7ec` 背景色
+- 合并按钮：红色，`selectedIds.length >= 2` 时显示
+- 点击后打开 `MergeConfirmDialog`
+
+**MergeConfirmDialog 组件** (`src/components/MergeConfirmDialog.tsx`)：
+- Survivor 卡片：金色边框 + "主档案" 标签
+- Victim 卡片：灰色边框 + "将被合并" 标签
+- 显示合并统计：标签数量变化、别名列表、互动数量
+- 确认按钮：执行合并并刷新表格
+
+#### members table API 更新
+
+**GET /api/members/table** 新增过滤：
+```typescript
+where: { deletedAt: null, mergedIntoId: null }
+```
+确保软删除和已合并的记录不出现在表格中。
+
+---
+
+### 方案 2: 自动检测（预检流程）
+
+#### 流程设计
+
+```
+用户输入文本 → /api/persons/resolve（姓名预检）
+                ↓
+         找到匹配候选人？
+           ↓ 是
+         显示 NameResolutionPrompt（让用户确认）
+           ↓
+      用户确认/跳过
+           ↓
+      替换后的文本 → /api/analyze
+           ↓ 是（无匹配）
+      直接 → /api/analyze
+```
+
+#### 后端 API
+
+**POST /api/persons/resolve**
+```typescript
+// Request
+{ text: string }
+
+// Response
+{
+  resolutions: [{
+    mentionedName: string,        // 文本中提到的人名
+    candidates: [{
+      id: string,
+      name: string,               // 数据库中已有姓名
+      similarity: number,         // 0-1，1 = exact match
+      matchType: "exact" | "embedding",  // exact=姓名相同，embedding=向量相似
+      careers: [{ name, weight }]
+    }]
+  }]
+}
+```
+
+**姓名提取逻辑** (`extractNames` 函数)：
+```typescript
+// 触发词模式：和/与/同/跟/和 /、 + 2字中文名
+const triggerPattern = /(?:和|与|同|跟|和 |、)([\u4e00-\u9fa5]{2})/g;
+
+// 通用 2 字中文名扫描（排除时间词等）
+const namePattern = /([\u4e00-\u9fa5]{2})/g;
+const skipWords = ['今天', '昨天', '明天', '前年', '去年', ...];
+```
+
+**匹配逻辑**：
+1. **Exact match**：数据库中 `name` 或 `aliases` 数组包含提取到的姓名 → similarity = 1.0
+2. **Embedding match**：余弦相似度 > 0.5 → similarity = cosine similarity
+3. 返回所有匹配，按 similarity 降序
+
+#### 前端组件
+
+**NameResolutionPrompt** (`src/components/NameResolutionPrompt.tsx`)：
+- 显示文本中提到的人名
+- 每个姓名显示匹配到的候选人卡片（相似度百分比、职业标签）
+- 两个按钮：**确认**（用数据库中的已有记录替换）和 **跳过**（直接提交）
+- 用户确认后，返回 `Map<originalName, matchedName>`
+
+**Input 页面更新** (`src/app/input/page.tsx`)：
+- `handleSubmit()` 先调用 `/api/persons/resolve`
+- 有匹配时：显示 `NameResolutionPrompt`，设置 `pendingText` 等待确认
+- 用户确认后：`applyNameResolutions()` 替换文本中的姓名，再调用 `/api/analyze`
+- 跳过时：直接调用 `/api/analyze`
+
+---
+
+### 本次会话修改文件清单
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `prisma/schema.prisma` | 修改 | 新增 `deletedAt`、`mergedIntoId`、`mergedInto`、`mergedFrom`、`aliases` 字段 |
+| `src/app/api/persons/merge/route.ts` | 新增 | 手动合并 API |
+| `src/app/api/persons/resolve/route.ts` | 新增 | 姓名预检 API |
+| `src/components/MergeConfirmDialog.tsx` | 新增 | 合并确认弹窗 |
+| `src/components/NameResolutionPrompt.tsx` | 新增 | 姓名预检确认弹窗 |
+| `src/app/members/page.tsx` | 修改 | 新增复选框列、合并按钮 |
+| `src/app/input/page.tsx` | 修改 | 新增 resolve 调用流程、分辨率确认 |
+| `src/app/api/members/table/route.ts` | 修改 | 过滤软删除/已合并记录 |
+| `src/app/api/analyze/route.ts` | 修改 | `ExtractedPersonSchema` 新增 `ambiguous`/`ambiguousWith`/`status: "ambiguous"` |
+| `src/components/AmbiguousPrompt.tsx` | 新增 | LLM 追问式模糊确认（保留作为 fallback） |
+
+### 调试记录
+
+#### 问题 A: curl 导致中文 JSON 请求乱码
+
+**症状**：`curl -s -X POST http://localhost:3000/api/persons/resolve -d '{"text":"ABC和老王"}'` 返回 `{"resolutions":[]}`，服务器日志显示 `Received text: ����������`。
+
+**排查过程**：
+1. 排除数据库问题：数据库中确实有"老王"记录（embedding 也有）
+2. 排除 `extractNames` 问题：Node.js 单独测试函数逻辑正确
+3. **根因**：Windows bash 下 curl 发送 UTF-8 JSON 时字符损坏
+
+**验证方法**：用 Node.js HTTP client 替代 curl 测试：
+```javascript
+const http = require('http');
+const data = JSON.stringify({text: '老王'});
+// 结果：正确返回 {"resolutions":[{"mentionedName":"老王", ...}]}
+```
+
+**结论**：API 本身正确，前端 `fetch()` 调用也正确（浏览器处理 UTF-8 无问题）。curl 仅作为调试工具时需注意编码。
+
+#### 问题 B: Next.js 生产服务器端口占用
+
+**解决方法**：
+```bash
+netstat -ano | grep :3000   # 查找 PID
+taskkill //F //PID <PID>     # 杀死进程
+npm start                    # 重启
+```
+
+### 技术决策
+
+1. **预检在 analyze 之前**：避免让 LLM 判断同名问题，改用向量相似度在提交前过滤
+2. **保留 AmbiguousPrompt 作为 fallback**：当 LLM 在 analyze 阶段仍然检测到模糊时使用
+3. **soft-delete 而非硬删除**：保留合并历史，便于审计和回滚
+4. **合并后 rebuild embedding**：确保 survivor 的语义表示反映完整合并后的信息
+
+### 当前功能状态
+
+| 功能 | 状态 |
+|------|------|
+| 手动合并 UI + API | ✅ |
+| 姓名预检 API + UI | ✅ |
+| 前端 resolve → analyze 流程 | ✅ |
+| AmbiguousPrompt（fallback）| ✅ |
+| 软删除 + mergedIntoId 追踪 | ✅ |
+| InteractionPerson 迁移 | ✅ |
+| PersonTag 权重迁移 | ✅ |
+
+### 服务管理
+
+- **开发模式**（不推荐）：`npm run dev` - 端口 30081，但会留僵尸进程
+- **生产模式**（推荐）：`npm run build && npm start` - 端口 3000，稳定
+- **不用时**：关闭 terminal 或 `taskkill //F //PID <node_pid>`
+
+### settings.json 权限模式
+
+已在 `C:\Users\leona\.claude\settings.json` 中设置：
+```json
+"permissions": {
+  "defaultMode": "auto"
+}
+```
+**重启 Claude Code 后生效**，当前会话不受影响。

@@ -164,7 +164,6 @@ export async function GET(request: NextRequest) {
 
     const apiData = await apiResponse.json();
     // MiniMax 返回的 content 是数组，包含不同类型的块
-    // 找到 type="text" 的块
     const textBlock = apiData.content?.find((c: { type: string }) => c.type === "text");
     const content = textBlock?.text;
     if (!content) {
@@ -174,7 +173,6 @@ export async function GET(request: NextRequest) {
     // 解析 JSON 响应
     let parsed;
     try {
-      // 尝试提取 JSON（可能包含在 markdown 代码块中）
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
                         content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -183,7 +181,6 @@ export async function GET(request: NextRequest) {
         parsed = JSON.parse(content);
       }
     } catch {
-      // 如果解析失败，返回原始内容作为 openingLines
       parsed = {
         openingLines: [content],
         suggestedTopics: ["询问近况"],

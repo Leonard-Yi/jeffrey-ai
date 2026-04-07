@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import SuggestionCard from "../../components/SuggestionCard";
 import Header from "@/components/Header";
 
@@ -220,7 +219,6 @@ function getJefferyQuote(): { text: string; author: string } {
 // ─────────────────────────────────────────────
 
 export default function SuggestionsPage() {
-  const pathname = usePathname();
   const [quote] = useState(getJefferyQuote);
 
   // Data state
@@ -271,6 +269,8 @@ export default function SuggestionsPage() {
     }
 
     setIcebreakerLoading(true);
+    setIcebreaker(null);
+
     fetch(`/api/suggestions/icebreaker?personId=${selectedPersonId}`)
       .then((r) => r.json())
       .then((data: IcebreakerResponse) => {

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMemberCount } from "./MemberCountContext";
 
 type SearchResult = {
   id: string;
@@ -21,7 +22,7 @@ const NAV_ITEMS = [
   { href: "/members", label: "人脉" },
 ];
 
-export default function Header({ totalCount }: { totalCount?: number }) {
+export default function Header() {
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -29,6 +30,7 @@ export default function Header({ totalCount }: { totalCount?: number }) {
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { count } = useMemberCount();
 
   // Close results on outside click
   useEffect(() => {
@@ -232,11 +234,9 @@ export default function Header({ totalCount }: { totalCount?: number }) {
           )}
         </div>
 
-        {totalCount !== undefined && (
-          <span style={{ fontSize: "14px", color: "#6b7280" }}>
-            {totalCount} 位联系人
-          </span>
-        )}
+        <span style={{ fontSize: "14px", color: "#6b7280" }}>
+          {count} 位联系人
+        </span>
       </div>
     </header>
   );
