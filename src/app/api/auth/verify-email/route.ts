@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 
 export async function GET(request: NextRequest) {
@@ -23,14 +24,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Token 已过期" }, { status: 400 })
   }
 
-  // 更新用户邮箱验证状态
-  await prisma.user.update({
-    where: { email: verificationToken.identifier },
-    data: { emailVerified: new Date() }
+  // Use transaction to atomically update user and delete token
+  // P2025 means token was already deleted by concurrent request (acceptable)
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { email: verificationToken.identifier },
+      data: { emailVerified: new Date() }
+    }),
+    prisma.verificationToken.delete({
+      where: { token }
+    })
+  ]).catch((error) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      // Token already deleted by concurrent request - that's fine, user was already verified
+      return
+    }
+    throw error
   })
-
-  // 删除已使用的 Token
-  await prisma.verificationToken.delete({ where: { token } })
 
   return NextResponse.redirect(new URL("/auth/verify-email?verified=true", request.url))
 }
