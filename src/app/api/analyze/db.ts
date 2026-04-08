@@ -27,11 +27,12 @@ interface ExtractionData {
 
 async function upsertPerson(
   extracted: { name?: string; careers?: WeightedTag[]; interests?: WeightedTag[]; vibeTags?: string[] },
-  interactionDate: Date
+  interactionDate: Date,
+  userId: string
 ): Promise<string> {
   const name = extracted.name || "未知";
   const existing = await prisma.person.findFirst({
-    where: { name },
+    where: { name, userId },
   });
 
   if (existing) {
@@ -88,6 +89,7 @@ async function upsertPerson(
   const person = await prisma.person.create({
     data: {
       name,
+      userId,
       careers: extracted.careers || [],
       interests: extracted.interests || [],
       vibeTags: extracted.vibeTags || [],
@@ -101,7 +103,7 @@ async function upsertPerson(
   return person.id;
 }
 
-export async function saveExtractionToDb(data: ExtractionData, createInteraction = false): Promise<{
+export async function saveExtractionToDb(data: ExtractionData, createInteraction = false, userId?: string): Promise<{
   interactionId: string;
   personIds: string[];
 }> {
@@ -138,7 +140,8 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
           interests: p.interests || [],
           vibeTags: p.vibeTags || [],
         },
-        interactionDate
+        interactionDate,
+        userId!
       )
     )
   );
@@ -162,6 +165,7 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
 
   const interaction = await prisma.interaction.create({
     data: {
+      userId: userId!,
       date: interactionDate,
       location: data.location || "",
       contextType: data.contextType || "",
@@ -169,7 +173,7 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
       actionItems: data.actionItems,
       coreMemories: data.coreMemories,
       persons: {
-        create: personIds.map((personId) => ({ personId })),
+        create: personIds.map((personId) => ({ personId, userId: userId! })),
       },
     },
   });
