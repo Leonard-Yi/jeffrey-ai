@@ -39,49 +39,6 @@ def _guess_plate_and_column(code: str) -> tuple[str, str]:
         return "", ""
 
 
-def _find_org_id_by_name(company_name: str, code: str) -> tuple[str, str, str] | None:
-    """
-    通过公司名称搜索，找到该公司的 orgId、stockCode 和 secName。
-
-    返回 (orgId, stockCode, secName) 或 None。
-    """
-    plate, column = _guess_plate_and_column(code)
-
-    data = {
-        "stock": "",
-        "tabName": "fulltext",
-        "plate": plate,
-        "pageSize": 30,
-        "pageNum": 1,
-        "column": column,
-        "category": "",
-        "searchkey": company_name,
-        "isHLtitle": "true",
-    }
-
-    resp = requests.post(
-        CNINFO_URL, headers=_cninfo_headers(), data=data, timeout=10
-    )
-    resp.raise_for_status()
-    result = resp.json()
-
-    announcements = result.get("announcements") or []
-    if not announcements:
-        return None
-
-    # 优先匹配股票代码
-    for ann in announcements:
-        sec_code = ann.get("secCode", "")
-        if sec_code == code:
-            org_id = ann.get("orgId", "")
-            sec_name = ann.get("secName", "")
-            return org_id, sec_code, sec_name
-
-    # 退而取第一个结果
-    ann = announcements[0]
-    return ann.get("orgId", ""), ann.get("secCode", ""), ann.get("secName", "")
-
-
 def _query_announcements(
     code: str, org_id: str, plate: str, column: str, category: str = ""
 ) -> list[dict]:
@@ -98,12 +55,15 @@ def _query_announcements(
         or "category_ndbg_szsh;category_bndbg_szsh;category_yjdbg_szsh;category_sjdbg_szsh;",
         "isHLtitle": "true",
     }
-    resp = requests.post(
-        CNINFO_URL, headers=_cninfo_headers(org_id), data=data, timeout=10
-    )
-    resp.raise_for_status()
-    result = resp.json()
-    return result.get("announcements") or []
+    try:
+        resp = requests.post(
+            CNINFO_URL, headers=_cninfo_headers(org_id), data=data, timeout=10
+        )
+        resp.raise_for_status()
+        result = resp.json()
+        return result.get("announcements") or []
+    except Exception:
+        return []
 
 
 def search_annual_report_url(code: str, company_name: str = "") -> tuple[str, str] | None:
@@ -142,10 +102,13 @@ def search_annual_report_url(code: str, company_name: str = "") -> tuple[str, st
             "searchkey": company_name,
             "isHLtitle": "true",
         }
-        resp = requests.post(CNINFO_URL, headers=_cninfo_headers(), data=data, timeout=10)
-        resp.raise_for_status()
-        result = resp.json()
-        found_anns = result.get("announcements") or []
+        try:
+            resp = requests.post(CNINFO_URL, headers=_cninfo_headers(), data=data, timeout=10)
+            resp.raise_for_status()
+            result = resp.json()
+            found_anns = result.get("announcements") or []
+        except Exception:
+            found_anns = []
 
         for ann in found_anns:
             if ann.get("secCode") == code:
@@ -183,10 +146,11 @@ def download_report(code: str, company_name: str, force: bool = False) -> Path |
     # 生成文件名：603355_莱克电气_2024年年度报告.pdf
     # 标题一般以公司名开头，避免文件名中公司名重复
     safe_company = company_name.replace("*", "SST")  # *ST 公司处理
-    if title.startswith(safe_company):
-        filename = f"{code}_{title}.pdf"
+    safe_title = re.sub(r'[/\\]', '_', title)  # 防止路径穿越
+    if safe_title.startswith(safe_company):
+        filename = f"{code}_{safe_title}.pdf"
     else:
-        filename = f"{code}_{safe_company}_{title}.pdf"
+        filename = f"{code}_{safe_company}_{safe_title}.pdf"
     # 去掉 Windows 文件名中的非法字符
     filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
     filepath = REPORTS_DIR / filename
@@ -196,11 +160,14 @@ def download_report(code: str, company_name: str, force: bool = False) -> Path |
         return filepath
 
     print(f"[DOWN] 下载: {url}")
-    pdf_resp = requests.get(url, timeout=30)
-    pdf_resp.raise_for_status()
-
-    with open(filepath, "wb") as f:
-        f.write(pdf_resp.content)
+    try:
+        pdf_resp = requests.get(url, timeout=30)
+        pdf_resp.raise_for_status()
+        with open(filepath, "wb") as f:
+            f.write(pdf_resp.content)
+    except Exception as e:
+        print(f"[ERROR] 下载失败: {e}")
+        return None
 
     print(f"[OK] 保存: {filepath.name}")
     return filepath
