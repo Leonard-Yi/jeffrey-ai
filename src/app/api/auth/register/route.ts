@@ -1,18 +1,27 @@
+import { z } from "zod"
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcrypt"
 import { sendEmail, generateVerifyEmailHtml } from "@/lib/email"
 
+const RegisterSchema = z.object({
+  email: z.string().email("无效的邮箱格式"),
+  password: z.string().min(6, "密码至少6位"),
+  name: z.string().optional(),
+})
+
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json()
-
-    if (!email || !password) {
+    const parseResult = RegisterSchema.safeParse(await request.json())
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "邮箱和密码不能为空" },
+        { error: parseResult.error.errors[0].message },
         { status: 400 }
       )
     }
+
+    const { email, password, name } = parseResult.data
 
     // 检查邮箱是否已注册
     const existingUser = await prisma.user.findUnique({
@@ -34,7 +43,7 @@ export async function POST(request: NextRequest) {
       data: {
         email,
         passwordHash,
-        name: name || null,
+        name: name,
       }
     })
 
@@ -60,9 +69,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Register error:", error)
-    return NextResponse.json(
-      { error: "注册失败" },
-      { status: 500 }
-    )
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "邮箱已被注册" }, { status: 409 })
+    }
+    return NextResponse.json({ error: "注册失败" }, { status: 500 })
   }
 }
