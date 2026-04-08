@@ -471,32 +471,24 @@ docker exec -it jeffrey_db psql -U admin -d jeffrey_db_main
 
 ## 七、下一步工作 (优先级排序)
 
-### P0 — 待开发
+### P0 — 已完成
 
-1. **待办提醒**
-   - 基于 `actionItems.resolved = false`
-   - 按 `ownedBy = "me"` 过滤
-   - 显示待办列表，支持标记完成
+所有 P0 核心功能已完成：
+- ✅ 录入页 + 追问闭环
+- ✅ 图谱页 + 人脉表
+- ✅ 建议页 (关系维护 + 待办承诺 + 破冰助手)
+- ✅ 全局搜索
+- ✅ 同人识别 (手动 + 自动预检)
 
-2. **语义搜索** ✅ 已完成
-   - Header 全局搜索框
-   - `/api/search` 向量搜索 (cosine similarity)
-   - 搜索结果下拉展示
+### P1 — 工程化
 
-### P1 — 核心功能完善
-
-3. **同人识别** ✅ 已完成（2026-04-07）
-   - 手动合并：人脉表格多选 → 合并按钮 → MergeConfirmDialog
-   - 自动预检：提交前 /api/persons/resolve → 向量相似度 → NameResolutionPrompt
-
-### P2 — 工程化与部署
-
-4. **用户认证**
+1. **用户认证**
    - 简单的登录/注册
    - 数据库加 `User` 表，`Person.userId` 外键
 
-5. **部署**
+2. **部署**
    - Vercel 部署 Next.js
+   - Railway/Render 部署 PostgreSQL
    - Railway/Render 部署 PostgreSQL
    - 环境变量配置
 

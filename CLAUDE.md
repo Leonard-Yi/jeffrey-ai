@@ -150,3 +150,21 @@ git revert <commit-hash>
 # 回滚到指定版本
 git checkout v1.0.0 && npm run build && npm start
 ```
+
+### Parallel Development with Worktrees
+
+**⚠️ Critical: Merge worktrees one at a time**
+
+Using multiple worktrees for parallel development is supported, but merging must follow this order to avoid hidden bugs:
+
+```
+1. Worktree A complete → cherry-pick to master → test → confirm stable
+2. Worktree B complete → cherry-pick to master → test → confirm stable
+3. NEVER cherry-pick multiple worktrees on the same HEAD simultaneously
+```
+
+**Why**: Even if Git auto-merges successfully, two worktrees modifying the same file (different regions) may have logical coupling that causes runtime bugs undetectable by Git.
+
+**If two worktrees modify the same area of the same file**: Git will report a conflict and stop — this is actually the safe case. The dangerous case is when Git merges successfully but the combined logic is broken.
+
+**If you must merge simultaneously**: Fully test the first merge before starting the second. Do not assume "no Git conflict = safe".
