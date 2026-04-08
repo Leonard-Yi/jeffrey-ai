@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Prisma } from "@prisma/client"
+import { PrismaClientKnownRequestError } from "@prisma/client"
 import { prisma } from "@/lib/db"
 
 export async function GET(request: NextRequest) {
@@ -26,21 +26,23 @@ export async function GET(request: NextRequest) {
 
   // Use transaction to atomically update user and delete token
   // P2025 means token was already deleted by concurrent request (acceptable)
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { email: verificationToken.identifier },
-      data: { emailVerified: new Date() }
-    }),
-    prisma.verificationToken.delete({
-      where: { token }
-    })
-  ]).catch((error) => {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      // Token already deleted by concurrent request - that's fine, user was already verified
-      return
+  try {
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { email: verificationToken.identifier },
+        data: { emailVerified: new Date() }
+      }),
+      prisma.verificationToken.delete({
+        where: { token }
+      })
+    ])
+    return NextResponse.redirect(new URL("/auth/verify-email?verified=true", request.url))
+  } catch (error) {
+    if (error instanceof PrismaClientKnownRequestError && error.code === "P2025") {
+      // Token already deleted by concurrent request - user was already verified, redirect to success
+      return NextResponse.redirect(new URL("/auth/verify-email?verified=true", request.url))
     }
-    throw error
-  })
-
-  return NextResponse.redirect(new URL("/auth/verify-email?verified=true", request.url))
+    console.error("Email verification error:", error)
+    return NextResponse.json({ error: "验证失败" }, { status: 500 })
+  }
 }
