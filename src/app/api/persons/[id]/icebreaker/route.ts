@@ -1,26 +1,5 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-
-// 简单内存缓存：5分钟内重复查询直接返回缓存
-const cache = new Map<string, { data: unknown; expiry: number }>();
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
-function getCached(key: string): unknown | null {
-  const entry = cache.get(key);
-  if (entry && Date.now() < entry.expiry) {
-    return entry.data;
-  }
-  cache.delete(key);
-  return null;
-}
-
-function setCache(key: string, data: unknown): void {
-  // 清理过期条目
-  for (const [k, v] of cache) {
-    if (Date.now() >= v.expiry) cache.delete(k);
-  }
-  cache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
-}
 
 function getModel(): string {
   return process.env.MINIMAX_MODEL || "MiniMax-M2.7";
@@ -42,7 +21,7 @@ function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
-const SYSTEM_PROMPT = `你是 Jeffrey.AI 破冰助手。你的任务是为即将到来的社交准备简短的开场白。用中文回复。
+const SYSTEM_PROMPT = `你是 Jeffrey.AI 破冰助手，为即将到来的社交准备简短的开场白。用中文回复。
 
 ## 输出格式（JSON）
 {
@@ -58,60 +37,30 @@ const SYSTEM_PROMPT = `你是 Jeffrey.AI 破冰助手。你的任务是为即将
 - recentContext 没有历史时填 "无"
 - lastContactDate 超过 60 天时 comment 提醒`;
 
-export async function GET(request: NextRequest) {
+// POST /api/persons/[id]/icebreaker - Generate and store icebreaker for a person
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { searchParams } = new URL(request.url);
-    const personId = searchParams.get("personId");
+    const { id } = await params;
 
-    if (!personId) {
-      return Response.json(
-        { error: "personId is required" },
-        { status: 400 }
-      );
-    }
-
-    // 检查内存缓存
-    const cacheKey = `icebreaker:${personId}`;
-    const memoryCached = getCached(cacheKey);
-    if (memoryCached) {
-      return Response.json(memoryCached);
-    }
-
-    // 检查数据库缓存
-    const personWithCache = await prisma.person.findUnique({
-      where: { id: personId },
-      select: {
-        name: true,
-        icebreakerData: true,
-        icebreakerGeneratedAt: true,
-      },
-    });
-
-    if (personWithCache?.icebreakerData) {
-      const cachedData = {
-        personName: personWithCache.name,
-        ...(personWithCache.icebreakerData as object),
-      };
-      setCache(cacheKey, cachedData);
-      return Response.json(cachedData);
-    }
-
-    // 获取人物完整信息用于生成
+    // 获取人物信息
     const person = await prisma.person.findUnique({
-      where: { id: personId },
+      where: { id },
       include: {
         introducedBy: { select: { name: true } },
       },
     });
 
     if (!person) {
-      return Response.json({ error: "Person not found" }, { status: 404 });
+      return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
 
     // 获取最近一次互动
     const lastInteraction = await prisma.interaction.findFirst({
       where: {
-        persons: { some: { personId } },
+        persons: { some: { personId: id } },
       },
       orderBy: { date: "desc" },
       select: {
@@ -128,7 +77,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // 构建用户上下文（精简）
+    // 构建用户上下文
     const careers = (person.careers as Array<{ name: string }>) || [];
     const interests = (person.interests as Array<{ name: string }>) || [];
     const daysAgo = getDaysSince(new Date(person.lastContactDate));
@@ -144,7 +93,7 @@ export async function GET(request: NextRequest) {
 【记忆】${recentCoreMemories.join("、") || "无"}
 【上次互动】${lastInteraction ? `${formatDate(new Date(lastInteraction.date))} | ${lastInteraction.sentiment || "无情绪记录"} | 承诺：${((lastInteraction.actionItems as Array<{description:string}>) || []).map((a) => a.description).join("、") || "无"}` : "无历史记录"}`;
 
-    // 调用 LLM (Anthropic API 格式)
+    // 调用 LLM
     const apiResponse = await fetch("https://api.minimaxi.com/anthropic/v1/messages", {
       method: "POST",
       headers: {
@@ -168,7 +117,6 @@ export async function GET(request: NextRequest) {
     }
 
     const apiData = await apiResponse.json();
-    // MiniMax 返回的 content 是数组，包含不同类型的块
     const textBlock = apiData.content?.find((c: { type: string }) => c.type === "text");
     const content = textBlock?.text;
     if (!content) {
@@ -194,20 +142,73 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // 存入数据库
     const result = {
-      personName: person.name,
       openingLines: parsed.openingLines || [],
       suggestedTopics: parsed.suggestedTopics || [],
       recentContext: parsed.recentContext || "无历史记忆",
       jeffreyComment: parsed.jeffreyComment || "",
     };
-    setCache(cacheKey, result);
-    return Response.json(result);
+
+    await prisma.person.update({
+      where: { id },
+      data: {
+        icebreakerData: result,
+        icebreakerGeneratedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    console.error("Error in GET /api/suggestions/icebreaker:", error);
-    const err = error as { message?: string; code?: string };
-    return Response.json(
+    console.error("Error generating icebreaker:", error);
+    const err = error as { message?: string };
+    return NextResponse.json(
       { error: "Failed to generate icebreaker: " + (err.message || String(error)) },
+      { status: 500 }
+    );
+  }
+}
+
+// GET /api/persons/[id]/icebreaker - Get cached icebreaker or generate if missing
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const person = await prisma.person.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        icebreakerData: true,
+        icebreakerGeneratedAt: true,
+      },
+    });
+
+    if (!person) {
+      return NextResponse.json({ error: "Person not found" }, { status: 404 });
+    }
+
+    // 如果有缓存，直接返回
+    if (person.icebreakerData) {
+      return NextResponse.json({
+        personName: person.name,
+        ...(person.icebreakerData as object),
+        cached: true,
+        generatedAt: person.icebreakerGeneratedAt,
+      });
+    }
+
+    // 无缓存，返回错误让前端知道需要生成
+    return NextResponse.json(
+      { error: "Icebreaker not yet generated", needsGeneration: true },
+      { status: 404 }
+    );
+  } catch (error) {
+    console.error("Error getting icebreaker:", error);
+    return NextResponse.json(
+      { error: "Failed to get icebreaker" },
       { status: 500 }
     );
   }

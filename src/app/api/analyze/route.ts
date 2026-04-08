@@ -328,11 +328,15 @@ export async function POST(request: Request) {
       // 但如果确实无法获取，才在追问回复时用当前日期兜底
     }
 
+    // 用于返回给前端的人物ID
+    let personIds: string[] = [];
+
     // 当状态为 complete 时写入完整数据（包括互动记录）
     if (data.status === "complete") {
       try {
         // @ts-ignore - Zod output type mismatch with manual interface
-        await saveExtractionToDb(data, true); // createInteraction=true，确保追问回复后能创建互动
+        const saveResult = await saveExtractionToDb(data, true); // createInteraction=true，确保追问回复后能创建互动
+        personIds = saveResult.personIds;
         console.log("[Jeffrey.AI] Successfully saved complete data to database");
       } catch (dbError) {
         console.error("[Jeffrey.AI] Database save failed:", dbError);
@@ -342,7 +346,7 @@ export async function POST(request: Request) {
       // pending 状态时，只要有日期和人物，也创建互动记录（只是数据可能不完整）
       // 这样用户的每次输入都能留下互动历史
       try {
-        await saveExtractionToDb({
+        const saveResult = await saveExtractionToDb({
           persons: data.persons,
           date: data.date,
           location: undefined,
@@ -351,6 +355,7 @@ export async function POST(request: Request) {
           actionItems: [],
           coreMemories: [],
         } as any, true); // createInteraction=true，确保pending时也创建互动
+        personIds = saveResult.personIds;
         console.log("[Jeffrey.AI] Saved pending person data with interaction");
       } catch (dbError) {
         console.error("[Jeffrey.AI] Database save (pending) failed:", dbError);
@@ -412,6 +417,7 @@ export async function POST(request: Request) {
       status: data.status,
       jeffreyComment,
       persons: data.persons,
+      personIds, // 用于破冰助手预生成
       followUpQuestion: data.followUpQuestion,
       actionItems: data.actionItems,
       ambiguousPersons: data.status === "ambiguous"

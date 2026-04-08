@@ -41,6 +41,10 @@ model Person {
   mergedFrom        Person[]            @relation("PersonMerge")
   /// Multiple aliases/nicknames for the same person (e.g. ["老王", "王总"])
   aliases           String[]            @default([])
+  /// Pre-generated icebreaker data (openingLines, topics, context, comment)
+  icebreakerData    Json?               @default("null")
+  /// When icebreakerData was last generated
+  icebreakerGeneratedAt DateTime?
   interactions      InteractionPerson[]
   introducedBy      Person?             @relation("Introduction", fields: [introducedById], references: [id])
   introductions     Person[]            @relation("Introduction")

@@ -39,6 +39,7 @@ interface ExtractionResponse {
   status: 'complete' | 'pending' | 'ambiguous';
   jeffreyComment: string;
   persons: Person[];
+  personIds: string[]; // 用于破冰助手预生成
   followUpQuestion?: string;
   actionItems: ActionItem[];
   ambiguousPersons?: Person[];
@@ -65,6 +66,7 @@ const JeffreyInputPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [jeffreyComment, setJeffreyComment] = useState('');
   const [persons, setPersons] = useState<Person[]>([]);
+  const [personIds, setPersonIds] = useState<string[]>([]);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [status, setStatus] = useState<'complete' | 'pending' | 'ambiguous' | null>(null);
@@ -196,6 +198,7 @@ const JeffreyInputPage = () => {
       const data: ExtractionResponse = await response.json();
       setJeffreyComment(data.jeffreyComment);
       setPersons(data.persons);
+      setPersonIds(data.personIds || []);
       setFollowUpQuestion(data.followUpQuestion || '');
       setActionItems(data.actionItems);
       setStatus(data.status);
@@ -267,6 +270,7 @@ const JeffreyInputPage = () => {
       const data: ExtractionResponse = await response.json();
       setJeffreyComment(data.jeffreyComment);
       setPersons(data.persons);
+      setPersonIds(data.personIds || []);
       setFollowUpQuestion(data.followUpQuestion || '');
       setActionItems(data.actionItems);
       setStatus(data.status);
@@ -386,6 +390,7 @@ const JeffreyInputPage = () => {
     setOriginalInputText('');
     setJeffreyComment('');
     setPersons([]);
+    setPersonIds([]);
     setFollowUpQuestion('');
     setActionItems([]);
     setStatus(null);
@@ -415,6 +420,41 @@ const JeffreyInputPage = () => {
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}天前`;
     return '更早';
   };
+
+  // 破冰助手预生成：分析完成后，等待3分钟无新操作则触发
+  const icebreakerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // 只在有提取到人物且状态为 complete 时触发
+    if (personIds.length === 0 || status !== 'complete') return;
+
+    // 清除之前的定时器
+    if (icebreakerTimerRef.current) {
+      clearTimeout(icebreakerTimerRef.current);
+    }
+
+    // 设置新的3分钟定时器
+    icebreakerTimerRef.current = setTimeout(async () => {
+      console.log('[Jeffrey.AI] Triggering icebreaker pre-generation for', personIds.length, 'persons');
+
+      // 为每个人物触发预生成（后台进行，不阻塞UI）
+      for (const personId of personIds) {
+        try {
+          await fetch(`/api/persons/${personId}/icebreaker`, {
+            method: 'POST',
+          });
+        } catch (e) {
+          console.error('[Jeffrey.AI] Icebreaker pre-gen failed for', personId, e);
+        }
+      }
+    }, 3 * 60 * 1000); // 3分钟
+
+    return () => {
+      if (icebreakerTimerRef.current) {
+        clearTimeout(icebreakerTimerRef.current);
+      }
+    };
+  }, [personIds, status]);
 
   return (
     <div className="min-h-screen bg-[#f5f3ef]">
