@@ -15,8 +15,6 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from pathlib import Path
 import datetime
-import fcntl
-import os
 from scripts.research.config import OUTPUT_DIR
 from scripts.research.constants import ALL_FIELDS
 
@@ -95,16 +93,18 @@ def write_company_data(
 
 
 def save_workbook(wb: openpyxl.Workbook, filepath: Path):
-    """保存 workbook，使用文件锁防止并发写入冲突。"""
-    lock_path = filepath.with_suffix(filepath.suffix + ".lock")
-    with open(lock_path, "w") as lock_file:
-        try:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+    """保存 workbook。"""
+    try:
+        import fcntl
+        lock_file = filepath.with_suffix(filepath.suffix + ".lock")
+        with open(lock_file, "w") as lf:
+            fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
             wb.save(filepath)
-            print(f"[OK] 已保存: {filepath.name}")
-        finally:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-            os.remove(lock_path)
+            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
+    except (ImportError, AttributeError):
+        # Windows 或没有 fcntl 的环境，直接保存
+        wb.save(filepath)
+    print(f"[OK] 已保存: {filepath.name}")
 
 
 if __name__ == "__main__":
