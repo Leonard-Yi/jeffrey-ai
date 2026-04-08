@@ -1,5 +1,7 @@
 {
   "memoryThresholdPercent": 80,
+  "checkIntervalMs": 300000,
+  "cooldownMs": 300000,
   "zombieProcessPatterns": ["node.exe"],
   "notification": {
     "enabled": true,
