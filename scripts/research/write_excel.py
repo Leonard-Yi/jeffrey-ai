@@ -15,6 +15,8 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from pathlib import Path
 import datetime
+import fcntl
+import os
 from scripts.research.config import OUTPUT_DIR
 from scripts.research.constants import ALL_FIELDS
 
@@ -29,39 +31,60 @@ def get_filename(industry: str) -> Path:
     return Path(OUTPUT_DIR) / f"{safe_industry}_公司研究_{date}.xlsx"
 
 
-def init_workbook(filepath: Path, companies: list[str]) -> tuple[openpyxl.Workbook, openpyxl.worksheet.worksheet.Worksheet]:
+def init_workbook(filepath: Path, companies: list[str]) -> tuple[openpyxl.Workbook, openpyxl.worksheet.worksheet.Worksheet, list[str]]:
     """
     创建或打开 Excel 文件，初始化表头。
-    返回 (workbook, worksheet)。
+    返回 (workbook, worksheet, all_companies) — all_companies 包含已有的 + 新公司。
     """
     if filepath.exists():
         wb = openpyxl.load_workbook(filepath)
         ws = wb.active
+        # 读取已有公司名
+        existing = []
+        for col in range(2, ws.max_column + 1):
+            val = ws.cell(row=1, column=col).value
+            if val:
+                existing.append(str(val))
+        # 追加新公司
+        all_companies = existing.copy()
+        for company in companies:
+            if company not in all_companies:
+                all_companies.append(company)
+                # 写新表头
+                ws.cell(row=1, column=len(all_companies) + 1, value=company)
+        # 确保所有字段行存在
+        for row, field in enumerate(ALL_FIELDS, start=2):
+            if ws.cell(row=row, column=1).value is None:
+                ws.cell(row=row, column=1, value=field)
     else:
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "公司研究"
-        # 写表头：第一列是字段名
         ws.cell(row=1, column=1, value="字段")
         for col, company in enumerate(companies, start=2):
             ws.cell(row=1, column=col, value=company)
-        # 写字段名（第一列）
         for row, field in enumerate(ALL_FIELDS, start=2):
             ws.cell(row=row, column=1, value=field)
+        all_companies = companies
 
-    return wb, ws
+    return wb, ws, all_companies
 
 
 def write_company_data(
     ws: openpyxl.worksheet.worksheet.Worksheet,
     company: str,
     data: dict,
-    companies: list[str],
+    all_companies: list[str],
 ):
     """
     将公司数据写入指定列。覆盖模式：先清空该列再写入。
+    如果公司不在 all_companies 中，先追加列再写入。
     """
-    col_index = companies.index(company) + 2  # +2 因为第1列是字段名，第2列开始是公司
+    if company not in all_companies:
+        all_companies.append(company)
+        ws.cell(row=1, column=len(all_companies) + 1, value=company)
+
+    col_index = all_companies.index(company) + 2  # +2 因为第1列是字段名，第2列开始是公司
 
     for row, field in enumerate(ALL_FIELDS, start=2):
         cell = ws.cell(row=row, column=col_index)
@@ -72,9 +95,16 @@ def write_company_data(
 
 
 def save_workbook(wb: openpyxl.Workbook, filepath: Path):
-    """保存 workbook。"""
-    wb.save(filepath)
-    print(f"[OK] 已保存: {filepath.name}")
+    """保存 workbook，使用文件锁防止并发写入冲突。"""
+    lock_path = filepath.with_suffix(filepath.suffix + ".lock")
+    with open(lock_path, "w") as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            wb.save(filepath)
+            print(f"[OK] 已保存: {filepath.name}")
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            os.remove(lock_path)
 
 
 if __name__ == "__main__":
@@ -98,6 +128,6 @@ if __name__ == "__main__":
 
     companies = [company]
     filepath = get_filename(industry)
-    wb, ws = init_workbook(filepath, companies)
-    write_company_data(ws, company, data, companies)
+    wb, ws, all_companies = init_workbook(filepath, companies)
+    write_company_data(ws, company, data, all_companies)
     save_workbook(wb, filepath)
