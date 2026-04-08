@@ -15,8 +15,9 @@ type PersonSummary = {
 };
 
 type Props = {
-  survivor: PersonSummary;
-  victims: PersonSummary[];
+  allPersons: PersonSummary[];
+  survivorId: string;
+  onSurvivorChange: (survivorId: string) => void;
   onConfirm: (survivorId: string, victimIds: string[]) => Promise<void>;
   onCancel: () => void;
 };
@@ -111,22 +112,23 @@ function TagPill({ label, type }: { label: string; type: "career" | "interest" |
   );
 }
 
-export default function MergeConfirmDialog({ survivor, victims, onConfirm, onCancel }: Props) {
+export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorChange, onConfirm, onCancel }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const survivor = allPersons.find((p) => p.id === survivorId)!;
+  const victims = allPersons.filter((p) => p.id !== survivorId);
 
   const handleConfirm = async () => {
     setLoading(true);
     setError(null);
     try {
-      await onConfirm(survivor.id, victims.map((v) => v.id));
+      await onConfirm(survivorId, victims.map((v) => v.id));
     } catch (e) {
       setError("合并失败，请重试");
       setLoading(false);
     }
   };
-
-  const allPersons = [survivor, ...victims];
 
   return (
     <div style={STYLES.overlay} onClick={(e) => e.target === e.currentTarget && onCancel()}>
@@ -197,47 +199,56 @@ export default function MergeConfirmDialog({ survivor, victims, onConfirm, onCan
 
           {/* Person cards */}
           <div style={{ fontSize: "13px", fontWeight: 600, color: "#3a2a1a", marginBottom: "8px" }}>
-            保留 <span style={{ color: "#c8a96e" }}>{survivor.name}</span> 作为主条目
+            选择主条目（保留）
           </div>
 
-          {/* Survivor */}
-          <div style={STYLES.survivorCard}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <span style={{ fontWeight: 600, color: "#3a2a1a", fontSize: "15px" }}>{survivor.name}</span>
-              <span style={{ fontSize: "12px", color: "#7a6a5a" }}>关系 {survivor.relationshipScore}</span>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
-              {(survivor.careers || []).slice(0, 3).map((c) => (
-                <TagPill key={c.name} label={c.name} type="career" />
-              ))}
-              {(survivor.interests || []).slice(0, 2).map((i) => (
-                <TagPill key={i.name} label={i.name} type="interest" />
-              ))}
-            </div>
-          </div>
-
-          {/* Victims */}
-          {victims.map((v) => (
-            <div key={v.id} style={STYLES.victimCard}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                <span style={{ fontWeight: 600, color: "#7a6a5a", fontSize: "14px" }}>{v.name}</span>
-                <span style={{ fontSize: "12px", color: "#9a8a7a" }}>→ 合并</span>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
-                {(v.careers || []).slice(0, 2).map((c) => (
-                  <TagPill key={c.name} label={c.name} type="career" />
-                ))}
-                {(v.interests || []).slice(0, 1).map((i) => (
-                  <TagPill key={i.name} label={i.name} type="interest" />
-                ))}
-              </div>
-              {v.interactionCount > 0 && (
-                <div style={{ fontSize: "11px", color: "#9a8a7a", marginTop: "4px" }}>
-                  含 {v.interactionCount} 条互动记录
+          {/* Survivor selector */}
+          {allPersons.map((p) => (
+            <div
+              key={p.id}
+              onClick={() => {
+                if (p.id !== survivorId) {
+                  onSurvivorChange(p.id);
+                }
+              }}
+              style={{
+                ...(p.id === survivorId ? STYLES.survivorCard : STYLES.victimCard),
+                cursor: "pointer",
+                border: p.id === survivorId ? "2px solid #c8a96e" : "1px solid #e0d9cf",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input
+                  type="radio"
+                  checked={p.id === survivorId}
+                  onChange={() => {
+                    if (p.id !== survivorId) {
+                      onSurvivorChange(p.id);
+                    }
+                  }}
+                  style={{ accentColor: "#c8a96e", width: "16px", height: "16px" }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontWeight: 600, color: "#3a2a1a", fontSize: "15px" }}>{p.name}</span>
+                    <span style={{ fontSize: "12px", color: "#7a6a5a" }}>关系 {p.relationshipScore}</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
+                    {(p.careers || []).slice(0, 3).map((c) => (
+                      <TagPill key={c.name} label={c.name} type="career" />
+                    ))}
+                    {(p.interests || []).slice(0, 2).map((i) => (
+                      <TagPill key={i.name} label={i.name} type="interest" />
+                    ))}
+                  </div>
                 </div>
-              )}
+                <span style={{ fontSize: "12px", color: p.id === survivorId ? "#c8a96e" : "#9a8a7a" }}>
+                  {p.id === survivorId ? "主条目" : "→ 合并"}
+                </span>
+              </div>
             </div>
           ))}
+
 
           {error && (
             <div style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>{error}</div>

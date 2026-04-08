@@ -48,7 +48,9 @@ export default function MembersPage() {
     relationshipScore: number; lastContactDate: string;
     interactionCount: number;
   }>>([]);
+  const [survivorIdForMerge, setSurvivorIdForMerge] = useState<string>("");
   const [merging, setMerging] = useState(false);
+  const [mergeLoading, setMergeLoading] = useState(false);
 
   const fetchTable = useCallback(async () => {
     setLoading(true);
@@ -82,6 +84,7 @@ export default function MembersPage() {
 
   const handleMergeClick = async () => {
     if (selectedIds.length < 2) return;
+    setMergeLoading(true);
     // Fetch full details for selected persons
     const persons = await Promise.all(
       selectedIds.map(async (id) => {
@@ -99,10 +102,17 @@ export default function MembersPage() {
         };
       })
     );
-    // Sort by relationshipScore descending - first one is default survivor
-    persons.sort((a, b) => b.relationshipScore - a.relationshipScore);
+    // Sort to find default survivor (highest relationshipScore), but keep original selection order for display
+    const sortedForDefault = [...persons].sort((a, b) => b.relationshipScore - a.relationshipScore);
+    const defaultSurvivorId = sortedForDefault[0]?.id || persons[0]?.id || "";
     setMergePersons(persons);
+    setSurvivorIdForMerge(defaultSurvivorId);
+    setMergeLoading(false);
     setMergeDialogOpen(true);
+  };
+
+  const handleSurvivorChange = (newSurvivorId: string) => {
+    setSurvivorIdForMerge(newSurvivorId);
   };
 
   const handleMergeConfirm = async (survivorId: string, victimIds: string[]) => {
@@ -115,10 +125,12 @@ export default function MembersPage() {
     if (!res.ok) {
       throw new Error("Merge failed");
     }
+    // Update local state instead of full refetch to avoid flash
+    const victimIdSet = new Set(victimIds);
+    setRows((prevRows) => prevRows.filter((row) => !victimIdSet.has(row.id)));
     setMerging(false);
     setMergeDialogOpen(false);
     setSelectedIds([]);
-    fetchTable();
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -294,18 +306,19 @@ export default function MembersPage() {
         {selectedIds.length >= 2 && (
           <button
             onClick={handleMergeClick}
+            disabled={mergeLoading}
             style={{
               padding: "8px 20px",
-              backgroundColor: "#dc2626",
-              color: "white",
+              backgroundColor: mergeLoading ? "#f5f3ef" : "#dc2626",
+              color: mergeLoading ? "#9a8a7a" : "white",
               border: "none",
               borderRadius: "8px",
               fontSize: "14px",
-              cursor: "pointer",
+              cursor: mergeLoading ? "not-allowed" : "pointer",
               fontWeight: 600,
             }}
           >
-            合并 {selectedIds.length} 条
+            {mergeLoading ? "加载中..." : `合并 ${selectedIds.length} 条`}
           </button>
         )}
 
@@ -481,8 +494,9 @@ export default function MembersPage() {
       {/* Merge Confirm Dialog */}
       {mergeDialogOpen && mergePersons.length >= 2 && (
         <MergeConfirmDialog
-          survivor={mergePersons[0]}
-          victims={mergePersons.slice(1)}
+          allPersons={mergePersons}
+          survivorId={survivorIdForMerge}
+          onSurvivorChange={handleSurvivorChange}
           onConfirm={handleMergeConfirm}
           onCancel={() => {
             setMergeDialogOpen(false);
