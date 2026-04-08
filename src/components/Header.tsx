@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { useMemberCount } from "./MemberCountContext";
 
 type SearchResult = {
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
 
 export default function Header() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -237,6 +239,28 @@ export default function Header() {
         <span style={{ fontSize: "14px", color: "#6b7280" }}>
           {count} 位联系人
         </span>
+
+        {session?.user && (
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span style={{ fontSize: "13px", color: "#6b7280" }}>
+              {session.user.email || session.user.name || "用户"}
+            </span>
+            <button
+              onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+              style={{
+                padding: "6px 12px",
+                fontSize: "13px",
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                backgroundColor: "white",
+                color: "#4b5563",
+                cursor: "pointer",
+              }}
+            >
+              退出
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
