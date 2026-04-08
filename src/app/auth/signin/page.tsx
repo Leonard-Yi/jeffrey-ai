@@ -8,7 +8,8 @@ import Link from "next/link"
 export default function SignInPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || "/"
+  const rawCallbackUrl = searchParams.get("callbackUrl") || "/"
+  const callbackUrl = rawCallbackUrl.startsWith("/") ? rawCallbackUrl : "/"
   const error = searchParams.get("error")
 
   const [email, setEmail] = useState("")
@@ -29,7 +30,7 @@ export default function SignInPage() {
       router.push(callbackUrl)
     } else {
       setLoading(false)
-      alert(result?.error || "登录失败")
+      alert("登录失败")
     }
   }
 
