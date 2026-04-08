@@ -51,11 +51,11 @@ export async function POST(request: Request) {
         lastContactDate: Date;
         embedding: number[];
       }>
-    > sql`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate", "embedding"
+    >(sql`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate", "embedding"
       FROM "Person"
       WHERE "userId" = ${session.user.id}::uuid
         AND jsonb_array_length("embedding") > 0
-        AND (jsonb_array_length("careers") > 0 OR jsonb_array_length("interests") > 0)`;
+        AND (jsonb_array_length("careers") > 0 OR jsonb_array_length("interests") > 0)`);
 
     if (persons.length === 0) {
       return Response.json({ results: [] });
