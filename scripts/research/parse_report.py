@@ -25,6 +25,7 @@ def truncate_pdf_before_financial_statements(pdf_path: Path) -> str:
         r"第[一二三四五六七八九十\d]+节?\s*财务报表",
         r"合并财务报表",
         r"公司财务报表",
+        r"财务报表附注",
     ]
 
     with pdfplumber.open(pdf_path) as pdf:
@@ -98,7 +99,17 @@ def extract_fields_with_llm(text: str, company_name: str) -> dict:
         result_text = result_text.split("```")[1]
         if result_text.startswith("json"):
             result_text = result_text[4:]
-    return json.loads(result_text.strip())
+
+    for attempt in range(2):
+        try:
+            return json.loads(result_text.strip())
+        except json.JSONDecodeError:
+            if attempt == 0:
+                continue  # retry once
+            # fallback: return "缺失" for all fields
+            from constants import PDF_FIELDS
+            return {f: "缺失" for f in PDF_FIELDS}
+    return {}  # unreachable
 
 
 def parse_report(pdf_path: Path, company_name: str) -> dict:
