@@ -219,15 +219,20 @@ function getJefferyQuote(): { text: string; author: string } {
 // ─────────────────────────────────────────────
 
 export default function SuggestionsPage() {
-  const [quote] = useState(getJefferyQuote);
+  const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
 
   // Data state
+  useEffect(() => {
+    setQuote(getJefferyQuote());
+  }, []);
+
   const [staleContacts, setStaleContacts] = useState<StaleContact[]>([]);
   const [pendingDebts, setPendingDebts] = useState<PendingDebt[]>([]);
   const [allPersons, setAllPersons] = useState<PersonOption[]>([]);
 
   // Icebreaker state
   const [selectedPersonId, setSelectedPersonId] = useState<string>("");
+  const [selectedStyle, setSelectedStyle] = useState<string>("日常");
   const [icebreaker, setIcebreaker] = useState<IcebreakerResponse | null>(null);
   const [icebreakerLoading, setIcebreakerLoading] = useState(false);
 
@@ -271,7 +276,7 @@ export default function SuggestionsPage() {
     setIcebreakerLoading(true);
     setIcebreaker(null);
 
-    fetch(`/api/suggestions/icebreaker?personId=${selectedPersonId}`)
+    fetch(`/api/suggestions/icebreaker?personId=${selectedPersonId}&style=${encodeURIComponent(selectedStyle)}`)
       .then((r) => r.json())
       .then((data: IcebreakerResponse) => {
         setIcebreaker(data);
@@ -281,7 +286,7 @@ export default function SuggestionsPage() {
         console.error(err);
         setIcebreakerLoading(false);
       });
-  }, [selectedPersonId]);
+  }, [selectedPersonId, selectedStyle]);
 
   // 一键预生成所有破冰文案
   const [batchGenerating, setBatchGenerating] = useState(false);
@@ -332,10 +337,12 @@ export default function SuggestionsPage() {
       {/* Main Content */}
       <main style={STYLES.main}>
         {/* Quote */}
-        <div style={STYLES.quote}>
-          <p>"{quote.text}"</p>
-          <p style={{ marginTop: 4, fontSize: 13 }}>— {quote.author}</p>
-        </div>
+        {quote && (
+          <div style={STYLES.quote}>
+            <p>"{quote.text}"</p>
+            <p style={{ marginTop: 4, fontSize: 13 }}>— {quote.author}</p>
+          </div>
+        )}
 
         {/* Section 1: Relationship Maintenance Reminders */}
         <section style={{ marginBottom: 32 }}>
@@ -489,6 +496,45 @@ export default function SuggestionsPage() {
               </select>
             </div>
 
+            <div style={{ marginBottom: 12 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  color: COLORS.textMedium,
+                  marginBottom: 6,
+                }}
+              >
+                选择风格：
+              </label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  { value: "日常", label: "💬 日常", example: "嗨，好久不见！最近咋样" },
+                  { value: "正式", label: "💼 正式", example: "您好，最近工作顺利吗？" },
+                  { value: "务实", label: "⚡ 务实", example: "在吗？有个项目想请教你" },
+                  { value: "问候", label: "🌿 问候", example: "最近怎么样？希望一切顺利" },
+                  { value: "老友", label: "👴 老友", example: "嘿，还记得上次咱们聊的那个吗" },
+                ].map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => setSelectedStyle(s.value)}
+                    title={s.example}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      border: `1px solid ${selectedStyle === s.value ? COLORS.accent : COLORS.border}`,
+                      backgroundColor: selectedStyle === s.value ? "#fff8f0" : "white",
+                      color: selectedStyle === s.value ? "#b8860b" : COLORS.textMedium,
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Icebreaker Results */}
             {icebreakerLoading && (
               <div style={{ ...STYLES.emptyState, padding: "16px" }}>
@@ -519,7 +565,7 @@ export default function SuggestionsPage() {
                 {/* Opening Lines */}
                 <div style={STYLES.icebreakerSection}>
                   <div style={STYLES.icebreakerLabel}>💬 开场白建议</div>
-                  {icebreaker.openingLines.map((line, i) => (
+                  {(icebreaker.openingLines || []).map((line, i) => (
                     <span key={i} style={STYLES.openingLine}>
                       {line}
                     </span>
@@ -529,7 +575,7 @@ export default function SuggestionsPage() {
                 {/* Suggested Topics */}
                 <div style={STYLES.icebreakerSection}>
                   <div style={STYLES.icebreakerLabel}>🗣️ 建议话题</div>
-                  {icebreaker.suggestedTopics.map((topic, i) => (
+                  {(icebreaker.suggestedTopics || []).map((topic, i) => (
                     <span key={i} style={STYLES.topicTag}>
                       {topic}
                     </span>

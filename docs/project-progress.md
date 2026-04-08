@@ -1681,3 +1681,70 @@ npm start                    # 重启
 }
 ```
 **重启 Claude Code 后生效**，当前会话不受影响。
+
+---
+
+## 附录 J: 本次会话问题修复 (2026-04-08)
+
+### 问题: 人脉页合并功能无法使用
+
+**症状**: 选择两个对象后点击"合并"按钮，页面闪烁但无任何返回结果。
+
+**根本原因**:
+1. `/api/members/[id]` API 返回直接是 `person` 对象 `{id, name, careers...}`
+2. 但 `handleMergeClick` 期望嵌套结构 `data.person.id`
+
+**修复方案**:
+```typescript
+// members/page.tsx — 修复前
+id: data.person.id,        // ❌ data.person 是 undefined
+name: data.person.name,
+
+// 修复后
+id: data.id,              // ✅ 直接访问
+name: data.name,
+```
+
+### 新增功能: 可选择主条目
+
+**问题**: 原实现自动按 relationshipScore 排序，用户无法选择保留哪条记录。
+
+**修复方案**:
+- 引入独立 state `survivorIdForMerge` 管理选中的主条目 ID
+- `mergePersons` 数组保持原始选择顺序（不变动）
+- `MergeConfirmDialog` 改为通过 `survivorId` 而非 `survivor` 对象判断
+
+### 修复屏幕闪烁问题
+
+**问题 1**: 点击合并按钮后到 Dialog 出现期间，按钮消失导致闪烁。
+
+**修复**: 添加 `mergeLoading` 状态，加载期间按钮显示"加载中..."。
+
+**问题 2**: 合并完成后 `fetchTable()` 触发 loading 状态，导致页面闪烁。
+
+**修复**: 改为直接过滤本地 `rows` 状态，移除被合并的记录，不重新请求 API。
+
+### 本次会话修改文件
+
+| 文件 | 修改内容 |
+|------|----------|
+| `src/app/members/page.tsx` | 修复 API 响应访问、添加 survivor 选择状态、合并后静默更新 |
+| `src/components/MergeConfirmDialog.tsx` | props 改为 `survivorId` 而非 `survivor` 对象 |
+
+### Git 提交
+
+```
+fa50c7b fix(members): 修复合并功能
+```
+
+### 合并后数据处理说明
+
+| 数据类型 | 处理方式 |
+|---------|---------|
+| 职业/兴趣标签 | 合并，**新权重 = 旧权重×0.7 + 新权重×0.3** |
+| 性格标签 | 取并集 |
+| 社交债务 (actionItems) | 随互动记录迁移到主条目 |
+| 交往记录 | 通过 InteractionPerson 联接表迁移 |
+| 别名 | 全部汇总到主条目 |
+| 关系评分 | 取 **max** |
+| 最近联系时间 | 取 **最新** |
