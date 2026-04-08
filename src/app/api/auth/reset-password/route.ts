@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Prisma } from "@prisma/client"
+import { PrismaClientKnownRequestError } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcrypt"
 
@@ -29,15 +29,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Token 已过期" }, { status: 400 })
     }
 
-    // 更新密码
+    // 更新密码并删除 Token（使用事务处理并发）
     const passwordHash = await bcrypt.hash(password, 12)
-    await prisma.user.update({
-      where: { email: verificationToken.identifier },
-      data: { passwordHash }
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { email: verificationToken.identifier },
+        data: { passwordHash }
+      }),
+      prisma.verificationToken.delete({
+        where: { token }
+      })
+    ]).catch((error) => {
+      // P2025 = Record to delete does not exist (token already used by concurrent request)
+      if (error instanceof PrismaClientKnownRequestError && error.code === "P2025") {
+        return
+      }
+      throw error
     })
-
-    // 删除已使用的 Token
-    await prisma.verificationToken.delete({ where: { token } })
 
     return NextResponse.json({ success: true, message: "密码重置成功" })
   } catch (error) {
