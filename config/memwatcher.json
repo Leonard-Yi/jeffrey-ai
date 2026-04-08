@@ -1,0 +1,9 @@
+{
+  "memoryThresholdPercent": 80,
+  "zombieProcessPatterns": ["node.exe"],
+  "notification": {
+    "enabled": true,
+    "title": "⚠️ 内存预警",
+    "body": "当前内存使用率已达 {percent}%，建议清理后台进程"
+  }
+}
