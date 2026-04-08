@@ -21,7 +21,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from download_report import download_report
 from parse_report import parse_report
 from write_excel import get_filename, init_workbook, write_company_data, save_workbook
-from constants import SEARCH_FIELDS, SEARCH_TEMPLATE
+from constants import SEARCH_FIELDS
 
 
 def run_research(code: str, company_name: str, industry: str):
@@ -31,7 +31,11 @@ def run_research(code: str, company_name: str, industry: str):
 
     # 2. 解析 PDF
     if pdf_path:
-        pdf_fields = parse_report(pdf_path, company_name)
+        try:
+            pdf_fields = parse_report(pdf_path, company_name)
+        except Exception as e:
+            print(f"Warning: parse_report failed: {e}")
+            pdf_fields = {}
     else:
         pdf_fields = {}
 
@@ -52,9 +56,13 @@ def run_research(code: str, company_name: str, industry: str):
     # 5. 写入 Excel
     companies = [company_name]
     filepath = get_filename(industry)
-    wb, ws, all_companies = init_workbook(filepath, companies)
-    write_company_data(ws, company_name, company_data, all_companies)
-    save_workbook(wb, filepath)
+    try:
+        wb, ws, all_companies = init_workbook(filepath, companies)
+        write_company_data(ws, company_name, company_data, all_companies)
+        save_workbook(wb, filepath)
+    except Exception as e:
+        print(f"Error: Excel write failed: {e}")
+        sys.exit(1)
 
     return company_data
 
