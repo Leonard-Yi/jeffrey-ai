@@ -9,6 +9,10 @@ const ExtractedPersonSchema = z.object({
   careers: z.array(WeightedTagSchema).optional().default([]),
   interests: z.array(WeightedTagSchema).optional().default([]),
   vibeTags: z.array(z.string()).optional().default([]),
+  /// 标记此人物可能与已有记录重复
+  ambiguous: z.boolean().optional().default(false),
+  /// 若 ambiguous=true，列出疑似重复的已有姓名
+  ambiguousWith: z.array(z.string()).optional().default([]),
 });
 
 const ExtractionPayloadSchema = z.object({
@@ -19,7 +23,7 @@ const ExtractionPayloadSchema = z.object({
   sentiment: z.string().optional(),
   actionItems: z.array(ActionItemSchema).default([]),
   coreMemories: z.array(z.string()).default([]),
-  status: z.enum(["complete", "pending"]),
+  status: z.enum(["complete", "pending", "ambiguous"]),
   followUpQuestion: z.string().optional(),
 });
 
@@ -90,6 +94,36 @@ const SYSTEM_PROMPT = `
 - 如果缺少日期，追问示例："这是什么时候的事？今天还是前几天？"
 - 如果缺少 career，追问示例："老王这次聊了很多，他现在主要的工作方向是什么？"
 - 如果缺少 actionItem，追问示例："这次聊完有没有什么约定或者你想跟进的事情？"
+
+## 同名检测（自动识别）
+
+若在同一次输入中发现多个姓名可能指向同一人（如"老王"和"王总"），必须：
+
+1. 在该人物对象中设置 ambiguous: true
+2. 在 ambiguousWith 数组中填入疑似重复的已有姓名（如 ["老王"]）
+3. 在 followUpQuestion 中询问："你指的是之前录入的老王吗？"
+4. 将 status 设为 "ambiguous"
+
+**判断标准**：姓氏相同 + 昵称/敬称模式（如"老X"="X总"），且文中语境暗示是同一人。
+
+**示例场景**：
+输入："今天和王总（老王的大学同学）一起见了小李"
+输出：
+// 例
+{
+  "persons": [
+    { "name": "王总", "ambiguous": true, "ambiguousWith": ["老王"], "careers": [...] },
+    { "name": "小李", "careers": [...] }
+  ],
+  "status": "ambiguous",
+  "followUpQuestion": "你指的是之前录入的老王吗？"
+}
+// 例 结束
+
+注意：
+- ambiguous 只在提取到"可能是同一人"时触发，不要过度猜测
+- 如果用户明确说明是不同人（如"老王是父亲，王总是儿子"），不要标记 ambiguous
+- ambiguous 和 pending 可以共存（信息不完整时也设为 pending）
 
 ## 重要提示
 - 你必须调用 save_extraction 工具，将所有提取结果作为参数传入。不要输出任何纯文本。
@@ -321,6 +355,10 @@ export async function POST(request: Request) {
       } catch (dbError) {
         console.error("[Jeffrey.AI] Database save (pending) failed:", dbError);
       }
+    } else if (data.status === "ambiguous") {
+      // ambiguous 状态：不创建真正的 Interaction 记录
+      // 仅返回 ambiguousPersons 列表供前端展示确认选项
+      console.log("[Jeffrey.AI] Ambiguous status detected, returning ambiguous persons for user confirmation");
     }
 
     // 生成 Jeffrey 风格的评论
@@ -376,6 +414,9 @@ export async function POST(request: Request) {
       persons: data.persons,
       followUpQuestion: data.followUpQuestion,
       actionItems: data.actionItems,
+      ambiguousPersons: data.status === "ambiguous"
+        ? data.persons.filter((p) => p.ambiguous)
+        : undefined,
     });
   } catch (error) {
     console.error("Error in analyze API:", error);

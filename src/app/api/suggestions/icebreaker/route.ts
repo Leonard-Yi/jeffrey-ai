@@ -1,6 +1,27 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 
+// 简单内存缓存：5分钟内重复查询直接返回缓存
+const cache = new Map<string, { data: unknown; expiry: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getCached(key: string): unknown | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() < entry.expiry) {
+    return entry.data;
+  }
+  cache.delete(key);
+  return null;
+}
+
+function setCache(key: string, data: unknown): void {
+  // 清理过期条目
+  for (const [k, v] of cache) {
+    if (Date.now() >= v.expiry) cache.delete(k);
+  }
+  cache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
+}
+
 function getModel(): string {
   return process.env.MINIMAX_MODEL || "MiniMax-M2.7";
 }
@@ -21,41 +42,21 @@ function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
-const SYSTEM_PROMPT = `你是 Jeffrey.AI 的破冰助手。你的任务是为一顿即将到来的社交准备个性化开场白。
+const SYSTEM_PROMPT = `你是 Jeffrey.AI 破冰助手。你的任务是为即将到来的社交准备简短的开场白。用中文回复。
 
-## 输出要求
-
-请生成以下内容，使用中文回复，保持 Jeffrey 黑色幽默但有建设性的风格：
-
-1. **openingLines** (3条): 适合寒暄开场的句子，从中选择1-2个自然引入正题
-   - 格式：自然对话风格，不要太正式
-   - 例子："最近还在研究 LLM 微调吗？之前听你说挺感兴趣的。"
-
-2. **suggestedTopics** (3条): 基于兴趣标签和核心记忆，建议的聊天话题
-   - 格式：直接可用的对话切入角度
-   - 例子："木工，最近有没有继续做？"
-
-3. **recentContext** (1条): 上次见面的记忆点，用于自然提起
-   - 格式：可以无缝衔接上次话题的句子
-   - 例子："上次你说你爸是木匠，聊到挺有感触的。"
-
-4. **jeffreyComment** (1条): 你（Jeffrey）对这次见面的备注
-   - 风格：黑色幽默，有建设性
-   - 格式：1-2句话，结尾带"先生"或不带均可
-   - 例子："关系评分还不错，但他似乎对投行有点倦怠，可以聊聊别的方向。"
-
-## 重要提示
-- 如果 coreMemories 为空，不要虚构内容，openingLines 可以更通用
-- 如果 lastContactDate 超过 60 天，jeffreyComment 可以提醒一下
-- 保持真实感，不要过度热情
-
-请以 JSON 格式返回，结构如下：
+## 输出格式（JSON）
 {
-  "openingLines": ["...", "...", "..."],
-  "suggestedTopics": ["...", "...", "..."],
-  "recentContext": "...",
-  "jeffreyComment": "..."
-}`;
+  "openingLines": ["短句1", "短句2", "短句3"],
+  "suggestedTopics": ["话题1", "话题2", "话题3"],
+  "recentContext": "记忆点",
+  "jeffreyComment": "1句备注"
+}
+
+## 要求
+- openingLines 要像微信聊天一样自然，不超过 20 字
+- suggestedTopics 直接可用的切入角度
+- recentContext 没有历史时填 "无"
+- lastContactDate 超过 60 天时 comment 提醒`;
 
 export async function GET(request: NextRequest) {
   try {
@@ -67,6 +68,13 @@ export async function GET(request: NextRequest) {
         { error: "personId is required" },
         { status: 400 }
       );
+    }
+
+    // 检查缓存
+    const cacheKey = `icebreaker:${personId}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return Response.json(cached);
     }
 
     // 获取人物信息
@@ -101,43 +109,21 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // 构建用户上下文
+    // 构建用户上下文（精简）
     const careers = (person.careers as Array<{ name: string }>) || [];
     const interests = (person.interests as Array<{ name: string }>) || [];
     const daysAgo = getDaysSince(new Date(person.lastContactDate));
-    // 核心记忆来自最近一次互动
     const recentCoreMemories = lastInteraction
       ? (lastInteraction.coreMemories || [])
       : [];
 
-    let userContext = `姓名：${person.name}
-职业标签：${careers.map((c) => c.name).join("、") || "未知"}
-兴趣标签：${interests.map((i) => i.name).join("、") || "未知"}
-性格标签：${(person.vibeTags || []).join("、") || "未知"}
-关系评分：${person.relationshipScore}/100
-上次联系：${formatDate(new Date(person.lastContactDate))} (${daysAgo}天前)
-核心记忆：${recentCoreMemories.join("、") || "无"}
-介绍人：${person.introducedBy?.name || "无"}`;
-
-    if (lastInteraction) {
-      const actionItems = (lastInteraction.actionItems as Array<{
-        description: string;
-        ownedBy: string;
-        resolved: boolean;
-      }>) || [];
-      userContext += `
-
-## 最近一次互动
-时间：${formatDate(new Date(lastInteraction.date))}
-地点：${lastInteraction.location || "未知"}
-情绪：${lastInteraction.sentiment}
-承诺：${actionItems.map((a) => a.description).join("、") || "无"}`;
-    } else {
-      userContext += `
-
-## 最近一次互动
-（无历史互动记录）`;
-    }
+    const userContext = `【人物】${person.name}
+【职业】${careers.map((c) => c.name).join("、") || "未知"}
+【兴趣】${interests.map((i) => i.name).join("、") || "无"}
+【性格】${(person.vibeTags || []).join("、") || "未知"}
+【关系】${person.relationshipScore}/100 | 上次联系：${daysAgo}天前
+【记忆】${recentCoreMemories.join("、") || "无"}
+【上次互动】${lastInteraction ? `${formatDate(new Date(lastInteraction.date))} | ${lastInteraction.sentiment || "无情绪记录"} | 承诺：${((lastInteraction.actionItems as Array<{description:string}>) || []).map((a) => a.description).join("、") || "无"}` : "无历史记录"}`;
 
     // 调用 LLM (Anthropic API 格式)
     const apiResponse = await fetch("https://api.minimaxi.com/anthropic/v1/messages", {
@@ -152,8 +138,8 @@ export async function GET(request: NextRequest) {
         messages: [
           { role: "user", content: SYSTEM_PROMPT + "\n\n---\n\n" + userContext },
         ],
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.6,
+        max_tokens: 800,
       }),
     });
 
@@ -189,13 +175,15 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    return Response.json({
+    const result = {
       personName: person.name,
       openingLines: parsed.openingLines || [],
       suggestedTopics: parsed.suggestedTopics || [],
       recentContext: parsed.recentContext || "无历史记忆",
       jeffreyComment: parsed.jeffreyComment || "",
-    });
+    };
+    setCache(cacheKey, result);
+    return Response.json(result);
   } catch (error) {
     console.error("Error in GET /api/suggestions/icebreaker:", error);
     const err = error as { message?: string; code?: string };

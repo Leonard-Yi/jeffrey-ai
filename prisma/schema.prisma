@@ -32,6 +32,15 @@ model Person {
   searchText        String              @default("")
   /// Embedding vector for semantic search (MiniMax embe-01, stored as JSON float array)
   embedding         Json                @default("[]")
+  /// Soft-delete timestamp (set after merge)
+  deletedAt         DateTime?
+  /// The person this record was merged into (non-null means this record is deprecated)
+  mergedIntoId      String?
+  mergedInto        Person?             @relation("PersonMerge", fields: [mergedIntoId], references: [id])
+  /// People merged into this record
+  mergedFrom        Person[]            @relation("PersonMerge")
+  /// Multiple aliases/nicknames for the same person (e.g. ["老王", "王总"])
+  aliases           String[]            @default([])
   interactions      InteractionPerson[]
   introducedBy      Person?             @relation("Introduction", fields: [introducedById], references: [id])
   introductions     Person[]            @relation("Introduction")
@@ -39,6 +48,8 @@ model Person {
 
   @@index([name])
   @@index([introducedById])
+  @@index([mergedIntoId])
+  @@index([deletedAt])
 }
 
 model Interaction {
