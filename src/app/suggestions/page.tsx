@@ -261,26 +261,97 @@ export default function SuggestionsPage() {
       .catch(console.error);
   }, []);
 
-  // Generate icebreaker when person is selected
+  // Generate icebreaker when person is selected (streaming)
   useEffect(() => {
     if (!selectedPersonId) {
       setIcebreaker(null);
+      setIcebreakerLoading(false);
       return;
     }
 
     setIcebreakerLoading(true);
     setIcebreaker(null);
 
-    fetch(`/api/suggestions/icebreaker?personId=${selectedPersonId}`)
-      .then((r) => r.json())
-      .then((data: IcebreakerResponse) => {
-        setIcebreaker(data);
-        setIcebreakerLoading(false);
+    const controller = new AbortController();
+    let fullText = "";
+    let parsed = false;
+
+    fetch(`/api/suggestions/icebreaker-stream?personId=${selectedPersonId}`, {
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Network response was not ok");
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let parsed: Record<string, unknown> | null = null;
+
+        const processStream = () => {
+          reader.read().then(({ done, value }) => {
+            if (done || !value) {
+              // Stream complete, parse accumulated text
+              if (!parsed && fullText) {
+                try {
+                  const jsonMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
+                                    fullText.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    parsed = JSON.parse(jsonMatch[jsonMatch.length - 1]);
+                  } else {
+                    parsed = JSON.parse(fullText);
+                  }
+                  setIcebreaker({
+                    personName: "",
+                    openingLines: (parsed?.openingLines as string[]) || [],
+                    suggestedTopics: (parsed?.suggestedTopics as string[]) || [],
+                    recentContext: (parsed?.recentContext as string) || "无历史记忆",
+                    jeffreyComment: (parsed?.jeffreyComment as string) || "",
+                  });
+                } catch {
+                  // JSON parse failed, show error state
+                  setIcebreaker({
+                    personName: "",
+                    openingLines: [],
+                    suggestedTopics: [],
+                    recentContext: "生成失败",
+                    jeffreyComment: "先生，LLM 返回格式异常。",
+                  });
+                }
+              }
+              setIcebreakerLoading(false);
+              return;
+            }
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === "delta") {
+                    fullText = data.text;
+                  }
+                } catch {
+                  // Ignore parse errors for individual chunks
+                }
+              }
+            }
+
+            if (!done) processStream();
+          });
+        };
+
+        processStream();
       })
       .catch((err) => {
-        console.error(err);
+        if (err.name !== "AbortError") {
+          console.error(err);
+        }
         setIcebreakerLoading(false);
       });
+
+    return () => controller.abort();
   }, [selectedPersonId]);
 
   const totalSuggestions = staleContacts.length + pendingDebts.length;
