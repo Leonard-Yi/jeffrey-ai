@@ -283,6 +283,46 @@ export default function SuggestionsPage() {
       });
   }, [selectedPersonId]);
 
+  // 一键预生成所有破冰文案
+  const [batchGenerating, setBatchGenerating] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+
+  const handleBatchGenerate = async () => {
+    if (allPersons.length === 0) return;
+
+    const confirmed = window.confirm(
+      `将为全部 ${allPersons.length} 位联系人生成破冰文案。\n\n可能消耗较多 token，但之后每次查询都会变快。\n\n确定要继续吗？`
+    );
+    if (!confirmed) return;
+
+    setBatchGenerating(true);
+    setBatchProgress({ current: 0, total: allPersons.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < allPersons.length; i++) {
+      const person = allPersons[i];
+      setBatchProgress({ current: i + 1, total: allPersons.length });
+
+      try {
+        const res = await fetch(`/api/persons/${person.id}/icebreaker`, {
+          method: "POST",
+        });
+        if (res.ok) successCount++;
+        else failCount++;
+      } catch {
+        failCount++;
+      }
+
+      // 每个间隔 500ms，避免请求过快
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    setBatchGenerating(false);
+    alert(`完成！成功 ${successCount} 个，失败 ${failCount} 个。`);
+  };
+
   const totalSuggestions = staleContacts.length + pendingDebts.length;
 
   return (
@@ -386,6 +426,44 @@ export default function SuggestionsPage() {
         {/* Section 3: Icebreaker Helper */}
         <section>
           <SuggestionCard type="icebreaker">
+            {/* 一键预生成按钮 */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 12,
+                padding: "8px 12px",
+                backgroundColor: "#fff8f0",
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+              }}
+            >
+              <div style={{ fontSize: 13, color: COLORS.textMedium }}>
+                <span style={{ fontWeight: 500 }}>⚡ 预生成破冰文案</span>
+                <span style={{ marginLeft: 8, fontSize: 12, color: COLORS.textLight }}>
+                  开启后查询更快，但会消耗更多 token
+                </span>
+              </div>
+              <button
+                onClick={handleBatchGenerate}
+                disabled={batchGenerating || allPersons.length === 0}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  border: `1px solid ${COLORS.accent}`,
+                  backgroundColor: batchGenerating ? "#f5f3ef" : "white",
+                  color: COLORS.accent,
+                  fontSize: 13,
+                  cursor: batchGenerating ? "not-allowed" : "pointer",
+                }}
+              >
+                {batchGenerating
+                  ? `生成中 ${batchProgress.current}/${batchProgress.total}...`
+                  : `一键生成 (${allPersons.length})`}
+              </button>
+            </div>
+
             <div style={{ marginBottom: 12 }}>
               <label
                 style={{
