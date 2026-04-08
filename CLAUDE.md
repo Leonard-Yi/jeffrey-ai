@@ -168,3 +168,16 @@ Using multiple worktrees for parallel development is supported, but merging must
 **If two worktrees modify the same area of the same file**: Git will report a conflict and stop — this is actually the safe case. The dangerous case is when Git merges successfully but the combined logic is broken.
 
 **If you must merge simultaneously**: Fully test the first merge before starting the second. Do not assume "no Git conflict = safe".
+
+---
+
+## 工作区规则
+
+**每个项目使用独立的 workspace 目录。所有文件必须放在正确的目录下，不得跨工作区存放文件。**
+
+当前工作区：`D:\Epstein.AI`（主项目）
+
+其他工作区：
+- `d:\_workflow_cc` — 其他项目和研究工作区
+
+在开始任何工作时，先确认当前工作区（`pwd` 或窗口标题），所有文件操作必须在当前工作区内完成。
