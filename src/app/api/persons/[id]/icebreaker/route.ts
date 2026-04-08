@@ -25,17 +25,20 @@ const SYSTEM_PROMPT = `你是 Jeffrey.AI 破冰助手，为即将到来的社交
 
 ## 输出格式（JSON）
 {
-  "openingLines": ["短句1", "短句2", "短句3"],
+  "openingLines": ["开场白1", "开场白2", "开场白3"],
   "suggestedTopics": ["话题1", "话题2", "话题3"],
   "recentContext": "记忆点",
   "jeffreyComment": "1句备注"
 }
 
 ## 要求
-- openingLines 要像微信聊天一样自然，不超过 20 字
-- suggestedTopics 直接可用的切入角度
-- recentContext 没有历史时填 "无"
-- lastContactDate 超过 60 天时 comment 提醒`;
+- openingLines 要像真人在微信上发的消息，可以稍微长一点（1-2句话），带点语气和情绪
+- 绝对不要像AI写的那样正式或书面
+- 可以用"嗨"、"最近忙啥"、"好久不见"这种朋友聊天的开头
+- suggestedTopics 是对方可能感兴趣的话题，供你自己选择用哪个开场后引入正题
+- recentContext 来自上次互动的记忆点，用于自然提起往事
+- jeffreyComment 是你给用户的建议，1句话就行
+- lastContactDate 超过 60 天时提醒用户关系有点生疏了`;
 
 // POST /api/persons/[id]/icebreaker - Generate and store icebreaker for a person
 export async function POST(
@@ -107,7 +110,7 @@ export async function POST(
           { role: "user", content: SYSTEM_PROMPT + "\n\n---\n\n" + userContext },
         ],
         temperature: 0.6,
-        max_tokens: 800,
+        max_tokens: 1500,
       }),
     });
 
