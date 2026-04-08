@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateEmbedding } from "@/lib/embedding";
+import { auth } from "@/lib/auth";
 
 /**
  * Extracts potential person names from Chinese text.
@@ -44,6 +45,11 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     console.log('[DEBUG] Resolve API called');
     const { text } = await request.json() as { text: string };
@@ -63,6 +69,7 @@ export async function POST(request: NextRequest) {
     }
     const persons = await prisma.person.findMany({
       where: {
+        userId: session.user.id,
         deletedAt: null,
         mergedIntoId: null,
         embedding: { not: null },

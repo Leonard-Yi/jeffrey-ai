@@ -2,6 +2,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { saveExtractionToDb } from "./db";
 import { WeightedTagSchema, ActionItemSchema } from "@/schemas/core";
+import { auth } from "@/lib/auth";
 
 // 复用 schemas/core 的基础类型
 const ExtractedPersonSchema = z.object({
@@ -152,6 +153,11 @@ const extractionTool: { name: string; description: string; input_schema: object 
 };
 
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const rawBody = await request.text();
     console.log("[Jeffrey.AI] Raw body:", rawBody);

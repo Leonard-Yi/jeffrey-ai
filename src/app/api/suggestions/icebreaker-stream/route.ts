@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 function getModel(): string {
   return process.env.MINIMAX_MODEL || "MiniMax-M2.7";
@@ -58,6 +59,11 @@ const SYSTEM_PROMPT = `你是 Jeffrey.AI 的破冰助手。你的任务是为一
 }`;
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const personId = searchParams.get("personId");
@@ -71,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     // 获取人物信息
     const person = await prisma.person.findUnique({
-      where: { id: personId },
+      where: { id: personId, userId: session.user.id },
       include: {
         introducedBy: { select: { name: true } },
       },
@@ -84,6 +90,7 @@ export async function GET(request: NextRequest) {
     // 获取最近一次互动
     const lastInteraction = await prisma.interaction.findFirst({
       where: {
+        userId: session.user.id,
         persons: { some: { personId } },
       },
       orderBy: { date: "desc" },

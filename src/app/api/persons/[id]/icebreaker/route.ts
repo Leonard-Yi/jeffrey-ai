@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 function getModel(): string {
   return process.env.MINIMAX_MODEL || "MiniMax-M2.7";
@@ -113,6 +114,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
 
@@ -128,7 +134,7 @@ export async function POST(
 
     // 获取人物信息
     const person = await prisma.person.findUnique({
-      where: { id },
+      where: { id, userId: session.user.id },
       include: {
         introducedBy: { select: { name: true } },
       },
@@ -141,6 +147,7 @@ export async function POST(
     // 获取最近一次互动
     const lastInteraction = await prisma.interaction.findFirst({
       where: {
+        userId: session.user.id,
         persons: { some: { personId: id } },
       },
       orderBy: { date: "desc" },
@@ -232,7 +239,7 @@ export async function POST(
     };
 
     await prisma.person.update({
-      where: { id },
+      where: { id, userId: session.user.id },
       data: {
         icebreakerData: result,
         icebreakerGeneratedAt: new Date(),
@@ -255,11 +262,16 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
 
     const person = await prisma.person.findUnique({
-      where: { id },
+      where: { id, userId: session.user.id },
       select: {
         name: true,
         icebreakerData: true,

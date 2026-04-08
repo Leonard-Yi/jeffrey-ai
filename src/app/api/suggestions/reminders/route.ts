@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 function subDays(date: Date, days: number): Date {
   const result = new Date(date);
@@ -24,12 +25,18 @@ function getDaysSince(date: Date): number {
 }
 
 export async function GET(_request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const thirtyDaysAgo = subDays(new Date(), 30);
 
     // 1. 关系维护提醒：超过30天未联系的联系人
     const staleContacts = await prisma.person.findMany({
       where: {
+        userId: session.user.id,
         lastContactDate: { lt: thirtyDaysAgo },
       },
       orderBy: { lastContactDate: "asc" },
@@ -46,6 +53,9 @@ export async function GET(_request: NextRequest) {
     // 2. 待办承诺提醒：ownedBy='me' 且 resolved=false 的事项
     // 先获取所有互动，然后在 JS 中过滤（因为 JSON 字段的 isEmpty 在某些 Prisma 版本不支持）
     const allInteractions = await prisma.interaction.findMany({
+      where: {
+        userId: session.user.id,
+      },
       include: {
         persons: {
           include: {

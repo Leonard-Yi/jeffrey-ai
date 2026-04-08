@@ -1,12 +1,18 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { PERSON_COLUMNS, renderArray, renderRelativeDate } from "@/lib/schemaReader";
+import { auth } from "@/lib/auth";
 
 const SAFE_SORT_FIELDS = ["name", "relationshipScore", "lastContactDate"] as const;
 
 type SafeSortField = typeof SAFE_SORT_FIELDS[number];
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const sort = searchParams.get("sort") || "lastContactDate";
@@ -23,6 +29,7 @@ export async function GET(request: NextRequest) {
     // Build where conditions — JSONB partial match done in JS after fetch
     // Exclude soft-deleted / merged persons
     const where: Parameters<typeof prisma.person.findMany>[0]["where"] = {
+      userId: session.user.id,
       deletedAt: null,
       mergedIntoId: null,
     };

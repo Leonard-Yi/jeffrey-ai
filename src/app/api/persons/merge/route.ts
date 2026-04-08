@@ -3,8 +3,13 @@ import { prisma } from "@/lib/db";
 import { buildPersonSearchText, generateEmbedding } from "@/lib/embedding";
 import { mergeTags } from "@/lib/dbUtils";
 import type { WeightedTag } from "@/lib/embedding";
+import { auth } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const body = await request.json();
     const { survivorId, victimIds } = body as {
@@ -29,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Fetch all persons involved
     const allIds = [survivorId, ...victimIds];
     const persons = await prisma.person.findMany({
-      where: { id: { in: allIds } },
+      where: { id: { in: allIds }, userId: session.user.id },
     });
 
     if (persons.length !== allIds.length) {
@@ -44,13 +49,13 @@ export async function POST(request: NextRequest) {
 
     // Fetch victims' interactions and tags
     const victimInteractionData = await prisma.interactionPerson.findMany({
-      where: { personId: { in: victimIds } },
+      where: { personId: { in: victimIds }, userId: session.user.id },
     });
     const victimTags = await prisma.personTag.findMany({
-      where: { personId: { in: victimIds } },
+      where: { personId: { in: victimIds }, userId: session.user.id },
     });
     const survivorTags = await prisma.personTag.findMany({
-      where: { personId: survivorId },
+      where: { personId: survivorId, userId: session.user.id },
     });
 
     // === MERGE IN TRANSACTION ===
@@ -102,7 +107,7 @@ export async function POST(request: NextRequest) {
 
       // 5. Soft-delete all victims: set deletedAt and mergedIntoId
       await tx.person.updateMany({
-        where: { id: { in: victimIds } },
+        where: { id: { in: victimIds }, userId: session.user.id },
         data: {
           deletedAt: new Date(),
           mergedIntoId: survivorId,
@@ -114,7 +119,7 @@ export async function POST(request: NextRequest) {
       const survivorInteractionIds = new Set(
         (
           await tx.interactionPerson.findMany({
-            where: { personId: survivorId },
+            where: { personId: survivorId, userId: session.user.id },
             select: { interactionId: true },
           })
         ).map((r) => r.interactionId)
@@ -130,6 +135,7 @@ export async function POST(request: NextRequest) {
         await tx.interactionPerson.deleteMany({
           where: {
             personId: { in: victimIds },
+            userId: session.user.id,
             interactionId: { in: toMigrate.map((v) => v.interactionId) },
           },
         });
@@ -138,6 +144,7 @@ export async function POST(request: NextRequest) {
           data: toMigrate.map((v) => ({
             personId: survivorId,
             interactionId: v.interactionId,
+            userId: session.user.id,
           })),
           skipDuplicates: true,
         });
@@ -145,7 +152,7 @@ export async function POST(request: NextRequest) {
 
       // 7. Migrate PersonTag records
       // Delete existing survivor tags, then recreate merged
-      await tx.personTag.deleteMany({ where: { personId: survivorId } });
+      await tx.personTag.deleteMany({ where: { personId: survivorId, userId: session.user.id } });
 
       // Build merged tags map: start with survivor tags, then merge victim tags (recency bias)
       const tagMap = new Map<string, { category: string; name: string; weight: number }>();
@@ -177,6 +184,7 @@ export async function POST(request: NextRequest) {
       // Create new merged tags
       const mergedTagRecords = Array.from(tagMap.values()).map((t) => ({
         personId: survivorId,
+        userId: session.user.id,
         category: t.category,
         name: t.name,
         weight: t.weight,
@@ -188,7 +196,7 @@ export async function POST(request: NextRequest) {
 
       // 8. Update survivor with merged data
       const updated = await tx.person.update({
-        where: { id: survivorId },
+        where: { id: survivorId, userId: session.user.id },
         data: {
           aliases: Array.from(allAliases),
           careers: mergedCareers,
@@ -225,7 +233,7 @@ export async function POST(request: NextRequest) {
     }
 
     const finalPerson = await prisma.person.update({
-      where: { id: survivorId },
+      where: { id: survivorId, userId: session.user.id },
       data: { searchText, embedding },
     });
 

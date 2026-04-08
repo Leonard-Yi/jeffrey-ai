@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateEmbedding } from "@/lib/embedding";
+import { auth } from "@/lib/auth";
 
 const K_DEFAULT = 10;
 
@@ -17,6 +18,11 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const q = ((body.q as string) || "").trim();
@@ -46,7 +52,8 @@ export async function POST(request: Request) {
       }>
     >`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate", "embedding"
       FROM "Person"
-      WHERE jsonb_array_length("embedding") > 0
+      WHERE "userId" = '${session.user.id}'
+        AND jsonb_array_length("embedding") > 0
         AND (jsonb_array_length("careers") > 0 OR jsonb_array_length("interests") > 0)`;
 
     if (persons.length === 0) {

@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -11,14 +17,16 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
     // 构建查询条件
+    const baseWhere = { userId: session.user.id };
     const where = search
       ? {
+          ...baseWhere,
           OR: [
             { name: { contains: search } },
             { vibeTags: { has: search } },
           ],
         }
-      : {};
+      : baseWhere;
 
     // 获取总数
     const total = await prisma.person.count({ where });

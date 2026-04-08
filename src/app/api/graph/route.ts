@@ -1,7 +1,12 @@
 import { NextRequest } from "next/server";
 import { getGraphData, GraphData } from "@/lib/graphService";
+import { auth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const group = searchParams.get("group") || undefined;

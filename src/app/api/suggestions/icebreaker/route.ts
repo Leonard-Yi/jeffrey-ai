@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 // 简单内存缓存：5分钟内重复查询直接返回缓存
 const cache = new Map<string, { data: unknown; expiry: number }>();
@@ -130,6 +131,11 @@ const SYSTEM_PROMPTS = {
 };
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const personId = searchParams.get("personId");
@@ -153,7 +159,7 @@ export async function GET(request: NextRequest) {
 
     // 检查数据库缓存
     const personWithCache = await prisma.person.findUnique({
-      where: { id: personId },
+      where: { id: personId, userId: session.user.id },
       select: {
         name: true,
         icebreakerData: true,
@@ -172,7 +178,7 @@ export async function GET(request: NextRequest) {
 
     // 获取人物完整信息用于生成
     const person = await prisma.person.findUnique({
-      where: { id: personId },
+      where: { id: personId, userId: session.user.id },
       include: {
         introducedBy: { select: { name: true } },
       },
@@ -185,6 +191,7 @@ export async function GET(request: NextRequest) {
     // 获取最近一次互动
     const lastInteraction = await prisma.interaction.findFirst({
       where: {
+        userId: session.user.id,
         persons: { some: { personId } },
       },
       orderBy: { date: "desc" },

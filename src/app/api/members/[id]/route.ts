@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 const EDITABLE_FIELDS = [
   "name",
@@ -27,12 +28,17 @@ export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await context.params;
 
     // Fetch person with only needed fields, excluding massive embedding arrays
     const person = await prisma.person.findUnique({
-      where: { id },
+      where: { id, userId: session.user.id },
       select: {
         id: true,
         name: true,
@@ -99,6 +105,11 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await context.params;
     const body = await request.json();
@@ -160,7 +171,7 @@ export async function PATCH(
           return Response.json({ error: "introducedById must be a string or null" }, { status: 400 });
         }
         if (value !== null) {
-          const target = await prisma.person.findUnique({ where: { id: value as string } });
+          const target = await prisma.person.findUnique({ where: { id: value as string, userId: session.user.id } });
           if (!target) {
             return Response.json({ error: "Target person not found" }, { status: 400 });
           }
@@ -176,7 +187,7 @@ export async function PATCH(
         }
         if (value !== null) {
           for (const id of value as string[]) {
-            const target = await prisma.person.findUnique({ where: { id } });
+            const target = await prisma.person.findUnique({ where: { id, userId: session.user.id } });
             if (!target) {
               return Response.json({ error: `Person with id '${id}' not found` }, { status: 400 });
             }
@@ -212,7 +223,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.person.update({
-      where: { id },
+      where: { id, userId: session.user.id },
       data: { [field]: dbValue },
     });
 
