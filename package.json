@@ -12,15 +12,19 @@
     "test:graph": "npx tsx --env-file=.env scripts/test-graph.ts"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
     "@react-sigma/core": "^5.0.6",
     "@react-sigma/layout-forceatlas2": "^5.0.6",
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.3.1",
     "graphology": "^0.26.0",
     "graphology-layout": "^0.6.1",
     "graphology-layout-forceatlas2": "^0.10.1",
     "next": "^16.2.1",
+    "next-auth": "^5.0.0-beta.30",
+    "nodemailer": "^7.0.13",
     "openai": "^4.47.0",
     "pg": "^8.20.0",
     "prisma": "^7.6.0",
@@ -32,9 +36,12 @@
     "zod-to-json-schema": "^3.23.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20.0.0",
+    "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",
     "autoprefixer": "^10.4.27",
+    "node-notifier": "^10.0.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.0",
     "tsx": "^4.15.0",
