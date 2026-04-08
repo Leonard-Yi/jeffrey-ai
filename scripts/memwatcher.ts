@@ -9,6 +9,8 @@ const execAsync = promisify(exec);
 
 interface Config {
   memoryThresholdPercent: number;
+  checkIntervalMs: number;
+  cooldownMs: number;
   zombieProcessPatterns: string[];
   notification: {
     enabled: boolean;
@@ -64,24 +66,49 @@ function printWarning(percent: number, zombies: string[]) {
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function main() {
   const config = loadConfig();
-  const percent = getMemoryUsagePercent();
+  let lastWarningTime = 0;
+  let running = true;
 
-  if (percent < config.memoryThresholdPercent) {
-    console.log(`[OK] 内存使用率: ${percent}%（低于阈值 ${config.memoryThresholdPercent}%）`);
-    return;
-  }
+  process.on('SIGINT', () => {
+    console.log('\n[INFO] memwatcher 已退出');
+    running = false;
+  });
 
-  const zombies = await findZombieProcesses();
-  printWarning(percent, zombies);
+  console.log(`[INFO] memwatcher 已启动，检测间隔 ${config.checkIntervalMs / 1000} 秒`);
 
-  if (config.notification.enabled) {
-    const body = config.notification.body.replace('{percent}', String(percent));
-    notifier.notify({
-      title: config.notification.title,
-      message: body,
-    });
+  while (running) {
+    const percent = getMemoryUsagePercent();
+
+    if (percent < config.memoryThresholdPercent) {
+      console.log(`[OK] 内存使用率: ${percent}%（低于阈值 ${config.memoryThresholdPercent}%）`);
+    } else {
+      const now = Date.now();
+      const isInCooldown = (now - lastWarningTime) < config.cooldownMs;
+
+      if (isInCooldown) {
+        console.log(`[INFO] 内存使用率: ${percent}%（超过阈值 ${config.memoryThresholdPercent}%，冷却中）`);
+      } else {
+        const zombies = await findZombieProcesses();
+        printWarning(percent, zombies);
+        lastWarningTime = now;
+
+        if (config.notification.enabled) {
+          const body = config.notification.body.replace('{percent}', String(percent));
+          notifier.notify({
+            title: config.notification.title,
+            message: body,
+          });
+        }
+      }
+    }
+
+    await sleep(config.checkIntervalMs);
   }
 }
 
