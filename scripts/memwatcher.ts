@@ -19,8 +19,13 @@ interface Config {
 
 function loadConfig(): Config {
   const configPath = path.join(process.cwd(), 'config', 'memwatcher.json');
-  const content = fs.readFileSync(configPath, 'utf-8');
-  return JSON.parse(content);
+  try {
+    const content = fs.readFileSync(configPath, 'utf-8');
+    return JSON.parse(content);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to load config from ${configPath}: ${msg}`);
+  }
 }
 
 function getMemoryUsagePercent(): number {
@@ -29,20 +34,18 @@ function getMemoryUsagePercent(): number {
   return Math.round(((total - free) / total) * 100);
 }
 
-async function findZombieProcesses(patterns: string[]): Promise<string[]> {
+async function findZombieProcesses(): Promise<string[]> {
   const { stdout } = await execAsync(
     'wmic process where "name=\'node.exe\'" get ProcessId,CommandLine'
   );
-  const lines = stdout.trim().split('\n').slice(1);
+  const lines = stdout.trim().split('\n').map(l => l.trim()).filter(l => l);
   const zombies: string[] = [];
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    const parts = trimmed.split(/\s+/);
-    if (parts.length >= 2) {
-      const pid = parts[parts.length - 1];
-      const cmd = parts.slice(0, -1).join(' ');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^\d+$/.test(line)) {
+      const pid = line;
+      const cmd = lines[i - 1] ?? '';
       zombies.push(`PID ${pid} - ${cmd}`);
     }
   }
@@ -56,7 +59,7 @@ function printWarning(percent: number, zombies: string[]) {
     zombies.forEach(z => console.log(' ', z));
     console.log('\n建议执行清理命令:');
     console.log(
-      'wmic process where "name=\'node.exe\' and CommandLine like \'%Epstein%\'" get ProcessId | tail -n +2 | xargs -I{} taskkill //F //PID {}'
+      'powershell -Command "wmic process where \\"name=\'node.exe\' and CommandLine like \'%Epstein%\'\\" call terminate"'
     );
   }
 }
@@ -70,7 +73,7 @@ async function main() {
     return;
   }
 
-  const zombies = await findZombieProcesses(config.zombieProcessPatterns);
+  const zombies = await findZombieProcesses();
   printWarning(percent, zombies);
 
   if (config.notification.enabled) {
