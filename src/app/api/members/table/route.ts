@@ -21,7 +21,11 @@ export async function GET(request: NextRequest) {
       : "lastContactDate";
 
     // Build where conditions — JSONB partial match done in JS after fetch
-    const where: Parameters<typeof prisma.person.findMany>[0]["where"] = {};
+    // Exclude soft-deleted / merged persons
+    const where: Parameters<typeof prisma.person.findMany>[0]["where"] = {
+      deletedAt: null,
+      mergedIntoId: null,
+    };
 
     if (filterCity) {
       // PostgreSQL text array contains
