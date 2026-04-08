@@ -15,7 +15,8 @@ def truncate_pdf_before_financial_statements(pdf_path: Path) -> str:
     返回截断后的纯文本。
     """
     full_text = []
-    in_business_discussion = False
+    found_discussion_title = False
+    found_discussion_page = False  # 标记是否已进入章节并看到第一页
 
     # 章节结束信号（找到这些标题意味着管理层讨论与分析章节结束）
     END_SIGNALS = [
@@ -32,14 +33,19 @@ def truncate_pdf_before_financial_statements(pdf_path: Path) -> str:
             lines = text.split("\n")
 
             # 检查是否进入"管理层讨论与分析"章节
-            if not in_business_discussion:
+            if not found_discussion_title:
                 for line in lines:
                     if re.search(r"管理层讨论与分析", line):
-                        in_business_discussion = True
+                        found_discussion_title = True
                         break
 
+            # 标记已进入章节，第一页必须保留
+            if found_discussion_title and not found_discussion_page:
+                found_discussion_page = True
+
             # 检查是否已离开管理层讨论章节（进入财务报表）
-            if in_business_discussion:
+            # 只有在看到章节第一页之后才检查 END_SIGNALS，确保第一页一定被保留
+            if found_discussion_page:
                 for line in lines:
                     for signal in END_SIGNALS:
                         if re.search(signal, line):
@@ -81,7 +87,7 @@ def extract_fields_with_llm(text: str, company_name: str) -> dict:
         model=LLM_MODEL,
         messages=[
             {"role": "system", "content": "你是一个专业的A股财务数据提取助手。"},
-            {"role": "user", "content": f"{prompt}\n\n年报文本：\n{text[:8000]}"},
+            {"role": "user", "content": f"{prompt}\n\n年报文本：\n{text[:30000]}"},
         ],
         temperature=0.1,
     )
