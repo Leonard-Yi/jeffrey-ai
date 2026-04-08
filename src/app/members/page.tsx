@@ -91,14 +91,14 @@ export default function MembersPage() {
         const res = await fetch(`/api/members/${id}`);
         const data = await res.json();
         return {
-          id: data.person.id,
-          name: data.person.name,
-          careers: data.person.careers as WeightedTag[],
-          interests: data.person.interests as WeightedTag[],
-          vibeTags: data.person.vibeTags as string[],
-          relationshipScore: data.person.relationshipScore,
-          lastContactDate: data.person.lastContactDate,
-          interactionCount: (data.person.interactions?.length ?? 0) as number,
+          id: data.id,
+          name: data.name,
+          careers: data.careers as WeightedTag[],
+          interests: data.interests as WeightedTag[],
+          vibeTags: data.vibeTags as string[],
+          relationshipScore: data.relationshipScore,
+          lastContactDate: data.lastContactDate,
+          interactionCount: (data.interactions?.length ?? 0) as number,
         };
       })
     );
