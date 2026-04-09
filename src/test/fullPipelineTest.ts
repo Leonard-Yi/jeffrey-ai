@@ -9,6 +9,8 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 const PREFIX = "__test__";
 
+let TEST_USER_ID: string;
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
@@ -22,22 +24,12 @@ function prefixInput(input: string, names: string[]): string {
 }
 
 async function cleanupTestData() {
-  const persons = await prisma.person.findMany({
-    where: { name: { startsWith: PREFIX } },
-    select: { id: true },
-  });
-  const ids = persons.map((p) => p.id);
-  if (ids.length === 0) return;
+  if (!TEST_USER_ID) return;
 
-  await prisma.personTag.deleteMany({ where: { personId: { in: ids } } });
-  const interactions = await prisma.interactionPerson.findMany({
-    where: { personId: { in: ids } },
-    select: { interactionId: true },
-  });
-  const interactionIds = [...new Set(interactions.map((i) => i.interactionId))];
-  await prisma.interactionPerson.deleteMany({ where: { personId: { in: ids } } });
-  await prisma.interaction.deleteMany({ where: { id: { in: interactionIds } } });
-  await prisma.person.deleteMany({ where: { id: { in: ids } } });
+  await prisma.interaction.deleteMany({ where: { userId: TEST_USER_ID } });
+  await prisma.personTag.deleteMany({ where: { userId: TEST_USER_ID } });
+  await prisma.person.deleteMany({ where: { userId: TEST_USER_ID } });
+  await prisma.user.delete({ where: { id: TEST_USER_ID } });
 }
 
 function truncate(s: string, n = 200): string {
@@ -74,7 +66,7 @@ async function case1() {
     return null;
   }
 
-  const result = await saveExtraction(payload);
+  const result = await saveExtraction(payload, TEST_USER_ID);
   console.log("写库成功 →", result);
   return result;
 }
@@ -104,7 +96,7 @@ async function case2() {
     return;
   }
 
-  const result = await saveExtraction(payload);
+  const result = await saveExtraction(payload, TEST_USER_ID);
   console.log("写库成功 →", result);
 
   // Snapshot after
@@ -149,7 +141,7 @@ async function case3() {
     return;
   }
 
-  const result = await saveExtraction(payload);
+  const result = await saveExtraction(payload, TEST_USER_ID);
   console.log("写库成功 →", result);
   console.log("actionItems：", JSON.stringify(payload.actionItems, null, 2));
 }
@@ -175,7 +167,7 @@ async function case4() {
   // Verify nothing was written
   const countBefore = await prisma.interaction.count();
   try {
-    await saveExtraction(payload);
+    await saveExtraction(payload, TEST_USER_ID);
     console.error("❌ 不应该走到这里——pending 记录不应被写入数据库");
   } catch (e: unknown) {
     const countAfter = await prisma.interaction.count();
@@ -192,6 +184,15 @@ async function case4() {
 
 async function main() {
   try {
+    // Create a test user for data isolation
+    const testUser = await prisma.user.create({
+      data: {
+        email: `test_${PREFIX}@example.com`,
+        name: "Test User",
+        passwordHash: "$2b$12$dummy.hash.for.testing.purposes.only",
+      },
+    });
+    TEST_USER_ID = testUser.id;
     console.log("🧹 清理上次测试残留数据...");
     await cleanupTestData();
 

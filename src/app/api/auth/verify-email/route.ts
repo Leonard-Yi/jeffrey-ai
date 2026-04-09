@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClientKnownRequestError } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 
 export async function GET(request: NextRequest) {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     ])
     return NextResponse.redirect(new URL("/auth/verify-email?verified=true", request.url))
   } catch (error) {
-    if (error instanceof PrismaClientKnownRequestError && error.code === "P2025") {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       // Token already deleted by concurrent request - user was already verified, redirect to success
       return NextResponse.redirect(new URL("/auth/verify-email?verified=true", request.url))
     }

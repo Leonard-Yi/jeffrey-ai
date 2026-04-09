@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateEmbedding } from "@/lib/embedding";
 import { auth } from "@/lib/auth";
-import { sql } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 const K_DEFAULT = 10;
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         lastContactDate: Date;
         embedding: number[];
       }>
-    >(sql`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate", "embedding"
+    >(Prisma.sql`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate", "embedding"
       FROM "Person"
       WHERE "userId" = ${session.user.id}::uuid
         AND jsonb_array_length("embedding") > 0

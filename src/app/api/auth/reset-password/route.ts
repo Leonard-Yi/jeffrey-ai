@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClientKnownRequestError } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcrypt"
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       })
     ]).catch((error) => {
       // P2025 = Record to delete does not exist (token already used by concurrent request)
-      if (error instanceof PrismaClientKnownRequestError && error.code === "P2025") {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
         return
       }
       throw error

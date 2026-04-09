@@ -11,10 +11,11 @@ import type { ExtractionPayload, ExtractedPerson } from "./llmExtractor";
 
 async function upsertPerson(
   extracted: ExtractedPerson,
-  interactionDate: Date
+  interactionDate: Date,
+  userId: string
 ): Promise<string> {
   const existing = await prisma.person.findFirst({
-    where: { name: extracted.name },
+    where: { name: extracted.name, userId },
     include: { tags: true },
   });
 
@@ -49,9 +50,9 @@ async function upsertPerson(
         },
       }),
       // Rebuild flat tag index for this person
-      prisma.personTag.deleteMany({ where: { personId: existing.id } }),
+      prisma.personTag.deleteMany({ where: { personId: existing.id, userId } }),
       prisma.personTag.createMany({
-        data: buildTagRows(existing.id, mergedCareers, mergedInterests, mergedVibes),
+        data: buildTagRows(existing.id, mergedCareers, mergedInterests, mergedVibes, userId),
       }),
     ]);
 
@@ -61,6 +62,7 @@ async function upsertPerson(
   // New person
   const person = await prisma.person.create({
     data: {
+      userId,
       name: extracted.name,
       careers: extracted.careers as Prisma.InputJsonValue,
       interests: extracted.interests as Prisma.InputJsonValue,
@@ -75,7 +77,8 @@ async function upsertPerson(
       person.id,
       extracted.careers,
       extracted.interests,
-      extracted.vibeTags
+      extracted.vibeTags,
+      userId
     ),
   });
 
@@ -86,12 +89,13 @@ function buildTagRows(
   personId: string,
   careers: WeightedTag[],
   interests: WeightedTag[],
-  vibes: string[]
+  vibes: string[],
+  userId: string
 ): Prisma.PersonTagCreateManyInput[] {
   return [
-    ...careers.map((t) => ({ personId, category: "career", name: t.name, weight: t.weight })),
-    ...interests.map((t) => ({ personId, category: "interest", name: t.name, weight: t.weight })),
-    ...vibes.map((v) => ({ personId, category: "vibe", name: v, weight: 1.0 })),
+    ...careers.map((t) => ({ personId, userId, category: "career", name: t.name, weight: t.weight })),
+    ...interests.map((t) => ({ personId, userId, category: "interest", name: t.name, weight: t.weight })),
+    ...vibes.map((v) => ({ personId, userId, category: "vibe", name: v, weight: 1.0 })),
   ];
 }
 
@@ -99,7 +103,7 @@ function buildTagRows(
 // Save a complete extraction payload
 // ─────────────────────────────────────────────
 
-export async function saveExtraction(payload: ExtractionPayload): Promise<{
+export async function saveExtraction(payload: ExtractionPayload, userId: string): Promise<{
   interactionId: string;
   personIds: string[];
 }> {
@@ -113,11 +117,12 @@ export async function saveExtraction(payload: ExtractionPayload): Promise<{
 
   // Upsert all persons in parallel, then create the interaction
   const personIds = await Promise.all(
-    payload.persons.map((p) => upsertPerson(p, interactionDate))
+    payload.persons.map((p) => upsertPerson(p, interactionDate, userId))
   );
 
   const interaction = await prisma.interaction.create({
     data: {
+      userId,
       date: interactionDate,
       location: payload.location,
       contextType: payload.contextType,
@@ -125,7 +130,7 @@ export async function saveExtraction(payload: ExtractionPayload): Promise<{
       actionItems: payload.actionItems as Prisma.InputJsonValue,
       coreMemories: payload.coreMemories,
       persons: {
-        create: personIds.map((personId) => ({ personId })),
+        create: personIds.map((personId) => ({ personId, userId })),
       },
     },
   });
