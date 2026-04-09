@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       minStrength
     };
 
-    const graphData: GraphData = await getGraphData(filter);
+    const graphData: GraphData = await getGraphData(filter, session.user.id);
 
     return Response.json(graphData);
   } catch (error) {

@@ -51,13 +51,20 @@ function canonicalSource(a: string, b: string): string {
 /**
  * Fetches all persons and their interactions from the database,
  * transforms them into a graph format suitable for react-force-graph.
+ * @param filter - Graph filter options
+ * @param userId - Required: filters all data to the authenticated user only
  */
-export async function getGraphData(filter?: GraphFilter): Promise<GraphData> {
-  // First get all persons
-  const allPersons = await prisma.person.findMany();
+export async function getGraphData(filter?: GraphFilter, userId?: string): Promise<GraphData> {
+  if (!userId) throw new Error("userId is required for getGraphData");
 
-  // Then get all interactions with their participants
+  // First get all persons for this user
+  const allPersons = await prisma.person.findMany({
+    where: { userId, deletedAt: null, mergedIntoId: null },
+  });
+
+  // Then get all interactions for this user with their participants
   const allInteractions = await prisma.interaction.findMany({
+    where: { userId },
     include: {
       persons: {
         include: {
