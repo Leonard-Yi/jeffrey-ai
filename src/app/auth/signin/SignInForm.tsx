@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
-function SignInForm() {
+export default function SignInForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const rawCallbackUrl = searchParams.get("callbackUrl") || "/input"
@@ -91,13 +91,5 @@ function SignInForm() {
         </div>
       </div>
     </div>
-  )
-}
-
-export default function SignInPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50"><p>加载中...</p></div>}>
-      <SignInForm />
-    </Suspense>
   )
 }
