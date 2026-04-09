@@ -8,6 +8,7 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
+  const [countdown, setCountdown] = useState(3)
 
   useEffect(() => {
     if (!token) {
@@ -26,6 +27,17 @@ function VerifyEmailContent() {
       .catch(() => setStatus("error"))
   }, [token])
 
+  useEffect(() => {
+    if (status === "success" && countdown <= 0) {
+      window.location.href = "/auth/signin"
+      return
+    }
+    if (status === "success" && countdown > 0) {
+      const timer = setTimeout(() => setCountdown((c) => c - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [status, countdown])
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -37,17 +49,6 @@ function VerifyEmailContent() {
   }
 
   if (status === "success") {
-    const [countdown, setCountdown] = useState(3)
-
-    useEffect(() => {
-      if (countdown <= 0) {
-        window.location.href = "/auth/signin"
-        return
-      }
-      const timer = setTimeout(() => setCountdown((c) => c - 1), 1000)
-      return () => clearTimeout(timer)
-    }, [countdown])
-
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
