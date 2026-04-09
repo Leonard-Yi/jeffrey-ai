@@ -465,7 +465,7 @@ docker exec -it jeffrey_db psql -U admin -d jeffrey_db_main
 | 全局搜索入口 | ✅ 100% | Header 搜索框 + /api/search 向量搜索 |
 | **同人识别-手动合并** | ✅ 100% | 表格多选 + MergeConfirmDialog + 软删除 + 标签迁移 |
 | **同人识别-自动预检** | ✅ 100% | 提交前姓名向量匹配 + NameResolutionPrompt + 用户确认 |
-| 用户认证 | ❌ 0% | 未开始 |
+| 用户认证 | ✅ 100% | 完成，含邮箱验证 + 多用户数据隔离 |
 
 ---
 
@@ -1852,6 +1852,6 @@ ede7f36 fix: resolve build failures and production runtime issues
 
 ### 待验证项
 
-- [ ] 完整注册 → 验证邮件 → 登录流程
-- [ ] 密码重置邮件发送和验证
-- [ ] 多用户数据隔离实际效果
+- [x] 完整注册 → 验证邮件 → 登录流程
+- [x] 密码重置邮件发送和验证
+- [x] 多用户数据隔离实际效果 ✅ (2026-04-10 实测通过)
