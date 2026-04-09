@@ -1740,3 +1740,118 @@ fa50c7b fix(members): 修复合并功能
 | 别名 | 全部汇总到主条目 |
 | 关系评分 | 取 **max** |
 | 最近联系时间 | 取 **最新** |
+
+---
+
+## 会话 009: 用户认证系统收尾 + Build/运行时修复 (2026-04-09)
+
+### 本次完成的工作
+
+#### 1. 用户认证系统实现（完整）
+
+**技术栈**：
+- NextAuth.js v5 (beta) + Prisma Adapter
+- Credentials Provider（邮箱 + 密码）
+- JWT Session 策略
+- bcrypt 密码哈希（cost factor 12）
+- nodemailer + QQ 邮箱 SMTP
+
+**新增/修改的文件**：
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `prisma/schema.prisma` | 修改 | 新增 User/Account/Session/VerificationToken 模型，Person/Interaction/PersonTag 加 userId 外键 |
+| `src/lib/auth.ts` | 新增 | NextAuth 配置，timing-attack 防护 |
+| `src/lib/email.ts` | 新增 | SMTP 邮件发送（验证邮件 + 密码重置模板） |
+| `src/app/api/auth/register/route.ts` | 新增 | 注册 API，含 Zod 校验 |
+| `src/app/api/auth/forgot-password/route.ts` | 新增 | 忘记密码 API |
+| `src/app/api/auth/reset-password/route.ts` | 新增 | 密码重置 API，含事务 + P2025 处理 |
+| `src/app/api/auth/verify-email/route.ts` | 新增 | 邮箱验证 API |
+| `src/app/auth/signin/page.tsx` | 新增 | 登录页 |
+| `src/app/auth/signup/page.tsx` | 新增 | 注册页 |
+| `src/app/auth/error/page.tsx` | 新增 | 错误提示页 |
+| `src/app/auth/verify-email/page.tsx` | 新增 | 验证结果页 |
+| `src/app/auth/forgot-password/page.tsx` | 新增 | 忘记密码页 |
+| `src/app/auth/reset-password/page.tsx` | 新增 | 重置密码页 |
+| `src/app/auth/verify-request/page.tsx` | 新增 | 验证请求页 |
+| `src/components/Header.tsx` | 修改 | 新增退出登录按钮 |
+| `src/components/Providers.tsx` | 修改 | 新增 SessionProvider |
+| `src/proxy.ts` | 新增 | 替代 middleware.ts（Next.js 16 要求） |
+| `.env` | 修改 | 新增 AUTH_SECRET, NEXTAUTH_URL, AUTH_TRUST_HOST, SMTP 配置 |
+
+#### 2. 路由保护
+
+- 所有非 auth 路由受 `proxy.ts`（原 middleware.ts）保护
+- 未登录用户访问受保护页面 → 重定向到 /auth/signin
+
+#### 3. Build 错误修复
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| `dbService.ts` 缺少 userId | Person create/update 未传 userId | 全文增加 userId 参数 |
+| `fullPipelineTest.ts` 报错 | saveExtraction 签名变更 | 创建测试用户并传递 userId |
+| Auth pages Suspense 错误 | Next.js 16 SSR 要求 useSearchParams 必须在 Suspense 内 | 所有 auth 页面包装 Suspense |
+| `middleware.ts` deprecated | Next.js 16 将 middleware 改名为 proxy | 重命名为 proxy.ts，export 名从 middleware 改为 proxy |
+| `AUTH_TRUST_HOST` 缺失 | Auth.js v5 生产环境必填 | `.env` 增加 AUTH_TRUST_HOST=true |
+| NEXTAUTH_URL 端口错误 | dev 用 30081，prod 用 3000 | 改为 3000 |
+
+#### 4. 邮箱验证流程修复（系统性调试）
+
+**问题症状**：点击验证链接后始终显示"验证失败"
+
+**调试过程**：
+1. 检查 API 响应 → 307 重定向正常
+2. 数据库直接查询 → token 存在且未过期
+3. Playwright 浏览器测试 → 页面显示"验证失败"
+4. 响应头分析 → HTTP 200 + `x-nextjs-cache: HIT`（缓存！）
+5. **根因**：Next.js 将 `auth/verify-email` 预渲染为静态 HTML，API 重定向被缓存，浏览器直接拿到静态"验证失败"页面
+
+**修复方案**：
+- 客户端组件 `useEffect` 调用 `/api/auth/verify-email?token=xxx`
+- API 改为返回 JSON `{success: true}` 而非 307 重定向
+- 客户端根据响应状态显示成功/失败
+
+#### 5. SMTP 配置修复
+
+- **问题**：QQ 邮箱 SMTP 要求发件人邮箱必须与授权用户一致
+- **修复**：`EMAIL_FROM` 从 `noreply@jeffrey.ai` 改为 `leonardyi@foxmail.com`
+
+#### 6. 登录跳转修复
+
+- **问题**：登录成功后跳转到 `/`，但根路径无 page.tsx
+- **修复**：默认 callbackUrl 改为 `/input`
+
+### Git 提交记录
+
+```
+ede7f36 fix: resolve build failures and production runtime issues
+0bfc6c4 fix: EMAIL_FROM must match SMTP authenticated user
+0dcfb17 fix: email verification flow - use client-side fetch instead of redirect
+```
+
+### 当前功能状态
+
+| 功能 | 状态 |
+|------|------|
+| 用户注册 | ✅ |
+| 邮箱验证 | ✅ |
+| 登录/登出 | ✅ |
+| 密码重置 | ✅ |
+| 多用户数据隔离（userId） | ✅ |
+| 路由保护 | ✅ |
+| 生产模式 Build | ✅ |
+| 生产服务器运行 (npm start) | ✅ |
+
+### 生产环境配置
+
+```
+端口: 3000
+启动: npm run build && npm start
+数据库: docker-compose up -d
+```
+
+### 待验证项
+
+- [ ] 完整注册 → 验证邮件 → 登录流程
+- [ ] 密码重置邮件发送和验证
+- [ ] 多用户数据隔离实际效果
