@@ -11,6 +11,7 @@ export default function SignInForm() {
   const rawCallbackUrl = searchParams.get("callbackUrl") || "/input"
   const callbackUrl = rawCallbackUrl.startsWith("/") ? rawCallbackUrl : "/"
   const error = searchParams.get("error")
+  const reason = searchParams.get("reason")
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -38,6 +39,12 @@ export default function SignInForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold mb-6 text-center">登录 Jeffrey.AI</h1>
+
+        {reason === "unauthenticated" && (
+          <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded text-sm">
+            访问该页面需要先登录
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
