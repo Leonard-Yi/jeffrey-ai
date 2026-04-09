@@ -8,7 +8,7 @@ import Link from "next/link"
 function SignInContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const rawCallbackUrl = searchParams.get("callbackUrl") || "/"
+  const rawCallbackUrl = searchParams.get("callbackUrl") || "/input"
   const callbackUrl = rawCallbackUrl.startsWith("/") ? rawCallbackUrl : "/"
   const error = searchParams.get("error")
 
