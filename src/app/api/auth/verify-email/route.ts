@@ -36,11 +36,10 @@ export async function GET(request: NextRequest) {
         where: { token }
       })
     ])
-    return NextResponse.redirect(new URL("/auth/verify-email?verified=true", request.url))
+    return NextResponse.json({ success: true })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      // Token already deleted by concurrent request - user was already verified, redirect to success
-      return NextResponse.redirect(new URL("/auth/verify-email?verified=true", request.url))
+      return NextResponse.json({ success: true })
     }
     console.error("Email verification error:", error)
     return NextResponse.json({ error: "验证失败" }, { status: 500 })
