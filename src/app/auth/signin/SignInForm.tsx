@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import AuthLayout from "@/components/AuthLayout"
 
 export default function SignInForm() {
   const router = useRouter()
@@ -24,79 +25,110 @@ export default function SignInForm() {
     const result = await signIn("credentials", {
       email,
       password,
+      callbackUrl,
       redirect: false,
     })
 
-    if (result?.ok) {
+    if (result?.error) {
+      // Login failed - redirect back with error
+      router.push(`/auth/signin?error=CredentialsSignin&callbackUrl=${encodeURIComponent(callbackUrl)}`)
+    } else if (result?.ok) {
+      // Login succeeded - redirect to callbackUrl
       router.push(callbackUrl)
-    } else {
-      setLoading(false)
-      alert("登录失败")
     }
+    // If neither, do nothing (loading stays true)
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">登录 Jeffrey.AI</h1>
+  const card = (
+    <div className="auth-card">
+      {/* Brand */}
+      <div className="auth-card-brand">Jeffrey.AI</div>
+      <div className="auth-card-tagline">你的 AI 人脉管理助手</div>
 
-        {reason === "unauthenticated" && (
-          <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded text-sm">
-            访问该页面需要先登录
-          </div>
-        )}
+      <h1 className="auth-card-title">登录账号</h1>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-            {error === "CredentialsSignin" ? "邮箱或密码错误" : "登录失败"}
-          </div>
-        )}
+      {reason === "unauthenticated" && (
+        <div className="auth-alert auth-alert-info">
+          访问该页面需要先登录
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">邮箱</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
+      {error && (
+        <div className="auth-alert auth-alert-error">
+          {error === "CredentialsSignin" ? "邮箱或密码错误" : "登录失败"}
+        </div>
+      )}
 
-          <div>
-            <label className="block text-sm font-medium mb-1">密码</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
+      <form onSubmit={handleSubmit}>
+        <div className="auth-form-group">
+          <label className="auth-label" htmlFor="email">
+            邮箱
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="auth-input"
+            placeholder="you@example.com"
+            required
+            autoComplete="email"
+          />
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        <div className="auth-form-group">
+          <label className="auth-label" htmlFor="password">
+            密码
+          </label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="auth-input"
+            placeholder="••••••••"
+            required
+            autoComplete="current-password"
+          />
+        </div>
+
+        <div style={{ marginTop: "8px", marginBottom: "20px", textAlign: "right" }}>
+          <Link
+            href="/auth/forgot-password"
+            className="auth-link"
+            style={{ fontSize: "13px" }}
           >
-            {loading ? "登录中..." : "登录"}
-          </button>
-        </form>
-
-        <div className="mt-4 text-center text-sm">
-          <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
             忘记密码？
           </Link>
         </div>
 
-        <div className="mt-4 text-center text-sm">
-          还没有账号？{" "}
-          <Link href="/auth/signup" className="text-blue-600 hover:underline">
-            注册
-          </Link>
-        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="auth-button"
+        >
+          {loading ? "登录中..." : "登录"}
+        </button>
+      </form>
+
+      <div className="auth-divider" />
+
+      <div className="auth-footer">
+        还没有账号？{" "}
+        <Link href="/auth/signup" className="auth-link">
+          注册 Jeffrey.AI
+        </Link>
       </div>
     </div>
   )
+
+  // If this is a redirect from middleware (unauthenticated), show full page with layout
+  if (reason === "unauthenticated") {
+    return (
+      <AuthLayout>{card}</AuthLayout>
+    )
+  }
+
+  // Normal signin page
+  return <AuthLayout>{card}</AuthLayout>
 }
