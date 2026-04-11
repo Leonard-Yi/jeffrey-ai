@@ -32,7 +32,7 @@ export default function SignUpForm() {
         return
       }
 
-      router.push("/auth/verify-request")
+      router.push("/auth/signin?registered=true")
     } catch {
       setError("注册失败，请重试")
       setLoading(false)

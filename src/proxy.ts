@@ -47,14 +47,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(signinUrl)
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { emailVerified: true },
-  })
-
-  if (!user?.emailVerified) {
-    return NextResponse.redirect(new URL("/auth/verify-request", request.url))
-  }
+  // 邮箱验证已暂时禁用
+  // const user = await prisma.user.findUnique({
+  //   where: { id: session.user.id },
+  //   select: { emailVerified: true },
+  // })
+  // if (!user?.emailVerified) {
+  //   return NextResponse.redirect(new URL("/auth/verify-request", request.url))
+  // }
 
   return NextResponse.next()
 }
