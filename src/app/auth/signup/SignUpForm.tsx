@@ -6,9 +6,9 @@ import Link from "next/link"
 
 export default function SignUpForm() {
   const router = useRouter()
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -58,6 +58,7 @@ export default function SignUpForm() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full p-2 border rounded"
+              placeholder="张三"
             />
           </div>
 
