@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useMemberCount } from "./MemberCountContext";
+import { tokens as C } from "@/lib/design-tokens";
 
 type SearchResult = {
   id: string;
@@ -22,6 +23,34 @@ const NAV_ITEMS = [
   { href: "/suggestions", label: "建议" },
   { href: "/members", label: "人脉" },
 ];
+
+// ─── Jeffrey Logo / Chin Mascot ──────────────────────────────────────
+function JeffreyLogo({ size = 40 }: { size?: number }) {
+  const scale = size / 40;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ flexShrink: 0 }}
+    >
+      {/* Chin silhouette - Vault-style antique bronze */}
+      <circle cx="20" cy="20" r="19" fill={C.bgCard} stroke={C.borderStrong} strokeWidth="1" />
+      {/* Inner bronze ring */}
+      <circle cx="20" cy="20" r="16" fill="none" stroke={C.borderAccent} strokeWidth="0.5" />
+      {/* Stylized chin/face shape */}
+      <path
+        d="M12 18 C12 14 15 11 20 11 C25 11 28 14 28 18 C28 22 26 24 24 26 L24 30 C24 31 23 32 22 32 L18 32 C17 32 16 31 16 30 L16 26 C14 24 12 22 12 18 Z"
+        fill={C.primary}
+        opacity="0.9"
+      />
+      {/* Subtle highlight */}
+      <ellipse cx="17" cy="16" rx="2" ry="1.5" fill={C.primaryHover} opacity="0.4" />
+    </svg>
+  );
+}
 
 export default function Header() {
   const pathname = usePathname();
@@ -85,8 +114,8 @@ export default function Header() {
   return (
     <header
       style={{
-        backgroundColor: "#fff",
-        borderBottom: "1px solid #e7e5e4",
+        backgroundColor: C.bgCard,
+        borderBottom: `1px solid ${C.border}`,
         padding: "0 32px",
         display: "flex",
         alignItems: "center",
@@ -94,8 +123,8 @@ export default function Header() {
         position: "sticky",
         top: 0,
         zIndex: 50,
-        height: "60px",
-        boxShadow: "0 1px 0 rgba(0,0,0,0.03)",
+        height: C.headerHeight,
+        boxShadow: C.shadowSm,
       }}
     >
       {/* Left: Brand + Nav */}
@@ -103,15 +132,24 @@ export default function Header() {
         <Link
           href="/input"
           style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "20px",
-            fontWeight: 400,
-            color: "#1c1917",
-            letterSpacing: "-0.02em",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
             textDecoration: "none",
           }}
         >
-          Jeffrey.AI
+          <JeffreyLogo size={36} />
+          <span
+            style={{
+              fontFamily: C.fontDisplay,
+              fontSize: "20px",
+              fontWeight: 400,
+              color: C.text,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Jeffrey.AI
+          </span>
         </Link>
         <nav style={{ display: "flex", gap: "4px" }}>
           {NAV_ITEMS.map(({ href, label }) => {
@@ -121,23 +159,35 @@ export default function Header() {
                 key={href}
                 href={href}
                 style={{
-                  padding: "5px 14px",
-                  borderRadius: "8px",
+                  padding: "6px 14px",
+                  borderRadius: C.radiusMd,
                   fontSize: "14px",
                   fontWeight: isActive ? 500 : 400,
                   textDecoration: "none",
-                  transition: "all 0.12s",
+                  transition: `all ${C.transitionBase}`,
                   ...(isActive
                     ? {
-                        backgroundColor: "#fef3c7",
-                        color: "#92400e",
-                        border: "1px solid #fde68a",
+                        backgroundColor: C.bgActive,
+                        color: C.primary,
+                        border: `1px solid ${C.borderAccent}`,
                       }
                     : {
                         backgroundColor: "transparent",
-                        color: "#78716c",
-                        border: "1px solid transparent",
+                        color: C.textSecondary,
+                        border: `1px solid transparent`,
                       }),
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = C.bgHover;
+                    e.currentTarget.style.color = C.text;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = C.textSecondary;
+                  }
                 }}
               >
                 {label}
@@ -160,24 +210,24 @@ export default function Header() {
               placeholder="语义搜索人脉..."
               style={{
                 padding: "7px 12px 7px 34px",
-                border: "1px solid #d6d3d1",
-                borderRadius: "8px",
+                border: `1px solid ${C.borderStrong}`,
+                borderRadius: C.radiusMd,
                 fontSize: "13.5px",
-                backgroundColor: "#fafaf9",
+                backgroundColor: C.bgElevated,
                 outline: "none",
                 width: "240px",
-                color: "#1c1917",
-                transition: "border-color 0.12s, box-shadow 0.12s",
+                color: C.text,
+                transition: `border-color ${C.transitionBase}, box-shadow ${C.transitionBase}`,
               }}
               onFocusCapture={(e) => {
-                e.currentTarget.style.borderColor = "#d97706";
-                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(217,119,6,0.1)";
-                e.currentTarget.style.backgroundColor = "#fff";
+                e.currentTarget.style.borderColor = C.primary;
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${C.accentLight}`;
+                e.currentTarget.style.backgroundColor = C.bgCard;
               }}
               onBlurCapture={(e) => {
-                e.currentTarget.style.borderColor = "#d6d3d1";
+                e.currentTarget.style.borderColor = C.borderStrong;
                 e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.backgroundColor = "#fafaf9";
+                e.currentTarget.style.backgroundColor = C.bgElevated;
               }}
             />
             <svg
@@ -185,7 +235,7 @@ export default function Header() {
               height="14"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#a8a29e"
+              stroke={C.textMuted}
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -200,7 +250,7 @@ export default function Header() {
                   position: "absolute",
                   right: "10px",
                   fontSize: "12px",
-                  color: "#a8a29e",
+                  color: C.textMuted,
                 }}
               >
                 ...
@@ -215,10 +265,10 @@ export default function Header() {
                 position: "absolute",
                 top: "calc(100% + 6px)",
                 right: 0,
-                backgroundColor: "#fff",
-                border: "1px solid #e7e5e4",
-                borderRadius: "12px",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+                backgroundColor: C.bgCard,
+                border: `1px solid ${C.borderStrong}`,
+                borderRadius: C.radiusLg,
+                boxShadow: C.shadowMd,
                 width: "340px",
                 maxHeight: "380px",
                 overflowY: "auto",
@@ -229,8 +279,8 @@ export default function Header() {
                 style={{
                   padding: "8px 14px",
                   fontSize: "11px",
-                  color: "#a8a29e",
-                  borderBottom: "1px solid #f0ece4",
+                  color: C.textMuted,
+                  borderBottom: `1px solid ${C.border}`,
                   letterSpacing: "0.03em",
                   textTransform: "uppercase",
                 }}
@@ -248,10 +298,10 @@ export default function Header() {
                   style={{
                     padding: "10px 14px",
                     cursor: "pointer",
-                    borderBottom: "1px solid #f5f3ef",
-                    transition: "background-color 0.1s",
+                    borderBottom: `1px solid ${C.border}`,
+                    transition: `background-color ${C.transitionFast}`,
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#faf8f4")}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = C.bgHover)}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   <div
@@ -262,7 +312,7 @@ export default function Header() {
                       marginBottom: "4px",
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: "#1c1917", fontSize: "14px" }}>
+                    <span style={{ fontWeight: 600, color: C.text, fontSize: "14px" }}>
                       {result.name}
                     </span>
                   </div>
@@ -273,9 +323,9 @@ export default function Header() {
                         style={{
                           fontSize: "11px",
                           padding: "1px 7px",
-                          borderRadius: "4px",
-                          backgroundColor: tag.type === "career" ? "#dbeafe" : "#fef3c7",
-                          color: tag.type === "career" ? "#1e40af" : "#92400e",
+                          borderRadius: C.radiusSm,
+                          backgroundColor: tag.type === "career" ? C.infoBg : C.warningBg,
+                          color: tag.type === "career" ? C.info : C.primary,
                         }}
                       >
                         {tag.label}
@@ -293,14 +343,14 @@ export default function Header() {
                 position: "absolute",
                 top: "calc(100% + 6px)",
                 right: 0,
-                backgroundColor: "#fff",
-                border: "1px solid #e7e5e4",
-                borderRadius: "12px",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+                backgroundColor: C.bgCard,
+                border: `1px solid ${C.borderStrong}`,
+                borderRadius: C.radiusLg,
+                boxShadow: C.shadowMd,
                 width: "240px",
                 padding: "20px",
                 textAlign: "center",
-                color: "#a8a29e",
+                color: C.textMuted,
                 fontSize: "13.5px",
                 zIndex: 100,
               }}
@@ -314,11 +364,11 @@ export default function Header() {
         <div
           style={{
             fontSize: "12px",
-            color: "#78716c",
+            color: C.textSecondary,
             padding: "3px 10px",
-            backgroundColor: "#f5f3ef",
-            borderRadius: "100px",
-            border: "1px solid #e7e5e4",
+            backgroundColor: C.bgElevated,
+            borderRadius: C.radiusFull,
+            border: `1px solid ${C.border}`,
           }}
         >
           {count} 位联系人
@@ -330,7 +380,7 @@ export default function Header() {
             <span
               style={{
                 fontSize: "13px",
-                color: "#78716c",
+                color: C.textSecondary,
                 maxWidth: "140px",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -344,20 +394,20 @@ export default function Header() {
               style={{
                 padding: "5px 12px",
                 fontSize: "13px",
-                border: "1px solid #e7e5e4",
-                borderRadius: "7px",
-                backgroundColor: "#fff",
-                color: "#78716c",
+                border: `1px solid ${C.borderStrong}`,
+                borderRadius: C.radiusMd,
+                backgroundColor: "transparent",
+                color: C.textSecondary,
                 cursor: "pointer",
-                transition: "all 0.12s",
+                transition: `all ${C.transitionBase}`,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#d6d3d1";
-                e.currentTarget.style.color = "#1c1917";
+                e.currentTarget.style.borderColor = C.primary;
+                e.currentTarget.style.color = C.primary;
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#e7e5e4";
-                e.currentTarget.style.color = "#78716c";
+                e.currentTarget.style.borderColor = C.borderStrong;
+                e.currentTarget.style.color = C.textSecondary;
               }}
             >
               退出
