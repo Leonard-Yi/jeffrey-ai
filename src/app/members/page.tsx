@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import PersonModal from "@/components/PersonModal";
 import Header from "@/components/Header";
+import PersonModal from "@/components/PersonModal";
 import MergeConfirmDialog from "@/components/MergeConfirmDialog";
 import type { WeightedTag } from "@/lib/embedding";
+import { tokens as C } from "@/lib/design-tokens";
+import { Card } from "@/components/ui/Card";
 
 type ColumnDef = {
   key: string;
@@ -30,6 +32,25 @@ type TableRow = {
 };
 
 const SORTABLE_TYPES = new Set(["string", "number", "date"]);
+
+function Input({ style, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      style={{
+        padding: "8px 12px",
+        border: `1.5px solid ${C.borderStrong}`,
+        borderRadius: 9,
+        fontSize: 14,
+        color: C.text,
+        backgroundColor: "#fff",
+        outline: "none",
+        transition: "border-color 0.12s",
+        ...style,
+      }}
+    />
+  );
+}
 
 export default function MembersPage() {
   const [columns, setColumns] = useState<ColumnDef[]>([]);
@@ -64,23 +85,15 @@ export default function MembersPage() {
     setLoading(false);
   }, [sort, order, filterCareer, filterCity]);
 
-  useEffect(() => {
-    fetchTable();
-  }, [fetchTable]);
+  useEffect(() => { fetchTable(); }, [fetchTable]);
 
   const handleSort = (key: string, type: string) => {
     if (!SORTABLE_TYPES.has(type)) return;
-    if (sort === key) {
-      setOrder(order === "asc" ? "desc" : "asc");
-    } else {
-      setSort(key);
-      setOrder("desc");
-    }
+    if (sort === key) { setOrder(o => o === "asc" ? "desc" : "asc"); }
+    else { setSort(key); setOrder("desc"); }
   };
 
-  const handleSaved = () => {
-    fetchTable();
-  };
+  const handleSaved = () => { fetchTable(); };
 
   const handleMergeClick = async () => {
     if (selectedIds.length < 2) return;
@@ -102,18 +115,15 @@ export default function MembersPage() {
         };
       })
     );
-    // Sort to find default survivor (highest relationshipScore), but keep original selection order for display
-    const sortedForDefault = [...persons].sort((a, b) => b.relationshipScore - a.relationshipScore);
-    const defaultSurvivorId = sortedForDefault[0]?.id || persons[0]?.id || "";
+    // Sort to find default survivor (highest relationshipScore)
+    const sorted = [...persons].sort((a, b) => b.relationshipScore - a.relationshipScore);
     setMergePersons(persons);
-    setSurvivorIdForMerge(defaultSurvivorId);
+    setSurvivorIdForMerge(sorted[0]?.id || persons[0]?.id || "");
     setMergeLoading(false);
     setMergeDialogOpen(true);
   };
 
-  const handleSurvivorChange = (newSurvivorId: string) => {
-    setSurvivorIdForMerge(newSurvivorId);
-  };
+  const handleSurvivorChange = (id: string) => setSurvivorIdForMerge(id);
 
   const handleMergeConfirm = async (survivorId: string, victimIds: string[]) => {
     setMerging(true);
@@ -122,26 +132,18 @@ export default function MembersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ survivorId, victimIds }),
     });
-    if (!res.ok) {
-      throw new Error("Merge failed");
-    }
-    // Update local state instead of full refetch to avoid flash
-    const victimIdSet = new Set(victimIds);
-    setRows((prevRows) => prevRows.filter((row) => !victimIdSet.has(row.id)));
+    if (!res.ok) throw new Error("Merge failed");
+    const victimSet = new Set(victimIds);
+    setRows(prev => prev.filter(r => !victimSet.has(r.id)));
     setMerging(false);
     setMergeDialogOpen(false);
     setSelectedIds([]);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchTable();
-  };
-
   const getScoreColor = (score: number) => {
-    if (score > 60) return "#4caf50";
-    if (score >= 30) return "#d4a017";
-    return "#e53935";
+    if (score > 60) return C.success;
+    if (score >= 30) return "#d97706";
+    return C.error;
   };
 
   const renderCell = (row: TableRow, col: ColumnDef) => {
@@ -150,346 +152,212 @@ export default function MembersPage() {
     if (col.key === "relationshipScore") {
       const score = Number(value);
       return (
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: "100px" }}>
-          <div
-            style={{
-              width: "60px",
-              height: "6px",
-              backgroundColor: "#e0d9cf",
-              borderRadius: "3px",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: `${score}%`,
-                height: "100%",
-                backgroundColor: getScoreColor(score),
-                borderRadius: "3px",
-                transition: "width 0.3s ease",
-              }}
-            />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 110 }}>
+          <div style={{ width: 56, height: 5, backgroundColor: C.border, borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ width: `${score}%`, height: "100%", backgroundColor: getScoreColor(score), borderRadius: 3, transition: "width 0.3s" }} />
           </div>
-          <span style={{ fontSize: "13px", color: "#7a6a5a" }}>{score}/100</span>
+          <span style={{ fontSize: 13, color: C.textSecondary }}>{score}</span>
         </div>
       );
     }
 
     if (col.key === "actionItems") {
       const count = Number(value);
-      if (count > 0) {
-        return (
-          <span
-            style={{
-              display: "inline-block",
-              padding: "2px 8px",
-              borderRadius: "4px",
-              fontSize: "12px",
-              backgroundColor: "#fef3e0",
-              color: "#c44",
-            }}
-          >
-            {count}项待办
-          </span>
-        );
-      }
       return (
-        <span
-          style={{
-            display: "inline-block",
-            padding: "2px 8px",
-            borderRadius: "4px",
-            fontSize: "12px",
-            backgroundColor: "#f0f0f0",
-            color: "#9a8a7a",
-          }}
-        >
-          无待办
+        <span style={{
+          display: "inline-block",
+          padding: "2px 8px",
+          borderRadius: 5,
+          fontSize: 12,
+          fontWeight: 500,
+          backgroundColor: count > 0 ? "#fef2f2" : C.surfaceAlt,
+          color: count > 0 ? C.error : C.textMuted,
+          border: `1px solid ${count > 0 ? "#fecaca" : C.border}`,
+        }}>
+          {count > 0 ? `${count}项待办` : "无待办"}
         </span>
       );
     }
 
     return (
-      <span
-        style={{
-          display: "block",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={String(value)}
-      >
+      <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={String(value)}>
         {String(value)}
       </span>
     );
   };
 
   return (
-    <div style={{ backgroundColor: "#f5f3ef", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: C.bg, minHeight: "100vh" }}>
       <Header />
 
-      {/* Page Content */}
-      <div style={{ padding: "24px 32px" }}>
-        {/* Page Title */}
-        <h2
-          style={{
-            fontFamily: "Georgia, serif",
-            fontSize: "22px",
-            fontWeight: 700,
-            color: "#3a2a1a",
-            marginBottom: "24px",
-          }}
-        >
-          人脉总览
-        </h2>
-
-        {/* Filter bar */}
-      <form
-        onSubmit={handleSearch}
-        style={{
-          display: "flex",
-          gap: "12px",
-          marginBottom: "20px",
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <input
-          type="text"
-          placeholder="按职业筛选..."
-          value={filterCareer}
-          onChange={(e) => setFilterCareer(e.target.value)}
-          style={{
-            padding: "8px 14px",
-            border: "1px solid #d4c9bb",
-            borderRadius: "8px",
-            fontSize: "14px",
-            backgroundColor: "white",
-            outline: "none",
-            width: "180px",
-          }}
-        />
-        <input
-          type="text"
-          placeholder="按城市筛选..."
-          value={filterCity}
-          onChange={(e) => setFilterCity(e.target.value)}
-          style={{
-            padding: "8px 14px",
-            border: "1px solid #d4c9bb",
-            borderRadius: "8px",
-            fontSize: "14px",
-            backgroundColor: "white",
-            outline: "none",
-            width: "180px",
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            padding: "8px 20px",
-            backgroundColor: "#c8a96e",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "14px",
-            cursor: "pointer",
-          }}
-        >
-          搜索
-        </button>
-
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
-
-        {/* Merge button */}
-        {selectedIds.length >= 2 && (
-          <button
-            onClick={handleMergeClick}
-            disabled={mergeLoading}
-            style={{
-              padding: "8px 20px",
-              backgroundColor: mergeLoading ? "#f5f3ef" : "#dc2626",
-              color: mergeLoading ? "#9a8a7a" : "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: mergeLoading ? "not-allowed" : "pointer",
-              fontWeight: 600,
-            }}
-          >
-            {mergeLoading ? "加载中..." : `合并 ${selectedIds.length} 条`}
-          </button>
-        )}
-
-        {selectedIds.length > 0 && selectedIds.length < 2 && (
-          <span style={{ fontSize: "13px", color: "#9a8a7a" }}>
-            再选一条才能合并
-          </span>
-        )}
-      </form>
-
-      {/* Table */}
-      {loading ? (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "60px",
-            color: "#7a6a5a",
-            fontSize: "16px",
-          }}
-        >
-          加载中...
+      <div style={{ padding: "24px 28px", maxWidth: 1400 }}>
+        {/* Page Header */}
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: C.text, margin: "0 0 4px", letterSpacing: "-0.01em" }}>
+            人脉总览
+          </h2>
+          <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>{rows.length} 位联系人</p>
         </div>
-      ) : rows.length === 0 ? (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "60px",
-            color: "#9a8a7a",
-            fontSize: "16px",
-          }}
-        >
-          暂无联系人
-        </div>
-      ) : (
-        <div
-          style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            border: "1px solid #e0d9cf",
-            overflowX: "auto",
-          }}
-        >
-          <table style={{ minWidth: "900px", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    backgroundColor: "#f9f7f3",
-                    borderBottom: "1px solid #e0d9cf",
-                    width: "40px",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.length === rows.length && rows.length > 0}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedIds(rows.map((r) => r.id));
-                      } else {
-                        setSelectedIds([]);
-                      }
-                    }}
-                    style={{ cursor: "pointer", accentColor: "#c8a96e" }}
-                  />
-                </th>
-                {columns.map((col) => (
-                  <th
-                    key={col.key}
-                    onClick={() => handleSort(col.key, col.type)}
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      backgroundColor: "#f9f7f3",
-                      borderBottom: "1px solid #e0d9cf",
-                      fontWeight: 600,
-                      color: "#5a4a3a",
-                      fontSize: "14px",
-                      cursor: SORTABLE_TYPES.has(col.type) ? "pointer" : "default",
-                      userSelect: "none",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      {col.label}
-                      {sort === col.key && SORTABLE_TYPES.has(col.type) && (
-                        <span style={{ fontSize: "12px", color: "#c8a96e" }}>
-                          {order === "asc" ? "↑" : "↓"}
+
+        {/* Filter Bar */}
+        <Card style={{ padding: "16px 20px", marginBottom: 16 }}>
+          <form onSubmit={e => { e.preventDefault(); fetchTable(); }} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <Input
+              placeholder="按职业筛选..."
+              value={filterCareer}
+              onChange={e => setFilterCareer(e.target.value)}
+              style={{ width: 170 }}
+            />
+            <Input
+              placeholder="按城市筛选..."
+              value={filterCity}
+              onChange={e => setFilterCity(e.target.value)}
+              style={{ width: 170 }}
+            />
+            <button
+              type="submit"
+              style={{
+                padding: "8px 18px",
+                backgroundColor: C.primary,
+                color: "#fff",
+                border: "none",
+                borderRadius: 9,
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              搜索
+            </button>
+
+            <div style={{ flex: 1 }} />
+
+            {selectedIds.length >= 2 && (
+              <button
+                onClick={handleMergeClick}
+                disabled={mergeLoading}
+                style={{
+                  padding: "8px 18px",
+                  backgroundColor: mergeLoading ? C.surfaceAlt : C.error,
+                  color: mergeLoading ? C.textMuted : "#fff",
+                  border: "none",
+                  borderRadius: 9,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: mergeLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {mergeLoading ? "加载中..." : `合并 ${selectedIds.length} 条`}
+              </button>
+            )}
+            {selectedIds.length > 0 && selectedIds.length < 2 && (
+              <span style={{ fontSize: 13, color: C.textMuted }}>再选一条才能合并</span>
+            )}
+          </form>
+        </Card>
+
+        {/* Table */}
+        {loading ? (
+          <Card style={{ padding: "48px 0", textAlign: "center" }}>
+            <div style={{ color: C.textMuted, fontSize: 14 }}>加载中...</div>
+          </Card>
+        ) : rows.length === 0 ? (
+          <Card style={{ padding: "48px 0", textAlign: "center" }}>
+            <div style={{ color: C.textMuted, fontSize: 14 }}>暂无联系人</div>
+          </Card>
+        ) : (
+          <Card>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ minWidth: 900, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: "10px 14px", backgroundColor: C.surfaceAlt, borderBottom: `1px solid ${C.border}`, width: 42, textAlign: "left" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.length === rows.length && rows.length > 0}
+                        onChange={e => setSelectedIds(e.target.checked ? rows.map(r => r.id) : [])}
+                        style={{ cursor: "pointer", accentColor: C.accent }}
+                      />
+                    </th>
+                    {columns.map(col => (
+                      <th
+                        key={col.key}
+                        onClick={() => handleSort(col.key, col.type)}
+                        style={{
+                          padding: "10px 14px",
+                          textAlign: "left",
+                          backgroundColor: C.surfaceAlt,
+                          borderBottom: `1px solid ${C.border}`,
+                          fontWeight: 600,
+                          color: C.textSecondary,
+                          fontSize: 13,
+                          cursor: SORTABLE_TYPES.has(col.type) ? "pointer" : "default",
+                          userSelect: "none",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          {col.label}
+                          {sort === col.key && SORTABLE_TYPES.has(col.type) && (
+                            <span style={{ color: C.accent, fontSize: 12 }}>{order === "asc" ? "↑" : "↓"}</span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, rowIdx) => (
-                <tr
-                  key={row.id}
-                  onClick={() => setSelectedId(row.id)}
-                  style={{
-                    padding: "10px 16px",
-                    borderBottom: rowIdx < rows.length - 1 ? "1px solid #f0ece4" : "none",
-                    cursor: "pointer",
-                    backgroundColor: selectedIds.includes(row.id) ? "#fef7ec" : "transparent",
-                    transition: "background-color 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!selectedIds.includes(row.id)) {
-                      e.currentTarget.style.backgroundColor = "#faf8f4";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!selectedIds.includes(row.id)) {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }
-                  }}
-                >
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      borderBottom: rowIdx < rows.length - 1 ? "1px solid #f0ece4" : "none",
-                      backgroundColor: selectedIds.includes(row.id) ? "#fef7ec" : "transparent",
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(row.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds([...selectedIds, row.id]);
-                        } else {
-                          setSelectedIds(selectedIds.filter((id) => id !== row.id));
-                        }
-                      }}
-                      style={{ cursor: "pointer", accentColor: "#c8a96e" }}
-                    />
-                  </td>
-                  {columns.map((col) => (
-                    <td
-                      key={col.key}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, ri) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => setSelectedId(row.id)}
                       style={{
-                        padding: "10px 16px",
-                        borderBottom:
-                          rowIdx < rows.length - 1 ? "1px solid #f0ece4" : "none",
-                        fontSize: "14px",
-                        color: "#3a2a1a",
-                        backgroundColor: selectedIds.includes(row.id) ? "#fef7ec" : "transparent",
+                        cursor: "pointer",
+                        backgroundColor: selectedIds.includes(row.id) ? "#fffbf0" : ri % 2 === 0 ? "transparent" : C.surfaceAlt,
+                        transition: "background-color 0.1s",
                       }}
+                      onMouseEnter={e => { if (!selectedIds.includes(row.id)) e.currentTarget.style.backgroundColor = "#faf8f4"; }}
+                      onMouseLeave={e => { if (!selectedIds.includes(row.id)) e.currentTarget.style.backgroundColor = selectedIds.includes(row.id) ? "#fffbf0" : ri % 2 === 0 ? "transparent" : C.surfaceAlt; }}
                     >
-                      {renderCell(row, col)}
-                    </td>
+                      <td
+                        style={{ padding: "9px 12px", borderBottom: `1px solid ${C.border}`, backgroundColor: "inherit" }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(row.id)}
+                          onChange={e => setSelectedIds(e.target.checked ? [...selectedIds, row.id] : selectedIds.filter(id => id !== row.id))}
+                          style={{ cursor: "pointer", accentColor: C.accent }}
+                        />
+                      </td>
+                      {columns.map(col => (
+                        <td
+                          key={col.key}
+                          style={{
+                            padding: "9px 14px",
+                            borderBottom: `1px solid ${C.border}`,
+                            fontSize: 13.5,
+                            color: C.text,
+                            backgroundColor: "inherit",
+                            maxWidth: 200,
+                          }}
+                        >
+                          {renderCell(row, col)}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </div>
 
       {/* PersonModal */}
-      <PersonModal
-        personId={selectedId}
-        onClose={() => setSelectedId(null)}
-        onSaved={handleSaved}
-      />
+      {selectedId && (
+        <PersonModal personId={selectedId} onClose={() => setSelectedId(null)} onSaved={handleSaved} />
+      )}
 
       {/* Merge Confirm Dialog */}
       {mergeDialogOpen && mergePersons.length >= 2 && (
@@ -498,13 +366,9 @@ export default function MembersPage() {
           survivorId={survivorIdForMerge}
           onSurvivorChange={handleSurvivorChange}
           onConfirm={handleMergeConfirm}
-          onCancel={() => {
-            setMergeDialogOpen(false);
-            setSelectedIds([]);
-          }}
+          onCancel={() => { setMergeDialogOpen(false); setSelectedIds([]); }}
         />
       )}
-      </div>
     </div>
   );
 }

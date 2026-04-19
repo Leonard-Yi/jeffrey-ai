@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import AuthLayout from "@/components/AuthLayout"
+import { AuthCard } from "../_components/AuthCard"
+import { StatusIcon } from "../_components/StatusIcon"
 
 function ResetPasswordContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
 
@@ -49,83 +51,95 @@ function ResetPasswordContent() {
     }
   }
 
-  if (!token) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
-          <h1 className="text-2xl font-bold mb-4 text-red-600">无效链接</h1>
-          <p className="text-gray-600">密码重置链接无效或已过期。</p>
-        </div>
-      </div>
-    )
-  }
+  const card = (
+    <AuthCard showFooter={!success}>
+      <h1 className="auth-card-title">设置新密码</h1>
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
-          <h1 className="text-2xl font-bold mb-4 text-green-600">密码重置成功</h1>
-          <p className="mb-4 text-gray-600">您的密码已重置成功，现在可以登录了。</p>
-          <Link href="/auth/signin" className="text-blue-600 hover:underline">
+      {!token ? (
+        <div>
+          <StatusIcon type="error" />
+          <div className="auth-alert auth-alert-error">
+            密码重置链接无效或已过期。
+          </div>
+        </div>
+      ) : success ? (
+        <div>
+          <StatusIcon type="success" />
+          <div className="auth-alert auth-alert-success">
+            密码重置成功，现在可以使用新密码登录了。
+          </div>
+          <Link href="/auth/signin" className="auth-button auth-link" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
             前往登录
           </Link>
         </div>
-      </div>
-    )
-  }
+      ) : (
+        <>
+          {error && (
+            <div className="auth-alert auth-alert-error">{error}</div>
+          )}
+          <form onSubmit={handleSubmit}>
+            <div className="auth-form-group">
+              <label className="auth-label" htmlFor="password">
+                新密码
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="auth-input"
+                placeholder="至少 6 位"
+                minLength={6}
+                required
+                autoComplete="new-password"
+              />
+            </div>
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">设置新密码</h1>
+            <div className="auth-form-group">
+              <label className="auth-label" htmlFor="confirmPassword">
+                确认密码
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="auth-input"
+                placeholder="再次输入密码"
+                minLength={6}
+                required
+                autoComplete="new-password"
+              />
+            </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">新密码</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border rounded"
-              minLength={6}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">确认密码</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full p-2 border rounded"
-              minLength={6}
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? "重置中..." : "重置密码"}
-          </button>
-        </form>
-      </div>
-    </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="auth-button"
+              style={{ marginTop: "8px" }}
+            >
+              {loading ? "重置中..." : "重置密码"}
+            </button>
+          </form>
+        </>
+      )}
+    </AuthCard>
   )
+
+  return <AuthLayout>{card}</AuthLayout>
 }
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50"><p>加载中...</p></div>}>
+    <Suspense
+      fallback={
+        <AuthLayout>
+          <div className="auth-card" style={{ textAlign: "center", padding: "48px 40px" }}>
+            <div className="auth-spinner" />
+          </div>
+        </AuthLayout>
+      }
+    >
       <ResetPasswordContent />
     </Suspense>
   )

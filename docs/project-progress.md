@@ -1,8 +1,8 @@
 # Jeffrey.AI 项目开发记录
 
-**最后更新**: 2026-04-08
-**项目状态**: 破冰助手功能完成（风格选择 + 预生成）
-**会话 ID**: 008 (破冰助手：风格选择 + 预生成 + 一键批量)
+**最后更新**: 2026-04-11
+**项目状态**: Vercel 部署完成（已暂停），聚焦本地打磨
+**会话 ID**: 010 (Vercel 部署 + 邮箱验证临时禁用)
 
 ---
 
@@ -1855,3 +1855,64 @@ ede7f36 fix: resolve build failures and production runtime issues
 - [x] 完整注册 → 验证邮件 → 登录流程
 - [x] 密码重置邮件发送和验证
 - [x] 多用户数据隔离实际效果 ✅ (2026-04-10 实测通过)
+
+---
+
+## 会话 010: Vercel 部署 + 邮箱验证临时禁用 (2026-04-11)
+
+### 部署概况
+
+**部署平台**: Vercel (https://vercel.com)
+**数据库**: Neon Serverless Postgres (通过 Vercel Integration 接入)
+**仓库**: https://github.com/Leonard-Yi/jeffrey-ai
+
+**部署地址** (已暂停):
+- `https://deploy-vercel-gules-three.vercel.app` (别名)
+- `https://deploy-vercel-kffxr950n-leonard-yis-projects.vercel.app` (最后一次部署)
+
+### 已配置的环境变量 (Vercel)
+
+| 变量名 | 说明 |
+|--------|------|
+| `DATABASE_URL` | Neon Postgres 连接字符串 |
+| `DASHSCOPE_API_KEY` | 阿里通义千问 API |
+| `AUTH_SECRET` | NextAuth 密钥 |
+| `NEXTAUTH_URL` | 生产环境 URL |
+| `AUTH_TRUST_HOST` | 允许信任主机 |
+| `SMTP_HOST` | smtp.qq.com |
+| `SMTP_PORT` | 587 |
+| `SMTP_USER` | leonardyi@foxmail.com |
+| `SMTP_PASS` | QQ 邮箱授权码 |
+| `EMAIL_FROM` | leonardyi@foxmail.com |
+
+### 邮箱验证临时禁用
+
+**原因**: 部署初期简化流程，允许直接注册后使用
+
+**修改内容**:
+1. `src/app/api/auth/register/route.ts` — 移除发送验证邮件代码
+2. `src/proxy.ts` — 注释掉 `emailVerified` 检查
+3. `src/app/auth/signup/SignUpForm.tsx` — 注册成功后跳转登录页
+
+**恢复方式**: 撤销上述 3 个文件的修改即可
+
+### 关闭线上服务
+
+**操作**: 登录 Vercel Dashboard → 项目 Settings → General → Pause Deployment
+
+**本地开发**: 继续在 `master` 分支开发，使用 `npm run dev` (端口 30081)
+
+### Git 状态
+
+```
+master: 9aee996 chore: temporarily disable email verification for registration
+worktree: deploy-vercel (已合并到 master)
+```
+
+### 下一步
+
+- 聚焦本地功能打磨
+- 后续成熟后重新上线时：
+  1. 恢复邮箱验证代码
+  2. 配置 Resend 替代 SMTP (更可靠)
+  3. 执行 `vercel --prod` 重新部署

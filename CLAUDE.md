@@ -54,6 +54,16 @@ npm run test:extract
 npm run test:pipeline
 ```
 
+### E2E Testing (Playwright)
+
+**⚠️ Before running or writing E2E tests, read [docs/e2e-test-plan.md](docs/e2e-test-plan.md)**
+
+Contains:
+- Test structure and Page Object patterns
+- Running commands
+- **8 debugging lessons** learned from merge flow tests (session handling, condition waiting, CSS selector fragility, etc.)
+- Test user setup (`test@test.com`)
+
 ### Running Any Script
 ```bash
 npx tsx --env-file=.env <path-to-script>
@@ -150,6 +160,30 @@ git revert <commit-hash>
 # 回滚到指定版本
 git checkout v1.0.0 && npm run build && npm start
 ```
+
+### Worktree 强制使用规则
+
+**所有新功能/修复必须通过 Worktree 开发，禁止直接在主目录操作**：
+
+```bash
+# 创建新功能 Worktree
+git worktree add .claude/worktrees/feature/my-feature -b feature/my-feature
+cd .claude/worktrees/feature/my-feature
+# 开发 → 测试 → 提交
+
+# 完成后切回主目录合并
+git checkout main
+git merge --no-ff feature/my-feature
+git branch -d feature/my-feature
+git worktree remove .claude/worktrees/feature/my-feature
+```
+
+**为什么**：保持主目录（main 分支）始终处于干净状态，可随时切到其他项目而不影响本项目。
+
+**当前 Worktree 列表**：
+- 主目录 (`d:\Epstein.AI`) — main 分支，稳定版本
+
+---
 
 ### Parallel Development with Worktrees
 

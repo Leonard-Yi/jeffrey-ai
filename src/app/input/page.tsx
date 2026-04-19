@@ -6,8 +6,11 @@ import { usePathname } from 'next/navigation';
 import Header from '@/components/Header';
 import AmbiguousPrompt from '@/components/AmbiguousPrompt';
 import NameResolutionPrompt from '@/components/NameResolutionPrompt';
+import { tokens as C } from '@/lib/design-tokens';
+import { Card } from '@/components/ui/Card';
+import { SectionLabel } from '@/components/ui/SectionLabel';
+import { getRandomInputQuote } from '@/lib/jeffrey-quotes';
 
-// 语音识别类型
 interface SpeechRecognitionInstance {
   continuous: boolean;
   interimResults: boolean;
@@ -19,7 +22,6 @@ interface SpeechRecognitionInstance {
   onend: () => void;
 }
 
-// 数据类型
 interface Person {
   name: string;
   careers: Array<{ name: string; weight: number }>;
@@ -39,7 +41,7 @@ interface ExtractionResponse {
   status: 'complete' | 'pending' | 'ambiguous';
   jeffreyComment: string;
   persons: Person[];
-  personIds: string[]; // 用于破冰助手预生成
+  personIds: string[];
   followUpQuestion?: string;
   actionItems: ActionItem[];
   ambiguousPersons?: Person[];
@@ -53,11 +55,96 @@ interface RecentEntry {
   relativeTime: string;
 }
 
-// 对话历史中的单条消息
 interface ChatMessage {
   role: 'user' | 'jeffrey';
   content: string;
   timestamp: string;
+}
+
+// ─── Jeffrey Avatar ──────────────────────────────────────────
+function JeffreyAvatar({ size = 40 }: { size?: number }) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: '#fff',
+        border: `1.5px solid ${C.borderStrong}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+      }}
+    >
+      <span
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: size * 0.42,
+          color: C.primary,
+          fontWeight: 600,
+          lineHeight: 1,
+        }}
+      >
+        J
+      </span>
+    </div>
+  );
+}
+
+// ─── Tag Pill ───────────────────────────────────────────────
+function TagPill({
+  label,
+  type,
+  weight,
+}: {
+  label: string;
+  type: 'career' | 'interest' | 'vibe';
+  weight?: number;
+}) {
+  const colors = {
+    career: { bg: '#dbeafe', text: '#1e40af', border: '#bfdbfe' },
+    interest: { bg: '#fef3c7', text: C.primary, border: '#fde68a' },
+    vibe: { bg: '#dcfce7', text: '#15803d', border: '#bbf7d0' },
+  }[type];
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '3px 9px',
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: 500,
+        backgroundColor: colors.bg,
+        color: colors.text,
+        border: `1px solid ${colors.border}`,
+        lineHeight: 1.4,
+      }}
+    >
+      {label}
+      {weight != null && (
+        <span style={{ opacity: 0.65, fontSize: 11 }}>{Math.round(weight * 100)}%</span>
+      )}
+    </span>
+  );
+}
+
+// ─── Status Dot ──────────────────────────────────────────────
+function StatusDot({ complete }: { complete: boolean }) {
+  return (
+    <div
+      style={{
+        width: 7,
+        height: 7,
+        borderRadius: '50%',
+        backgroundColor: complete ? C.success : C.accent,
+        flexShrink: 0,
+      }}
+    />
+  );
 }
 
 const JeffreyInputPage = () => {
@@ -77,125 +164,69 @@ const JeffreyInputPage = () => {
   const [existingPersons, setExistingPersons] = useState<Array<{ id: string; name: string; careers: Array<{ name: string }> }>>([]);
   const [ambiguousPersons, setAmbiguousPersons] = useState<Person[]>([]);
   const [showResolutionPrompt, setShowResolutionPrompt] = useState(false);
-  const [nameResolutions, setNameResolutions] = useState<Array<{ mentionedName: string; candidates: Array<{ id: string; name: string; similarity: number; matchType: "exact" | "embedding"; careers: unknown[] }> }>>([]);
+  const [nameResolutions, setNameResolutions] = useState<Array<{ mentionedName: string; candidates: Array<{ id: string; name: string; similarity: number; matchType: 'exact' | 'embedding'; careers: unknown[] }> }>>([]);
   const [pendingText, setPendingText] = useState('');
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [dialogueComplete, setDialogueComplete] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const pathname = usePathname();
 
-  // Jeffrey 随机问候语
-  const jeffreyQuotes = [
-    "今天又见了谁，先生？请如实汇报。",
-    "啊，您又去应酬了？请详细说明。",
-    "我洗耳恭听，希望不是些无聊的闲聊。",
-    "看来您又有新的交际圈了，愿闻其详。",
-    "请不要让我等待太久，先生。"
-  ];
-
-  const [randomQuote, setRandomQuote] = useState('');
+  const [randomQuote] = useState(() => getRandomInputQuote());
 
   useEffect(() => {
-    setRandomQuote(jeffreyQuotes[Math.floor(Math.random() * jeffreyQuotes.length)]);
-
-    const savedEntries = localStorage.getItem('jeffrey_recent_entries');
-    if (savedEntries) {
-      try {
-        setRecentEntries(JSON.parse(savedEntries));
-      } catch (e) {
-        console.error('Failed to parse recent entries', e);
-      }
+    const saved = localStorage.getItem('jeffrey_recent_entries');
+    if (saved) {
+      try { setRecentEntries(JSON.parse(saved)); } catch (_) {}
     }
-
-    // Fetch existing persons for ambiguous merge lookup
     fetch('/api/members/table')
-      .then((r) => r.json())
-      .then((data) => {
-        setExistingPersons(data.rows || []);
-      })
+      .then(r => r.json())
+      .then(d => setExistingPersons(d.rows || []))
       .catch(() => {});
   }, []);
 
-  // 初始化语音识别
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = true; // 支持连续录音，用户手动停止
-        recognitionRef.current.interimResults = false;
-        recognitionRef.current.lang = 'zh-CN';
-
-        recognitionRef.current.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setInputText(prev => prev + (prev ? ' ' : '') + transcript);
-        };
-
-        recognitionRef.current.onerror = (event: any) => {
-          console.error('Speech recognition error', event.error);
-          setIsRecording(false);
-        };
-
-        // 不再自动停止，由用户手动控制
-        recognitionRef.current.onend = () => {
-          // 只有非用户主动停止时才更新状态
-          if (isRecording) {
-            setIsRecording(false);
-          }
-        };
-      }
-    }
+    if (typeof window === 'undefined') return;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    recognitionRef.current = new SR();
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = false;
+    recognitionRef.current.lang = 'zh-CN';
+    recognitionRef.current.onresult = (e: any) => {
+      const t = e.results[0][0].transcript;
+      setInputText(p => p + (p ? ' ' : '') + t);
+    };
+    recognitionRef.current.onerror = () => setIsRecording(false);
+    recognitionRef.current.onend = () => { if (isRecording) setIsRecording(false); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRecordToggle = () => {
-    if (!recognitionRef.current) {
-      alert('语音识别不可用，请使用最新版 Chrome 浏览器');
-      return;
-    }
-
-    if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
-    }
+    if (!recognitionRef.current) { alert('语音识别不可用，请使用最新版 Chrome'); return; }
+    if (isRecording) { recognitionRef.current.stop(); setIsRecording(false); }
+    else { recognitionRef.current.start(); setIsRecording(true); }
   };
 
-  // Apply resolved name replacements to text
-  const applyNameResolutions = (text: string, resolvedNames: Map<string, string>): string => {
-    let result = text;
-    for (const [originalName, matchedName] of resolvedNames) {
-      if (originalName !== matchedName) {
-        result = result.replace(new RegExp(originalName, 'g'), matchedName);
-      }
+  const applyNameResolutions = (text: string, resolved: Map<string, string>) => {
+    let r = text;
+    for (const [orig, matched] of resolved) {
+      if (orig !== matched) r = r.replace(new RegExp(orig, 'g'), matched);
     }
-    return result;
+    return r;
   };
 
-  // Handle resolution confirmation: replace names and proceed to analyze
-  const handleResolutionConfirm = async (resolvedNames: Map<string, string>) => {
+  const handleResolutionConfirm = async (resolved: Map<string, string>) => {
     setShowResolutionPrompt(false);
-    const resolvedText = applyNameResolutions(pendingText, resolvedNames);
+    const resolvedText = applyNameResolutions(pendingText, resolved);
     setInputText(resolvedText);
     setOriginalInputText(resolvedText);
-
-    // Now proceed with the resolved text
     setIsProcessing(true);
     try {
-      const payload = JSON.stringify({ text: resolvedText });
-      const response = await fetch('/api/analyze', {
+      const data: ExtractionResponse = await (await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: payload
-      });
-
-      if (!response.ok) {
-        throw new Error(`API Error ${response.status}`);
-      }
-
-      const data: ExtractionResponse = await response.json();
+        body: JSON.stringify({ text: resolvedText }),
+      })).json();
       setJeffreyComment(data.jeffreyComment);
       setPersons(data.persons);
       setPersonIds(data.personIds || []);
@@ -203,71 +234,35 @@ const JeffreyInputPage = () => {
       setActionItems(data.actionItems);
       setStatus(data.status);
       setAmbiguousPersons(data.ambiguousPersons || []);
-
       if (data.status === 'complete') {
-        const newEntry: RecentEntry = {
-          id: Date.now().toString(),
-          text: resolvedText.substring(0, 60) + (resolvedText.length > 60 ? '...' : ''),
-          timestamp: new Date().toLocaleString(),
-          status: data.status,
-          relativeTime: '刚刚'
-        };
-        const updatedEntries = [newEntry, ...recentEntries.slice(0, 4)];
-        setRecentEntries(updatedEntries);
-        localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updatedEntries));
+        const entry: RecentEntry = { id: Date.now().toString(), text: resolvedText.slice(0, 60) + (resolvedText.length > 60 ? '...' : ''), timestamp: new Date().toLocaleString(), status: data.status, relativeTime: '刚刚' };
+        const updated = [entry, ...recentEntries.slice(0, 4)];
+        setRecentEntries(updated);
+        localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updated));
         setDialogueComplete(true);
       } else if (data.status === 'pending' && data.followUpQuestion) {
-        const jeffreyMessage: ChatMessage = {
-          role: 'jeffrey',
-          content: data.followUpQuestion,
-          timestamp: new Date().toLocaleString('zh-CN'),
-        };
-        setConversationHistory([jeffreyMessage]);
+        setConversationHistory([{ role: 'jeffrey', content: data.followUpQuestion, timestamp: new Date().toLocaleString('zh-CN') }]);
         setDialogueComplete(false);
       }
-    } catch (error) {
-      console.error('Error after resolution:', error);
-    } finally {
-      setIsProcessing(false);
-    }
+    } finally { setIsProcessing(false); }
   };
 
-  // Skip resolution and proceed directly to analyze
   const handleResolutionSkip = () => {
     setShowResolutionPrompt(false);
-    // Proceed with original text as-is
     handleSubmitWithText(pendingText, false);
   };
 
-  // Internal: submit a specific text to analyze (used after resolution)
   const handleSubmitWithText = async (textToSubmit: string, isFollowUp = false) => {
     if (!textToSubmit.trim()) return;
-
     try {
       setIsProcessing(true);
-
-      // Add user message to conversation history
-      const userMessage: ChatMessage = {
-        role: 'user',
-        content: textToSubmit,
-        timestamp: new Date().toLocaleString('zh-CN'),
-      };
-      if (isFollowUp) {
-        setConversationHistory(prev => [...prev, userMessage]);
-      }
-
-      const payload = JSON.stringify({ text: textToSubmit });
-      const response = await fetch('/api/analyze', {
+      const userMsg: ChatMessage = { role: 'user', content: textToSubmit, timestamp: new Date().toLocaleString('zh-CN') };
+      if (isFollowUp) setConversationHistory(p => [...p, userMsg]);
+      const data: ExtractionResponse = await (await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: payload
-      });
-
-      if (!response.ok) {
-        throw new Error(`API Error ${response.status}`);
-      }
-
-      const data: ExtractionResponse = await response.json();
+        body: JSON.stringify({ text: textToSubmit }),
+      })).json();
       setJeffreyComment(data.jeffreyComment);
       setPersons(data.persons);
       setPersonIds(data.personIds || []);
@@ -275,401 +270,356 @@ const JeffreyInputPage = () => {
       setActionItems(data.actionItems);
       setStatus(data.status);
       setAmbiguousPersons(data.ambiguousPersons || []);
-
       if (data.status === 'complete') {
-        // Add Jeffrey's response to conversation history
-        const jeffreyMessage: ChatMessage = {
-          role: 'jeffrey',
-          content: data.jeffreyComment || '信息已保存到数据库。',
-          timestamp: new Date().toLocaleString('zh-CN'),
-        };
-        setConversationHistory(prev => [...prev, jeffreyMessage]);
-
+        const jeffreyMsg: ChatMessage = { role: 'jeffrey', content: data.jeffreyComment || '信息已保存。', timestamp: new Date().toLocaleString('zh-CN') };
+        setConversationHistory(p => [...p, jeffreyMsg]);
         if (!isFollowUp) {
-          // First time complete - save to recent entries but keep dialogue open
-          const newEntry: RecentEntry = {
-            id: Date.now().toString(),
-            text: textToSubmit.substring(0, 60) + (textToSubmit.length > 60 ? '...' : ''),
-            timestamp: new Date().toLocaleString(),
-            status: data.status,
-            relativeTime: '刚刚'
-          };
-          const updatedEntries = [newEntry, ...recentEntries.slice(0, 4)];
-          setRecentEntries(updatedEntries);
-          localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updatedEntries));
-          // Mark dialogue as complete since no follow-up was needed
+          const entry: RecentEntry = { id: Date.now().toString(), text: textToSubmit.slice(0, 60) + (textToSubmit.length > 60 ? '...' : ''), timestamp: new Date().toLocaleString(), status: data.status, relativeTime: '刚刚' };
+          const updated = [entry, ...recentEntries.slice(0, 4)];
+          setRecentEntries(updated);
+          localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updated));
           setDialogueComplete(true);
-        } else {
-          // After follow-up complete - dialogue is done
-          setDialogueComplete(true);
-        }
+        } else { setDialogueComplete(true); }
       } else if (data.status === 'pending' && data.followUpQuestion) {
-        // Add Jeffrey's follow-up question to conversation history
-        const jeffreyMessage: ChatMessage = {
-          role: 'jeffrey',
-          content: data.followUpQuestion,
-          timestamp: new Date().toLocaleString('zh-CN'),
-        };
-        setConversationHistory(prev => [...prev, jeffreyMessage]);
+        setConversationHistory(p => [...p, { role: 'jeffrey', content: data.followUpQuestion, timestamp: new Date().toLocaleString('zh-CN') }]);
         setDialogueComplete(false);
       }
-    } catch (error) {
-      console.error('Error submitting:', error);
-    } finally {
-      setIsProcessing(false);
-    }
+    } finally { setIsProcessing(false); }
   };
 
   const handleSubmit = async (followUpReply?: string) => {
-    // 确保使用正确的原文本
-    const baseText = originalInputText || inputText;
-    const textToSubmit = followUpReply ? `${baseText}\n\n追问回复：${followUpReply}` : inputText;
-
-    if (!textToSubmit.trim()) {
-      console.error('[Jeffrey.AI] Empty text to submit');
-      return;
-    }
-
-    console.log('[Jeffrey.AI] baseText (originalInputText || inputText):', baseText);
-    console.log('[Jeffrey.AI] followUpReply:', followUpReply);
-    console.log('[Jeffrey.AI] Submitting text:', textToSubmit);
-    console.log('[Jeffrey.AI] Text type:', typeof textToSubmit);
-    console.log('[Jeffrey.AI] Text length:', textToSubmit.length);
-
+    const base = originalInputText || inputText;
+    const textToSubmit = followUpReply ? `${base}\n\n追问回复：${followUpReply}` : inputText;
+    if (!textToSubmit.trim()) return;
     try {
       setIsProcessing(true);
-
-      // 如果是首次提交（非追问回复），保存原文本
+      if (!followUpReply) setOriginalInputText(inputText);
       if (!followUpReply) {
-        console.log('[Jeffrey.AI] Saving original input text:', inputText);
-        setOriginalInputText(inputText);
-      }
-
-      // Step 1: Pre-check for name resolution (only for initial submissions, not follow-up replies)
-      if (!followUpReply) {
-        const resolveRes = await fetch('/api/persons/resolve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: textToSubmit }),
-        });
-
-        if (resolveRes.ok) {
-          const resolveData = await resolveRes.json();
-          if (resolveData.resolutions?.length > 0) {
-            // Found potential matches - show confirmation prompt
-            setNameResolutions(resolveData.resolutions);
+        const r = await fetch('/api/persons/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: textToSubmit }) });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.resolutions?.length > 0) {
+            setNameResolutions(d.resolutions);
             setPendingText(textToSubmit);
             setShowResolutionPrompt(true);
             setIsProcessing(false);
-            return; // Wait for user confirmation
+            return;
           }
         }
       }
-
-      // Step 2: No resolutions needed or follow-up reply - proceed to analyze
       await handleSubmitWithText(textToSubmit, !!followUpReply);
-
-      // 追问回复发送后，清空回复相关状态
-      if (followUpReply) {
-        setSelectedQuickReply(null);
-        setCustomReply('');
-        // 清空输入框内容
-        setInputText('');
-      }
-    } catch (error) {
-      console.error('Error submitting:', error);
-    } finally {
-      if (!showResolutionPrompt) {
-        setIsProcessing(false);
-      }
-    }
+      if (followUpReply) { setSelectedQuickReply(null); setCustomReply(''); setInputText(''); }
+    } catch {} finally { if (!showResolutionPrompt) setIsProcessing(false); }
   };
 
   const handleClear = () => {
-    setInputText('');
-    setOriginalInputText('');
-    setJeffreyComment('');
-    setPersons([]);
-    setPersonIds([]);
-    setFollowUpQuestion('');
-    setActionItems([]);
-    setStatus(null);
-    setSelectedQuickReply(null);
-    setCustomReply('');
-    setIsProcessing(false);
-    setAmbiguousPersons([]);
-    setShowResolutionPrompt(false);
-    setNameResolutions([]);
-    setPendingText('');
-    setAmbiguousPersons([]);
-    setConversationHistory([]);
-    setDialogueComplete(false);
+    setInputText(''); setOriginalInputText(''); setJeffreyComment(''); setPersons([]); setPersonIds([]);
+    setFollowUpQuestion(''); setActionItems([]); setStatus(null); setSelectedQuickReply(null); setCustomReply('');
+    setAmbiguousPersons([]); setShowResolutionPrompt(false); setNameResolutions([]); setPendingText('');
+    setConversationHistory([]); setDialogueComplete(false); setIsProcessing(false);
   };
 
-  const handleQuickReply = (reply: string) => {
-    setSelectedQuickReply(reply);
-  };
-
-  const getRelativeTime = (timestamp: string) => {
-    const now = new Date();
-    const past = new Date(timestamp);
-    const diffInHours = Math.floor((now.getTime() - past.getTime()) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return '刚刚';
-    if (diffInHours < 24) return `${diffInHours}小时前`;
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}天前`;
-    return '更早';
-  };
-
-  // 破冰助手预生成：分析完成后，等待3分钟无新操作则触发
+  // Icebreaker pre-gen timer
   const icebreakerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
-    // 只在有提取到人物且状态为 complete 时触发
     if (personIds.length === 0 || status !== 'complete') return;
-
-    // 清除之前的定时器
-    if (icebreakerTimerRef.current) {
-      clearTimeout(icebreakerTimerRef.current);
-    }
-
-    // 设置新的3分钟定时器
+    if (icebreakerTimerRef.current) clearTimeout(icebreakerTimerRef.current);
     icebreakerTimerRef.current = setTimeout(async () => {
-      console.log('[Jeffrey.AI] Triggering icebreaker pre-generation for', personIds.length, 'persons');
-
-      // 为每个人物触发预生成（后台进行，不阻塞UI）
-      for (const personId of personIds) {
-        try {
-          await fetch(`/api/persons/${personId}/icebreaker`, {
-            method: 'POST',
-          });
-        } catch (e) {
-          console.error('[Jeffrey.AI] Icebreaker pre-gen failed for', personId, e);
-        }
+      for (const pid of personIds) {
+        try { await fetch(`/api/persons/${pid}/icebreaker`, { method: 'POST' }); } catch (_) {}
       }
-    }, 3 * 60 * 1000); // 3分钟
-
-    return () => {
-      if (icebreakerTimerRef.current) {
-        clearTimeout(icebreakerTimerRef.current);
-      }
-    };
+    }, 3 * 60 * 1000);
+    return () => { if (icebreakerTimerRef.current) clearTimeout(icebreakerTimerRef.current); };
   }, [personIds, status]);
 
   return (
-    <div className="min-h-screen bg-[#f5f3ef]">
+    <div style={{
+      minHeight: '100vh',
+      background: `
+        radial-gradient(ellipse 60% 40% at 10% 0%, rgba(217, 119, 6, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 35% at 90% 100%, rgba(146, 64, 14, 0.06) 0%, transparent 50%),
+        #f5f3ef
+      `,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Noise texture */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E")`,
+        pointerEvents: 'none',
+        zIndex: 1,
+      }} />
+      <div style={{ position: 'relative', zIndex: 2 }}>
       <Header />
 
-      {/* 主内容区 */}
-      <main className="flex flex-col lg:flex-row gap-4 p-4 max-w-[1600px] mx-auto">
-        {/* 左栏 - 输入区 */}
-        <div className="lg:w-[42%] flex flex-col gap-4">
-          {/* Jeffrey 头像与问候语 */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center border border-amber-200">
-                <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <p className="text-gray-500 italic text-sm">{randomQuote}</p>
-            </div>
-          </div>
+      <main
+        style={{
+          display: 'flex',
+          gap: 16,
+          padding: '16px 20px',
+          maxWidth: 1520,
+          margin: '0 auto',
+        }}
+      >
+        {/* ── LEFT COLUMN ── */}
+        <div style={{ width: '42%', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {/* 输入框 */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          {/* Greeting */}
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <JeffreyAvatar size={44} />
+              <p
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 14,
+                  fontStyle: 'italic',
+                  color: C.textSecondary,
+                  lineHeight: 1.6,
+                  margin: 0,
+                }}
+              >
+                {randomQuote}
+              </p>
+            </div>
+          </Card>
+
+          {/* Text Input */}
+          <Card>
             <textarea
               ref={textareaRef}
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={e => setInputText(e.target.value)}
               placeholder="今天见了谁？聊了什么？有什么新的发现或约定吗？"
-              className="w-full h-40 resize-none text-gray-700 placeholder-gray-400 focus:outline-none text-base leading-relaxed"
+              style={{
+                width: '100%',
+                height: 160,
+                resize: 'none',
+                border: 'none',
+                outline: 'none',
+                fontSize: 15,
+                color: C.text,
+                lineHeight: 1.7,
+                backgroundColor: 'transparent',
+                fontFamily: 'inherit',
+              }}
             />
-          </div>
+          </Card>
 
-          {/* 语音按钮 */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          {/* Voice */}
+          <Card>
             <button
               onClick={handleRecordToggle}
-              className={`flex items-center space-x-3 w-full py-3 px-4 rounded-lg transition ${
-                isRecording
-                  ? 'bg-red-50 border-2 border-red-300'
-                  : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
-              }`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: 10,
+                border: isRecording ? `2px solid ${C.accent}` : '2px solid transparent',
+                backgroundColor: isRecording ? C.accentLight : '#fafaf9',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
             >
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                isRecording ? 'bg-red-100' : 'bg-white border border-gray-200'
-              }`}>
-                <svg className={`w-6 h-6 ${isRecording ? 'text-red-500' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 2.93V16a1 1 0 102 0v-2.07z" clipRule="evenodd" />
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  backgroundColor: isRecording ? C.accentLight : '#fff',
+                  border: `1.5px solid ${isRecording ? C.accent : '#e7e5e4'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill={isRecording ? C.accent : 'none'} stroke={isRecording ? C.accent : '#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               </div>
-              <span className="text-gray-500 text-sm">
-                {isRecording ? '正在录音中，请说话...\n点击按钮结束录音' : '点击开始录音\n说完后再次点击结束'}
-              </span>
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ fontSize: 14, color: isRecording ? C.primary : C.textSecondary, margin: 0, fontWeight: 500 }}>
+                  {isRecording ? '正在录音中...' : '语音录入'}
+                </p>
+                <p style={{ fontSize: 12, color: C.textMuted, margin: '2px 0 0', lineHeight: 1.4 }}>
+                  {isRecording ? '点击按钮结束录音' : '点击开始，说完再点击结束'}
+                </p>
+              </div>
             </button>
-          </div>
+          </Card>
 
-          {/* 操作按钮 */}
-          <div className="flex space-x-3">
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: 10 }}>
             <button
               onClick={handleClear}
-              disabled={isProcessing}
-              className="flex-1 py-3 px-6 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isProcessing || (!inputText && !jeffreyComment)}
+              style={{
+                flex: 1,
+                padding: '11px 0',
+                borderRadius: 10,
+                border: `1.5px solid ${C.borderStrong}`,
+                backgroundColor: '#fff',
+                color: C.textSecondary,
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: (isProcessing || (!inputText && !jeffreyComment)) ? 'not-allowed' : 'pointer',
+                opacity: (isProcessing || (!inputText && !jeffreyComment)) ? 0.5 : 1,
+                transition: 'all 0.15s',
+              }}
             >
               清空
             </button>
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                handleSubmit();
-              }}
+              onClick={() => handleSubmit()}
               disabled={!inputText.trim() || isProcessing}
-              className={`flex-1 py-3 px-6 rounded-xl transition font-medium ${
-                isProcessing
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : inputText.trim()
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 shadow-sm'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
+              style={{
+                flex: 2,
+                padding: '11px 0',
+                borderRadius: 10,
+                border: 'none',
+                backgroundColor: !inputText.trim() || isProcessing ? '#d6d3d1' : C.primary,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: (!inputText.trim() || isProcessing) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
             >
               {isProcessing ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <>
+                  <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
                   Jeffrey 思考中...
-                </span>
-              ) : (
-                '汇报给 Jeffrey'
-              )}
+                </>
+              ) : '汇报给 Jeffrey'}
             </button>
           </div>
 
-          {/* 最近录入 */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <h3 className="text-gray-500 text-sm font-medium mb-3 pb-2 border-b border-gray-100">最近录入</h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {recentEntries.map((entry) => (
+          {/* Recent Entries */}
+          <Card>
+            <SectionLabel>最近录入</SectionLabel>
+            <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {recentEntries.length === 0 ? (
+                <p style={{ color: C.textMuted, fontSize: 13, textAlign: 'center', padding: '16px 0', fontStyle: 'italic' }}>暂无历史记录</p>
+              ) : recentEntries.map(entry => (
                 <div
                   key={entry.id}
-                  className="flex items-center p-2.5 rounded-lg hover:bg-gray-50 transition"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    cursor: 'default',
+                    transition: 'background-color 0.1s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.surfaceAlt)}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <div className={`w-2 h-2 rounded-full mr-3 ${
-                    entry.status === 'pending' ? 'bg-amber-500' : 'bg-green-500'
-                  }`}></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-700 text-sm truncate">{entry.text}</p>
-                  </div>
-                  <span className="text-xs text-gray-400 ml-2">{entry.relativeTime}</span>
+                  <StatusDot complete={entry.status === 'complete'} />
+                  <span style={{ flex: 1, fontSize: 13.5, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.text}</span>
+                  <span style={{ fontSize: 11.5, color: C.textMuted, flexShrink: 0 }}>{entry.relativeTime}</span>
                 </div>
               ))}
-              {recentEntries.length === 0 && (
-                <p className="text-gray-400 text-sm italic text-center py-4">暂无历史记录</p>
-              )}
             </div>
-          </div>
+          </Card>
         </div>
 
-        {/* 右栏 - 响应区 */}
-        <div className="lg:w-[58%] flex flex-col gap-4">
-          {/* Jeffrey 解读 */}
+        {/* ── RIGHT COLUMN ── */}
+        <div style={{ width: '58%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Jeffrey's Comment */}
           {jeffreyComment && (
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 shadow-sm border border-amber-100">
-              <div className="flex items-center space-x-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
-                  <span className="text-amber-700 text-xs font-bold">J</span>
-                </div>
-                <h3 className="text-amber-800 text-sm font-medium">Jeffrey 的点评</h3>
+            <Card style={{ background: '#fffcf7', border: `1px solid #fde68a` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <JeffreyAvatar size={32} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.primary, letterSpacing: '0.01em' }}>Jeffrey 的点评</span>
               </div>
-              <p className="text-gray-700 leading-relaxed">{jeffreyComment}</p>
-            </div>
+              <p style={{ fontSize: 14.5, color: C.text, lineHeight: 1.75, margin: 0, fontFamily: 'var(--font-display)' }}>{jeffreyComment}</p>
+            </Card>
           )}
 
-          {/* 对话历史 */}
+          {/* Conversation History */}
           {conversationHistory.length > 0 && (
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-gray-400 text-xs font-medium uppercase tracking-wider">对话记录</h3>
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionLabel>对话记录</SectionLabel>
                 {dialogueComplete && (
-                  <span className="text-xs text-green-600 font-medium">✓ 对话已完成</span>
+                  <span style={{ fontSize: 12, color: C.success, fontWeight: 500 }}>✓ 对话已完成</span>
                 )}
               </div>
-              <div className="space-y-4 max-h-80 overflow-y-auto">
+              <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {conversationHistory.map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div key={idx} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                     <div
-                      className={`max-w-[85%] rounded-xl px-4 py-3 ${
-                        msg.role === 'user'
-                          ? 'bg-amber-100 text-gray-800 rounded-br-md'
-                          : 'bg-gray-100 text-gray-700 rounded-bl-md'
-                      }`}
+                      style={{
+                        maxWidth: '82%',
+                        borderRadius: 12,
+                        padding: '10px 14px',
+                        backgroundColor: msg.role === 'user' ? '#fff' : '#f5f5f4',
+                        border: msg.role === 'user' ? `1px solid ${C.border}` : '1px solid #e7e5e4',
+                      }}
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs font-medium ${
-                          msg.role === 'user' ? 'text-amber-700' : 'text-gray-500'
-                        }`}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: msg.role === 'user' ? C.primary : C.textMuted }}>
                           {msg.role === 'user' ? '你' : 'Jeffrey'}
                         </span>
-                        <span className="text-xs text-gray-400">{msg.timestamp}</span>
+                        <span style={{ fontSize: 11, color: C.textMuted }}>{msg.timestamp}</span>
                       </div>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      <p style={{ fontSize: 13.5, color: C.text, lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
-          {/* 已提取人物 */}
+          {/* Extracted Persons */}
           {persons.length > 0 && (
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <h3 className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-4">已提取</h3>
-              <div className="space-y-3">
-                {persons.map((person, index) => (
-                  <div key={index} className="flex items-start space-x-4 p-3 rounded-lg bg-gray-50">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center border border-blue-200 flex-shrink-0">
-                      <span className="text-blue-700 font-medium">{person.name.charAt(0)}</span>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-800 mb-2">{person.name}</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {person.careers.map((career, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
-                          >
-                            {career.name}
-                            <span className="ml-1 opacity-70">{(career.weight * 100).toFixed(0)}%</span>
-                          </span>
-                        ))}
-                        {person.interests.map((interest, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200"
-                          >
-                            {interest.name}
-                            <span className="ml-1 opacity-70">{(interest.weight * 100).toFixed(0)}%</span>
-                          </span>
-                        ))}
-                        {person.vibeTags.map((vibe, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-green-50 text-green-700 border border-green-200"
-                          >
-                            {vibe}
-                          </span>
-                        ))}
+            <Card>
+              <SectionLabel>已提取人物</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {persons.map((person, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 14,
+                      padding: 14,
+                      backgroundColor: C.surfaceAlt,
+                      borderRadius: 10,
+                      border: `1px solid ${C.border}`,
+                    }}
+                  >
+                    <JeffreyAvatar size={40} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h4 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 8px', fontFamily: 'var(--font-display)' }}>{person.name}</h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {person.careers.map((c, i) => <TagPill key={i} label={c.name} type="career" weight={c.weight} />)}
+                        {person.interests.map((i, idx) => <TagPill key={idx} label={i.name} type="interest" weight={i.weight} />)}
+                        {person.vibeTags.map((v, idx) => <TagPill key={idx} label={v} type="vibe" />)}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
-          {/* 姓名预检区 - 在提交前让用户确认疑似匹配 */}
+          {/* Name Resolution Prompt */}
           {showResolutionPrompt && nameResolutions.length > 0 && (
             <NameResolutionPrompt
               resolutions={nameResolutions}
@@ -679,131 +629,136 @@ const JeffreyInputPage = () => {
             />
           )}
 
-          {/* Ambiguous 区 */}
+          {/* Ambiguous */}
           {status === 'ambiguous' && ambiguousPersons.length > 0 && (
             <AmbiguousPrompt
-              ambiguousPersons={ambiguousPersons as Parameters<typeof AmbiguousPrompt>[0]['ambiguousPersons']}
+              ambiguousPersons={ambiguousPersons as Array<{ name: string; ambiguousWith: string[]; careers: Array<{ name: string; weight: number }>; interests: Array<{ name: string; weight: number }>; vibeTags: string[] }>}
               existingPersons={existingPersons}
               onConfirmMerge={async (name, existingId, ambiguousName) => {
-                // User confirmed: the new person IS the existing person.
-                // Clear ambiguous state and re-submit with confirmation appended to original text.
-                setAmbiguousPersons([]);
-                setStatus(null);
-                // Use handleSubmit with followUpReply to append confirmation to originalText
-                await handleSubmit(`是的，${name}就是之前录入的${ambiguousName}，请合并到已有档案。`);
+                setAmbiguousPersons([]); setStatus(null);
+                await handleSubmit(`是的，${name}就是之前录入的${ambiguousName}，请合并。`);
               }}
-              onCreateNew={(name) => {
-                // User says it's NOT the same person - create a new entry.
-                // Re-submit as new person with explicit instruction.
-                setAmbiguousPersons([]);
-                setStatus(null);
+              onCreateNew={name => {
+                setAmbiguousPersons([]); setStatus(null);
                 handleSubmit(`用户确认：${name}不是之前录入的同一人，是新创建的条目。`);
               }}
             />
           )}
 
-          {/* 追问区 - 当对话未完成且有待回复问题时显示 */}
+          {/* Follow-up Question */}
           {status === 'pending' && followUpQuestion && !dialogueComplete && (
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <h3 className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">JEFFREY 的追问</h3>
-              <p className="text-gray-600 italic leading-relaxed mb-4">"{followUpQuestion}"</p>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {['不太清楚', '他做并购', customReply || '自定义回复'].map((option) => (
+            <Card>
+              <SectionLabel>Jeffrey 的追问</SectionLabel>
+              <p style={{ fontSize: 14.5, color: C.textSecondary, fontStyle: 'italic', marginBottom: 16, lineHeight: 1.7 }}>
+                &ldquo;{followUpQuestion}&rdquo;
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {['不太清楚', '他做并购', customReply || '自定义回复'].map(opt => (
                   <button
-                    key={option}
-                    onClick={() => {
-                      if (option === '自定义回复') {
-                        setCustomReply('');
-                      } else {
-                        setSelectedQuickReply(option);
-                        setCustomReply('');
-                      }
+                    key={opt}
+                    onClick={() => { if (opt === '自定义回复') { setCustomReply(''); } else { setSelectedQuickReply(opt); setCustomReply(''); } }}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      border: `1.5px solid ${(selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.accent : C.borderStrong}`,
+                      backgroundColor: (selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.accentLight : '#fff',
+                      color: (selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.primary : C.textSecondary,
+                      cursor: 'pointer',
+                      transition: 'all 0.12s',
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm transition ${
-                      (selectedQuickReply === option || (option === '自定义回复' && customReply))
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
                   >
-                    {option}
+                    {opt}
                   </button>
                 ))}
               </div>
               <input
                 type="text"
                 value={customReply}
-                onChange={(e) => {
-                  setCustomReply(e.target.value);
-                  setSelectedQuickReply('自定义回复');
-                }}
+                onChange={e => { setCustomReply(e.target.value); setSelectedQuickReply('自定义回复'); }}
                 placeholder="输入自定义回复..."
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:border-amber-300 transition mb-3"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  border: `1.5px solid ${C.borderStrong}`,
+                  fontSize: 14,
+                  color: C.text,
+                  outline: 'none',
+                  marginBottom: 12,
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.12s',
+                }}
+                onFocus={e => (e.target.style.borderColor = C.accent)}
+                onBlur={e => (e.target.style.borderColor = C.borderStrong)}
               />
               <button
                 onClick={() => {
-                  // 确保发送的是字符串
-                  let reply: string;
-                  if (customReply && typeof customReply === 'string' && customReply.trim()) {
-                    reply = customReply;
-                  } else if (selectedQuickReply && typeof selectedQuickReply === 'string') {
-                    reply = selectedQuickReply;
-                  } else {
-                    alert('请输入回复内容或选择快捷回复');
-                    return;
-                  }
+                  const reply = (customReply && customReply.trim()) ? customReply : (selectedQuickReply || '');
+                  if (!reply) { alert('请输入回复内容或选择快捷回复'); return; }
                   handleSubmit(reply);
                 }}
                 disabled={(!selectedQuickReply && !customReply) || isProcessing}
-                className={`w-full py-2.5 rounded-lg text-sm font-medium transition ${
-                  isProcessing
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : selectedQuickReply || customReply
-                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
+                style={{
+                  width: '100%',
+                  padding: '10px 0',
+                  borderRadius: 10,
+                  border: 'none',
+                  backgroundColor: (!selectedQuickReply && !customReply) || isProcessing ? '#d6d3d1' : C.primary,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: (!selectedQuickReply && !customReply) || isProcessing ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s',
+                }}
               >
-                {isProcessing ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Jeffrey 思考中...
-                  </span>
-                ) : (
-                  '发送回复给 Jeffrey'
-                )}
+                {isProcessing ? '发送中...' : '发送回复'}
               </button>
-            </div>
+            </Card>
           )}
 
-          {/* 社交债务 */}
+          {/* Social Debts */}
           {actionItems.length > 0 && (
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <h3 className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-4">社交债务</h3>
-              <div className="space-y-2">
-                {actionItems.map((item, index) => (
+            <Card>
+              <SectionLabel>社交债务</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {actionItems.map((item, idx) => (
                   <div
-                    key={index}
-                    className="flex items-center p-3 rounded-lg bg-gray-50"
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 12px',
+                      backgroundColor: C.surfaceAlt,
+                      borderRadius: 8,
+                      border: `1px solid ${C.border}`,
+                    }}
                   >
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium mr-3 ${
-                      item.ownedBy === 'me'
-                        ? 'bg-red-50 text-red-600 border border-red-200'
-                        : item.ownedBy === 'them'
-                        ? 'bg-green-50 text-green-600 border border-green-200'
-                        : 'bg-amber-50 text-amber-600 border border-amber-200'
-                    }`}>
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: 100,
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        backgroundColor: item.ownedBy === 'me' ? '#fee2e2' : item.ownedBy === 'them' ? '#dcfce7' : '#fef3c7',
+                        color: item.ownedBy === 'me' ? '#dc2626' : item.ownedBy === 'them' ? '#16a34a' : C.primary,
+                        border: `1px solid ${item.ownedBy === 'me' ? '#fca5a5' : item.ownedBy === 'them' ? '#bbf7d0' : '#fde68a'}`,
+                        flexShrink: 0,
+                      }}
+                    >
                       {item.ownedBy === 'me' ? '我欠' : item.ownedBy === 'them' ? '他欠' : '双方'}
                     </span>
-                    <span className="text-gray-700">{item.description}</span>
+                    <span style={{ fontSize: 13.5, color: C.text }}>{item.description}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       </main>
+      </div>
     </div>
   );
 };

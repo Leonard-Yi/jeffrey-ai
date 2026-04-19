@@ -289,7 +289,7 @@ const STYLES = {
     marginBottom: "12px",
   },
   name: {
-    fontFamily: "Georgia, serif",
+    fontFamily: "var(--font-display)",
     fontSize: "24px",
     color: "#3a2a1a",
     margin: 0,
@@ -388,7 +388,7 @@ const STYLES = {
     marginTop: "4px",
   },
   sectionHeader: {
-    fontFamily: "Georgia, serif",
+    fontFamily: "var(--font-display)",
     fontSize: "18px",
     color: "#3a2a1a",
     margin: "24px 0 12px",

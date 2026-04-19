@@ -1,16 +1,19 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import AuthLayout from "@/components/AuthLayout"
+import { AuthCard } from "../_components/AuthCard"
+import { StatusIcon } from "../_components/StatusIcon"
 
-function VerifyEmailContent() {
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token")
+export default function VerifyEmailForm() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [countdown, setCountdown] = useState(3)
+  const [countdown, setCountdown] = useState(5)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get("token")
+
     if (!token) {
       setStatus("error")
       return
@@ -25,7 +28,7 @@ function VerifyEmailContent() {
         }
       })
       .catch(() => setStatus("error"))
-  }, [token])
+  }, [])
 
   useEffect(() => {
     if (status === "success" && countdown <= 0) {
@@ -38,48 +41,51 @@ function VerifyEmailContent() {
     }
   }, [status, countdown])
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
-          <p className="text-gray-600">验证中...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (status === "success") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
-          <h1 className="text-2xl font-bold mb-4 text-green-600">邮箱验证成功</h1>
-          <p className="mb-4 text-gray-600">您的邮箱已验证成功。</p>
-          <p className="text-sm text-gray-500 mb-4">{countdown}秒后自动跳转登录页...</p>
-          <Link href="/auth/signin" className="text-blue-600 hover:underline">
-            立即跳转
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
-        <h1 className="text-2xl font-bold mb-4 text-red-600">验证失败</h1>
-        <p className="mb-4 text-gray-600">邮箱验证链接无效或已过期。</p>
-        <Link href="/auth/signup" className="text-blue-600 hover:underline">
-          重新注册
-        </Link>
-      </div>
-    </div>
-  )
-}
+    <AuthLayout>
+      <AuthCard footerLink={{ href: "/auth/signin", text: "返回登录" }}>
+        {status === "loading" && (
+          <div style={{ textAlign: "center", padding: "16px 0" }}>
+            <div className="auth-spinner" style={{ marginBottom: "16px" }} />
+            <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
+              验证中...
+            </p>
+          </div>
+        )}
 
-export default function VerifyEmailPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50"><p>加载中...</p></div>}>
-      <VerifyEmailContent />
-    </Suspense>
+        {status === "success" && (
+          <div>
+            <StatusIcon type="success" />
+            <h2 className="auth-card-title" style={{ textAlign: "center", marginBottom: "8px" }}>
+              邮箱验证成功
+            </h2>
+            <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", textAlign: "center", marginBottom: "20px", lineHeight: 1.6 }}>
+              您的邮箱已验证成功，现在可以登录了。
+            </p>
+            <p style={{ fontSize: "13px", color: "var(--color-text-muted)", textAlign: "center", marginBottom: "20px" }}>
+              {countdown}秒后自动跳转...
+            </p>
+            <Link href="/auth/signin" className="auth-button" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
+              立即跳转
+            </Link>
+          </div>
+        )}
+
+        {status === "error" && (
+          <div>
+            <StatusIcon type="error" />
+            <h2 className="auth-card-title" style={{ textAlign: "center", marginBottom: "8px" }}>
+              验证失败
+            </h2>
+            <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", textAlign: "center", marginBottom: "20px", lineHeight: 1.6 }}>
+              邮箱验证链接无效或已过期。
+            </p>
+            <Link href="/auth/signup" className="auth-button" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
+              重新注册
+            </Link>
+          </div>
+        )}
+      </AuthCard>
+    </AuthLayout>
   )
 }

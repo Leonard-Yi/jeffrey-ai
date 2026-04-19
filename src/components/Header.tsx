@@ -34,7 +34,6 @@ export default function Header() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { count } = useMemberCount();
 
-  // Close results on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -45,7 +44,6 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Debounced search
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -87,89 +85,157 @@ export default function Header() {
   return (
     <header
       style={{
-        backgroundColor: "white",
-        borderBottom: "1px solid #e5e7eb",
-        padding: "12px 24px",
+        backgroundColor: "#fff",
+        borderBottom: "1px solid #e7e5e4",
+        padding: "0 32px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         position: "sticky",
         top: 0,
         zIndex: 50,
+        height: "60px",
+        boxShadow: "0 1px 0 rgba(0,0,0,0.03)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-        <h1 style={{ fontSize: "24px", fontWeight: 600, color: "#1f2937", fontFamily: "Georgia, serif" }}>
+      {/* Left: Brand + Nav */}
+      <div style={{ display: "flex", alignItems: "center", gap: "40px" }}>
+        <Link
+          href="/input"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "20px",
+            fontWeight: 400,
+            color: "#1c1917",
+            letterSpacing: "-0.02em",
+            textDecoration: "none",
+          }}
+        >
           Jeffrey.AI
-        </h1>
-        <nav style={{ display: "flex", gap: "8px" }}>
-          {NAV_ITEMS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                padding: "6px 20px",
-                border: "1px solid",
-                borderRadius: "8px",
-                fontSize: "14px",
-                textDecoration: "none",
-                transition: "all 0.15s",
-                ...(pathname === href
-                  ? { backgroundColor: "#fffbeb", borderColor: "#d97706", color: "#b45309" }
-                  : { borderColor: "#d1d5db", color: "#4b5563" }),
-              }}
-            >
-              {label}
-            </Link>
-          ))}
+        </Link>
+        <nav style={{ display: "flex", gap: "4px" }}>
+          {NAV_ITEMS.map(({ href, label }) => {
+            const isActive = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                style={{
+                  padding: "5px 14px",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: isActive ? 500 : 400,
+                  textDecoration: "none",
+                  transition: "all 0.12s",
+                  ...(isActive
+                    ? {
+                        backgroundColor: "#fef3c7",
+                        color: "#92400e",
+                        border: "1px solid #fde68a",
+                      }
+                    : {
+                        backgroundColor: "transparent",
+                        color: "#78716c",
+                        border: "1px solid transparent",
+                      }),
+                }}
+              >
+                {label}
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
-      {/* Semantic Search Bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      {/* Right: Search + User */}
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {/* Search */}
         <div ref={searchRef} style={{ position: "relative" }}>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => searchQuery.trim() && setShowResults(true)}
-            placeholder="语义搜索：我认识哪些做投行的人..."
-            style={{
-              padding: "8px 14px",
-              border: "1px solid #d4c9bb",
-              borderRadius: "8px",
-              fontSize: "14px",
-              backgroundColor: "white",
-              outline: "none",
-              width: "280px",
-            }}
-          />
-          {isSearching && (
-            <span style={{ position: "absolute", right: "10px", top: "8px", fontSize: "12px", color: "#9a8a7a" }}>
-              搜索中...
-            </span>
-          )}
+          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery.trim() && setShowResults(true)}
+              placeholder="语义搜索人脉..."
+              style={{
+                padding: "7px 12px 7px 34px",
+                border: "1px solid #d6d3d1",
+                borderRadius: "8px",
+                fontSize: "13.5px",
+                backgroundColor: "#fafaf9",
+                outline: "none",
+                width: "240px",
+                color: "#1c1917",
+                transition: "border-color 0.12s, box-shadow 0.12s",
+              }}
+              onFocusCapture={(e) => {
+                e.currentTarget.style.borderColor = "#d97706";
+                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(217,119,6,0.1)";
+                e.currentTarget.style.backgroundColor = "#fff";
+              }}
+              onBlurCapture={(e) => {
+                e.currentTarget.style.borderColor = "#d6d3d1";
+                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.backgroundColor = "#fafaf9";
+              }}
+            />
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#a8a29e"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ position: "absolute", left: "10px", pointerEvents: "none" }}
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            {isSearching && (
+              <span
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  fontSize: "12px",
+                  color: "#a8a29e",
+                }}
+              >
+                ...
+              </span>
+            )}
+          </div>
 
-          {/* Search Results Dropdown */}
+          {/* Search Results */}
           {showResults && searchResults.length > 0 && (
             <div
               style={{
                 position: "absolute",
-                top: "100%",
+                top: "calc(100% + 6px)",
                 right: 0,
-                marginTop: "4px",
-                backgroundColor: "white",
-                border: "1px solid #e0d9cf",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                width: "360px",
-                maxHeight: "400px",
+                backgroundColor: "#fff",
+                border: "1px solid #e7e5e4",
+                borderRadius: "12px",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+                width: "340px",
+                maxHeight: "380px",
                 overflowY: "auto",
                 zIndex: 100,
               }}
             >
-              <div style={{ padding: "8px 12px", fontSize: "12px", color: "#9a8a7a", borderBottom: "1px solid #f0ece4" }}>
-                语义搜索结果
+              <div
+                style={{
+                  padding: "8px 14px",
+                  fontSize: "11px",
+                  color: "#a8a29e",
+                  borderBottom: "1px solid #f0ece4",
+                  letterSpacing: "0.03em",
+                  textTransform: "uppercase",
+                }}
+              >
+                搜索结果
               </div>
               {searchResults.map((result) => (
                 <div
@@ -180,16 +246,25 @@ export default function Header() {
                     window.location.href = `/members?id=${result.id}`;
                   }}
                   style={{
-                    padding: "10px 12px",
+                    padding: "10px 14px",
                     cursor: "pointer",
-                    borderBottom: "1px solid #f0ece4",
-                    transition: "background-color 0.15s",
+                    borderBottom: "1px solid #f5f3ef",
+                    transition: "background-color 0.1s",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#faf8f4")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <span style={{ fontWeight: 600, color: "#3a2a1a" }}>{result.name}</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, color: "#1c1917", fontSize: "14px" }}>
+                      {result.name}
+                    </span>
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                     {renderTags(result).map((tag, idx) => (
@@ -197,7 +272,7 @@ export default function Header() {
                         key={idx}
                         style={{
                           fontSize: "11px",
-                          padding: "1px 6px",
+                          padding: "1px 7px",
                           borderRadius: "4px",
                           backgroundColor: tag.type === "career" ? "#dbeafe" : "#fef3c7",
                           color: tag.type === "career" ? "#1e40af" : "#92400e",
@@ -216,18 +291,17 @@ export default function Header() {
             <div
               style={{
                 position: "absolute",
-                top: "100%",
+                top: "calc(100% + 6px)",
                 right: 0,
-                marginTop: "4px",
-                backgroundColor: "white",
-                border: "1px solid #e0d9cf",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                width: "280px",
-                padding: "16px",
+                backgroundColor: "#fff",
+                border: "1px solid #e7e5e4",
+                borderRadius: "12px",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+                width: "240px",
+                padding: "20px",
                 textAlign: "center",
-                color: "#9a8a7a",
-                fontSize: "14px",
+                color: "#a8a29e",
+                fontSize: "13.5px",
                 zIndex: 100,
               }}
             >
@@ -236,25 +310,54 @@ export default function Header() {
           )}
         </div>
 
-        <span style={{ fontSize: "14px", color: "#6b7280" }}>
+        {/* Contact count badge */}
+        <div
+          style={{
+            fontSize: "12px",
+            color: "#78716c",
+            padding: "3px 10px",
+            backgroundColor: "#f5f3ef",
+            borderRadius: "100px",
+            border: "1px solid #e7e5e4",
+          }}
+        >
           {count} 位联系人
-        </span>
+        </div>
 
+        {/* User section */}
         {session?.user && (
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <span style={{ fontSize: "13px", color: "#6b7280" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span
+              style={{
+                fontSize: "13px",
+                color: "#78716c",
+                maxWidth: "140px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {session.user.email || session.user.name || "用户"}
             </span>
             <button
               onClick={() => signOut({ callbackUrl: "/auth/signin" })}
               style={{
-                padding: "6px 12px",
+                padding: "5px 12px",
                 fontSize: "13px",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                backgroundColor: "white",
-                color: "#4b5563",
+                border: "1px solid #e7e5e4",
+                borderRadius: "7px",
+                backgroundColor: "#fff",
+                color: "#78716c",
                 cursor: "pointer",
+                transition: "all 0.12s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#d6d3d1";
+                e.currentTarget.style.color = "#1c1917";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "#e7e5e4";
+                e.currentTarget.style.color = "#78716c";
               }}
             >
               退出

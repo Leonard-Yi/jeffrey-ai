@@ -6,66 +6,41 @@ import { circular } from 'graphology-layout';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
 import PersonModal from '@/components/PersonModal';
 import Header from '@/components/Header';
+import { tokens as C } from '@/lib/design-tokens';
 
 interface GraphNode {
-  id: string;
-  label: string;
-  val: number;
-  group: string;
-  city: string;
-  lastContact: string;
-  x?: number;
-  y?: number;
+  id: string; label: string; val: number; group: string;
+  city: string; lastContact: string; x?: number; y?: number;
 }
-
-interface GraphLink {
-  source: string;
-  target: string;
-  type: string;
-  strength: number;
-}
-
-interface GraphData {
-  nodes: GraphNode[];
-  links: GraphLink[];
-  clusters: GraphCluster[];
-}
-
+interface GraphLink { source: string; target: string; type: string; strength: number; }
+interface GraphData { nodes: GraphNode[]; links: GraphLink[]; clusters: GraphCluster[]; }
 interface GraphCluster {
-  id: string;
-  name: string;
-  category: "city" | "career" | "interest" | "place" | "vibe";
-  memberIds: string[];
-  color: string;
+  id: string; name: string; category: "city" | "career" | "interest" | "place" | "vibe";
+  memberIds: string[]; color: string;
 }
 
+// ─── Colors ─────────────────────────────────────────
 const LINK_COLORS: Record<string, string> = {
-  interaction: '#60a5fa',
-  introducedBy: '#f59e0b',
-  sharedCareer: '#10b981',
-  sharedCity: '#8b5cf6',
-  sharedInterest: '#f97316',
-  sharedPlace: '#ec4899',
-  sharedVibe: '#6366f1',
+  interaction: '#60a5fa', introducedBy: '#f59e0b', sharedCareer: '#10b981',
+  sharedCity: '#8b5cf6', sharedInterest: '#f97316', sharedPlace: '#ec4899', sharedVibe: '#6366f1',
 };
-
 const CLUSTER_COLORS: Record<string, string> = {
-  city: '#3b82f6',
-  career: '#10b981',
-  interest: '#f59e0b',
-  place: '#ec4899',
-  vibe: '#8b5cf6',
+  city: '#3b82f6', career: '#10b981', interest: '#f59e0b', place: '#ec4899', vibe: '#8b5cf6',
+};
+const NODE_COLORS: Record<string, string> = {
+  default: '#3b82f6', '投行': '#10b981', '律师': '#f59e0b', '医生': '#ef4444',
+  '教授': '#8b5cf6', '创业者': '#f97316', 'AI': '#6366f1',
 };
 
-const NODE_COLORS: Record<string, string> = {
-  default: '#3b82f6',
-  '投行': '#10b981',
-  '律师': '#f59e0b',
-  '医生': '#ef4444',
-  '教授': '#8b5cf6',
-  '创业者': '#f97316',
-  'AI': '#6366f1',
-};
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{
+      background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+      padding: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 2px 12px rgba(0,0,0,0.04)",
+      ...style,
+    }}>{children}</div>
+  );
+}
 
 const JeffreyGraphPage = () => {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [], clusters: [] });
@@ -73,11 +48,7 @@ const JeffreyGraphPage = () => {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [graphInstance, setGraphInstance] = useState<Graph | null>(null);
   const [sigmaReady, setSigmaReady] = useState(false);
-  const [filter, setFilter] = useState({
-    group: '',
-    linkType: '',
-    minStrength: 0,
-  });
+  const [filter, setFilter] = useState({ group: '', linkType: '', minStrength: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<any>(null);
 
@@ -95,146 +66,76 @@ const JeffreyGraphPage = () => {
       if (filter.group) params.append('group', filter.group);
       if (filter.linkType) params.append('linkType', filter.linkType);
       if (filter.minStrength > 0) params.append('minStrength', filter.minStrength.toString());
-
-      const response = await fetch(`/api/graph?${params.toString()}`);
-      if (!response.ok) throw new Error('Failed to fetch graph data');
-
-      const data = await response.json();
+      const data: GraphData = await (await fetch(`/api/graph?${params}`)).json();
       setGraphData(data);
-
-      // 创建 graphology 图实例
       const graph = new Graph();
-
-      // 添加节点 - 增大尺寸以提升点击区域
       data.nodes.forEach((node: GraphNode) => {
         graph.addNode(node.id, {
-          label: node.label,
-          size: Math.max(node.val * 20 + 12, 18), // 最小18px，最大约32px
-          color: getGroupColor(node.group),
-          group: node.group,
-          city: node.city,
-          lastContact: node.lastContact,
-          val: node.val,
+          label: node.label, size: Math.max(node.val * 20 + 12, 18),
+          color: getGroupColor(node.group), group: node.group,
+          city: node.city, lastContact: node.lastContact, val: node.val,
         });
       });
-
-      // 添加边 - 先不加任何属性，确认最小配置能工作
       data.links.forEach((link: GraphLink) => {
-        try {
-          if (!graph.hasEdge(link.source, link.target)) {
-            graph.addEdge(link.source, link.target);
-          }
-        } catch (e) {
-          // 忽略重复边或无效边
-        }
+        try { if (!graph.hasEdge(link.source, link.target)) graph.addEdge(link.source, link.target); }
+        catch {}
       });
-
-      // 计算布局 - 先用 circular 初始化位置，再用 ForceAtlas2
       circular.assign(graph);
-
-      // 运行 ForceAtlas2 让节点分散
-      forceAtlas2.assign(graph, {
-        iterations: 100,
-        settings: {
-          gravity: 1,
-          scalingRatio: 10,
-          strongGravityMode: true,
-          barnesHutOptimize: false,
-        },
-      });
-
+      forceAtlas2.assign(graph, { iterations: 100, settings: { gravity: 1, scalingRatio: 10, strongGravityMode: true, barnesHutOptimize: false } });
       setGraphInstance(graph);
-    } catch (error) {
-      console.error('Error fetching graph data:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   }, [filter]);
 
-  useEffect(() => {
-    fetchGraphData();
-  }, [fetchGraphData]);
+  useEffect(() => { fetchGraphData(); }, [fetchGraphData]);
 
-  // 加载 sigma
   useEffect(() => {
-    import('sigma').then((mod) => {
-      setSigmaReady(true);
-      (window as any).SigmaClass = mod.Sigma;
-    });
+    import('sigma').then(mod => { setSigmaReady(true); (window as any).SigmaClass = mod.Sigma; });
   }, []);
 
-  // 创建 Sigma 实例
   useEffect(() => {
     if (!graphInstance || !containerRef.current || !sigmaReady) return;
-
     const SigmaClass = (window as any).SigmaClass;
     if (!SigmaClass) return;
-
-    // 销毁旧的 Sigma 实例
-    if (sigmaRef.current) {
-      sigmaRef.current.kill();
-      sigmaRef.current = null;
-    }
-
+    if (sigmaRef.current) { sigmaRef.current.kill(); sigmaRef.current = null; }
     try {
-      // 创建新的 Sigma 实例
       const sigma = new SigmaClass(graphInstance, containerRef.current, {
-        renderEdgeLabels: false,
-        defaultEdgeColor: '#999',
-        defaultNodeColor: '#999',
-        labelColor: { color: '#374151' },
-        labelSize: 14,
-        labelFont: 'sans-serif',
-        allowInvalidContainer: true,
-        // 增大标签渲染区域以提升可读性
-        labelRenderedSize: { min: 12, max: 20 },
+        renderEdgeLabels: false, defaultEdgeColor: '#999', defaultNodeColor: '#999',
+        labelColor: { color: '#374151' }, labelSize: 14, labelFont: 'sans-serif',
+        allowInvalidContainer: true, labelRenderedSize: { min: 12, max: 20 },
       });
-
-      // 节点点击事件 - 打开 PersonModal
-      sigma.on('clickNode', ({ node }: { node: string }) => {
-        setSelectedPersonId(node);
-      });
-
-      // 背景点击事件
-      sigma.on('clickStage', () => {
-        setSelectedPersonId(null);
-      });
-
+      sigma.on('clickNode', ({ node }: { node: string }) => setSelectedPersonId(node));
+      sigma.on('clickStage', () => setSelectedPersonId(null));
       sigmaRef.current = sigma;
-    } catch (error) {
-      console.error('Sigma initialization error:', error);
-    }
-
-    return () => {
-      if (sigmaRef.current) {
-        sigmaRef.current.kill();
-        sigmaRef.current = null;
-      }
-    };
+    } catch (err) { console.error(err); }
+    return () => { if (sigmaRef.current) { sigmaRef.current.kill(); sigmaRef.current = null; } };
   }, [graphInstance, sigmaReady]);
 
   return (
-    <div className="min-h-screen bg-[#f5f3ef] flex flex-col">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg, display: 'flex', flexDirection: 'column' }}>
       <Header />
 
-      {/* 过滤器 */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 flex-wrap">
-        <label className="text-sm text-gray-600">
-          职业筛选:
+      {/* Filter Bar */}
+      <div style={{ backgroundColor: C.surface, borderBottom: `1px solid ${C.border}`, padding: "10px 24px", display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+        {/* Group Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 13, color: C.textSecondary }}>职业</span>
           <input
             type="text"
             value={filter.group}
-            onChange={(e) => setFilter({ ...filter, group: e.target.value })}
-            placeholder="如：AI、投行、律师..."
-            className="ml-2 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-300"
+            onChange={e => setFilter(f => ({ ...f, group: e.target.value }))}
+            placeholder="如：AI、投行..."
+            style={{ padding: "5px 10px", border: `1.5px solid ${C.borderStrong}`, borderRadius: 7, fontSize: 13, outline: 'none', width: 130, color: C.text }}
           />
-        </label>
-        <label className="text-sm text-gray-600">
-          关系类型:
+        </div>
+
+        {/* Link Type Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 13, color: C.textSecondary }}>关系</span>
           <select
             value={filter.linkType}
-            onChange={(e) => setFilter({ ...filter, linkType: e.target.value })}
-            className="ml-2 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-300"
+            onChange={e => setFilter(f => ({ ...f, linkType: e.target.value }))}
+            style={{ padding: "5px 10px", border: `1.5px solid ${C.borderStrong}`, borderRadius: 7, fontSize: 13, outline: 'none', color: C.text, cursor: 'pointer' }}
           >
             <option value="">全部</option>
             <option value="interaction">互动</option>
@@ -245,117 +146,74 @@ const JeffreyGraphPage = () => {
             <option value="sharedPlace">常去同地</option>
             <option value="sharedVibe">相似性格</option>
           </select>
-        </label>
+        </div>
+
+        {/* Refresh Button */}
         <button
           onClick={fetchGraphData}
-          className="px-4 py-1.5 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 transition"
+          style={{
+            padding: "5px 14px", backgroundColor: C.primary, color: "#fff",
+            border: "none", borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+          }}
         >
           刷新
         </button>
 
-        {/* 圈层图例 */}
-        <div className="flex items-center gap-3 ml-auto text-xs">
-          <span className="text-gray-500">
-            {filter.linkType && ['sharedCareer', 'sharedCity', 'sharedInterest', 'sharedPlace', 'sharedVibe'].includes(filter.linkType) ? '圈层:' : '箭头:'}
-          </span>
-          {filter.linkType === 'sharedCareer' || !filter.linkType ? (
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CLUSTER_COLORS.career + '60' }}></div>
-              <span className="text-gray-600">职业</span>
-            </div>
-          ) : null}
-          {filter.linkType === 'sharedCity' || !filter.linkType ? (
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CLUSTER_COLORS.city + '60' }}></div>
-              <span className="text-gray-600">城市</span>
-            </div>
-          ) : null}
-          {filter.linkType === 'sharedInterest' || !filter.linkType ? (
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CLUSTER_COLORS.interest + '60' }}></div>
-              <span className="text-gray-600">兴趣</span>
-            </div>
-          ) : null}
-          {filter.linkType === 'sharedPlace' || !filter.linkType ? (
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CLUSTER_COLORS.place + '60' }}></div>
-              <span className="text-gray-600">地点</span>
-            </div>
-          ) : null}
-          {filter.linkType === 'sharedVibe' || !filter.linkType ? (
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CLUSTER_COLORS.vibe + '60' }}></div>
-              <span className="text-gray-600">性格</span>
-            </div>
-          ) : null}
-          {filter.linkType === 'interaction' && (
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-0.5" style={{ backgroundColor: LINK_COLORS.interaction }}></div>
-              <span className="text-gray-600">互动</span>
-            </div>
-          )}
-          {filter.linkType === 'introducedBy' && (
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-0.5" style={{ backgroundColor: LINK_COLORS.introducedBy }}></div>
-              <span className="text-gray-600">介绍人</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 主内容区 */}
-      <div className="flex-1 flex relative">
-        {/* 图谱 */}
-        <div
-          className="flex-1"
-          style={{ height: 'calc(100vh - 120px)', minHeight: '400px' }}
-          ref={containerRef}
-        >
-          {loading && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-gray-500">加载中...</div>
-            </div>
-          )}
-          {!loading && graphData.nodes.length === 0 && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-gray-500 text-center">
-                <p className="text-lg mb-2">暂无数据</p>
-                <p className="text-sm">请先在录入页面添加人物信息</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* 图例 */}
-      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 border border-gray-200">
-        <h4 className="text-xs font-medium text-gray-600 mb-2">关系类型</h4>
-        <div className="space-y-1">
-          {Object.entries(LINK_COLORS).map(([type, color]) => (
-            <div key={type} className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-              <span className="text-xs text-gray-600">
-                {type === 'interaction' && '互动'}
-                {type === 'introducedBy' && '介绍人'}
-                {type === 'sharedCareer' && '同行'}
-                {type === 'sharedCity' && '同城'}
-                {type === 'sharedInterest' && '同好'}
-                {type === 'sharedPlace' && '常去同地'}
-                {type === 'sharedVibe' && '相似性格'}
+        {/* Legend */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto', flexWrap: 'wrap' as const }}>
+          {(['career', 'city', 'interest', 'place', 'vibe'] as const).map(cat => (
+            <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: CLUSTER_COLORS[cat] + '99' }} />
+              <span style={{ fontSize: 12, color: C.textSecondary }}>
+                {cat === 'career' ? '职业' : cat === 'city' ? '城市' : cat === 'interest' ? '兴趣' : cat === 'place' ? '地点' : '性格'}
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* 人员详情弹窗 */}
+      {/* Graph Canvas */}
+      <div style={{ flex: 1, position: 'relative' }}>
+        <div ref={containerRef} style={{ width: '100%', height: 'calc(100vh - 120px)', minHeight: 400 }} />
+        {loading && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,243,239,0.7)' }}>
+            <span style={{ color: C.textMuted, fontSize: 14 }}>加载中...</span>
+          </div>
+        )}
+        {!loading && graphData.nodes.length === 0 && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center', color: C.textMuted }}>
+              <p style={{ fontSize: 16, marginBottom: 6 }}>暂无数据</p>
+              <p style={{ fontSize: 13 }}>请先在录入页面添加人物信息</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Legend Card */}
+      <div style={{
+        position: 'absolute', bottom: 20, left: 20,
+        backgroundColor: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 10, padding: '12px 16px',
+        boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8 }}>关系类型</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {Object.entries(LINK_COLORS).map(([type, color]) => (
+            <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: C.textSecondary }}>
+                {type === 'interaction' && '互动'}{type === 'introducedBy' && '介绍人'}{type === 'sharedCareer' && '同行'}
+                {type === 'sharedCity' && '同城'}{type === 'sharedInterest' && '同好'}{type === 'sharedPlace' && '常去同地'}{type === 'sharedVibe' && '相似性格'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Person Modal */}
       {selectedPersonId && (
-        <PersonModal
-          personId={selectedPersonId}
-          onClose={() => setSelectedPersonId(null)}
-          onSaved={fetchGraphData}
-        />
+        <PersonModal personId={selectedPersonId} onClose={() => setSelectedPersonId(null)} onSaved={fetchGraphData} />
       )}
     </div>
   );

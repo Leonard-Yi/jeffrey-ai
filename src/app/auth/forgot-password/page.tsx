@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import AuthLayout from "@/components/AuthLayout"
+import { AuthCard } from "../_components/AuthCard"
+import { StatusIcon } from "../_components/StatusIcon"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -34,57 +37,54 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  if (sent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
-          <h1 className="text-2xl font-bold mb-4">重置邮件已发送</h1>
-          <p className="text-gray-600">
+  const card = (
+    <AuthCard>
+      <h1 className="auth-card-title">重置密码</h1>
+
+      {sent ? (
+        <div>
+          <StatusIcon type="success" />
+          <div className="auth-alert auth-alert-success">
             如果该邮箱存在，我们会发送密码重置链接到您的邮箱。
+          </div>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="auth-alert auth-alert-error">{error}</div>
+          )}
+          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", marginBottom: "20px", lineHeight: 1.6 }}>
+            输入您注册时使用的邮箱地址，我们会发送密码重置链接。
           </p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">忘记密码</h1>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">邮箱</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? "发送中..." : "发送重置链接"}
-          </button>
-        </form>
-
-        <div className="mt-4 text-center text-sm">
-          <Link href="/auth/signin" className="text-blue-600 hover:underline">
-            返回登录
-          </Link>
-        </div>
-      </div>
-    </div>
+          <form onSubmit={handleSubmit}>
+            <div className="auth-form-group">
+              <label className="auth-label" htmlFor="email">
+                邮箱
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="auth-input"
+                placeholder="you@example.com"
+                required
+                autoComplete="email"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="auth-button"
+              style={{ marginTop: "8px" }}
+            >
+              {loading ? "发送中..." : "发送重置链接"}
+            </button>
+          </form>
+        </>
+      )}
+    </AuthCard>
   )
+
+  return <AuthLayout>{card}</AuthLayout>
 }
