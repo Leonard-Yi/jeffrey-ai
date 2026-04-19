@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import Header from '@/components/Header';
 import AmbiguousPrompt from '@/components/AmbiguousPrompt';
 import NameResolutionPrompt from '@/components/NameResolutionPrompt';
 import { tokens as C } from '@/lib/design-tokens';
 import { Card } from '@/components/ui/Card';
 import { SectionLabel } from '@/components/ui/SectionLabel';
+import { Button } from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Input';
 import { getRandomInputQuote } from '@/lib/jeffrey-quotes';
 
 interface SpeechRecognitionInstance {
@@ -69,18 +69,18 @@ function JeffreyAvatar({ size = 40 }: { size?: number }) {
         width: size,
         height: size,
         borderRadius: '50%',
-        background: '#fff',
+        background: C.bgElevated,
         border: `1.5px solid ${C.borderStrong}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        boxShadow: C.shadowSm,
       }}
     >
       <span
         style={{
-          fontFamily: 'var(--font-display)',
+          fontFamily: C.fontDisplay,
           fontSize: size * 0.42,
           color: C.primary,
           fontWeight: 600,
@@ -104,9 +104,9 @@ function TagPill({
   weight?: number;
 }) {
   const colors = {
-    career: { bg: '#dbeafe', text: '#1e40af', border: '#bfdbfe' },
-    interest: { bg: '#fef3c7', text: C.primary, border: '#fde68a' },
-    vibe: { bg: '#dcfce7', text: '#15803d', border: '#bbf7d0' },
+    career: { bg: C.infoBg, text: C.info, border: `${C.info}40` },
+    interest: { bg: C.accentLight, text: C.primary, border: `${C.primary}40` },
+    vibe: { bg: C.successBg, text: C.success, border: `${C.success}40` },
   }[type];
   return (
     <span
@@ -169,7 +169,6 @@ const JeffreyInputPage = () => {
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [dialogueComplete, setDialogueComplete] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [randomQuote] = useState(() => getRandomInputQuote());
 
@@ -335,11 +334,7 @@ const JeffreyInputPage = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: `
-        radial-gradient(ellipse 60% 40% at 10% 0%, rgba(217, 119, 6, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse 50% 35% at 90% 100%, rgba(146, 64, 14, 0.06) 0%, transparent 50%),
-        #f5f3ef
-      `,
+      background: C.bg,
       position: 'relative',
       overflow: 'hidden',
     }}>
@@ -347,7 +342,7 @@ const JeffreyInputPage = () => {
       <div style={{
         position: 'fixed',
         inset: 0,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E")`,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
         pointerEvents: 'none',
         zIndex: 1,
       }} />
@@ -372,7 +367,7 @@ const JeffreyInputPage = () => {
               <JeffreyAvatar size={44} />
               <p
                 style={{
-                  fontFamily: 'var(--font-display)',
+                  fontFamily: C.fontDisplay,
                   fontSize: 14,
                   fontStyle: 'italic',
                   color: C.textSecondary,
@@ -387,22 +382,13 @@ const JeffreyInputPage = () => {
 
           {/* Text Input */}
           <Card>
-            <textarea
-              ref={textareaRef}
+            <Textarea
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               placeholder="今天见了谁？聊了什么？有什么新的发现或约定吗？"
               style={{
-                width: '100%',
                 height: 160,
-                resize: 'none',
-                border: 'none',
-                outline: 'none',
-                fontSize: 15,
-                color: C.text,
-                lineHeight: 1.7,
-                backgroundColor: 'transparent',
-                fontFamily: 'inherit',
+                background: 'transparent',
               }}
             />
           </Card>
@@ -419,7 +405,7 @@ const JeffreyInputPage = () => {
                 padding: '12px 16px',
                 borderRadius: 10,
                 border: isRecording ? `2px solid ${C.accent}` : '2px solid transparent',
-                backgroundColor: isRecording ? C.accentLight : '#fafaf9',
+                backgroundColor: isRecording ? C.accentLight : C.bgElevated,
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
@@ -429,8 +415,8 @@ const JeffreyInputPage = () => {
                   width: 44,
                   height: 44,
                   borderRadius: '50%',
-                  backgroundColor: isRecording ? C.accentLight : '#fff',
-                  border: `1.5px solid ${isRecording ? C.accent : '#e7e5e4'}`,
+                  backgroundColor: isRecording ? C.accentLight : C.bgCard,
+                  border: `1.5px solid ${isRecording ? C.accent : C.borderStrong}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -438,7 +424,7 @@ const JeffreyInputPage = () => {
                   transition: 'all 0.15s',
                 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill={isRecording ? C.accent : 'none'} stroke={isRecording ? C.accent : '#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill={isRecording ? C.accent : 'none'} stroke={isRecording ? C.accent : C.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                   <line x1="12" y1="19" x2="12" y2="23" />
@@ -458,53 +444,24 @@ const JeffreyInputPage = () => {
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: 10 }}>
-            <button
+            <Button
+              variant="secondary"
+              fullWidth
               onClick={handleClear}
               disabled={isProcessing || (!inputText && !jeffreyComment)}
-              style={{
-                flex: 1,
-                padding: '11px 0',
-                borderRadius: 10,
-                border: `1.5px solid ${C.borderStrong}`,
-                backgroundColor: '#fff',
-                color: C.textSecondary,
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: (isProcessing || (!inputText && !jeffreyComment)) ? 'not-allowed' : 'pointer',
-                opacity: (isProcessing || (!inputText && !jeffreyComment)) ? 0.5 : 1,
-                transition: 'all 0.15s',
-              }}
             >
               清空
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              fullWidth
+              loading={isProcessing}
               onClick={() => handleSubmit()}
               disabled={!inputText.trim() || isProcessing}
-              style={{
-                flex: 2,
-                padding: '11px 0',
-                borderRadius: 10,
-                border: 'none',
-                backgroundColor: !inputText.trim() || isProcessing ? '#d6d3d1' : C.primary,
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: (!inputText.trim() || isProcessing) ? 'not-allowed' : 'pointer',
-                transition: 'all 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
+              style={{ flex: 2 }}
             >
-              {isProcessing ? (
-                <>
-                  <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-                  Jeffrey 思考中...
-                </>
-              ) : '汇报给 Jeffrey'}
-            </button>
+              {isProcessing ? 'Jeffrey 思考中...' : '汇报给 Jeffrey'}
+            </Button>
           </div>
 
           {/* Recent Entries */}
@@ -525,7 +482,7 @@ const JeffreyInputPage = () => {
                     cursor: 'default',
                     transition: 'background-color 0.1s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.surfaceAlt)}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.bgHover)}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                   <StatusDot complete={entry.status === 'complete'} />
@@ -542,12 +499,12 @@ const JeffreyInputPage = () => {
 
           {/* Jeffrey's Comment */}
           {jeffreyComment && (
-            <Card style={{ background: '#fffcf7', border: `1px solid #fde68a` }}>
+            <Card style={{ background: C.bgElevated, border: `1px solid ${C.borderAccent}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <JeffreyAvatar size={32} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: C.primary, letterSpacing: '0.01em' }}>Jeffrey 的点评</span>
               </div>
-              <p style={{ fontSize: 14.5, color: C.text, lineHeight: 1.75, margin: 0, fontFamily: 'var(--font-display)' }}>{jeffreyComment}</p>
+              <p style={{ fontSize: 14.5, color: C.text, lineHeight: 1.75, margin: 0, fontFamily: C.fontDisplay }}>{jeffreyComment}</p>
             </Card>
           )}
 
@@ -568,8 +525,8 @@ const JeffreyInputPage = () => {
                         maxWidth: '82%',
                         borderRadius: 12,
                         padding: '10px 14px',
-                        backgroundColor: msg.role === 'user' ? '#fff' : '#f5f5f4',
-                        border: msg.role === 'user' ? `1px solid ${C.border}` : '1px solid #e7e5e4',
+                        backgroundColor: msg.role === 'user' ? C.bgElevated : C.bgCard,
+                        border: msg.role === 'user' ? `1px solid ${C.borderAccent}` : `1px solid ${C.border}`,
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -599,14 +556,14 @@ const JeffreyInputPage = () => {
                       alignItems: 'flex-start',
                       gap: 14,
                       padding: 14,
-                      backgroundColor: C.surfaceAlt,
+                      backgroundColor: C.bgElevated,
                       borderRadius: 10,
                       border: `1px solid ${C.border}`,
                     }}
                   >
                     <JeffreyAvatar size={40} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <h4 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 8px', fontFamily: 'var(--font-display)' }}>{person.name}</h4>
+                      <h4 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 8px', fontFamily: C.fontDisplay }}>{person.name}</h4>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                         {person.careers.map((c, i) => <TagPill key={i} label={c.name} type="career" weight={c.weight} />)}
                         {person.interests.map((i, idx) => <TagPill key={idx} label={i.name} type="interest" weight={i.weight} />)}
@@ -663,7 +620,7 @@ const JeffreyInputPage = () => {
                       fontSize: 13,
                       fontWeight: 500,
                       border: `1.5px solid ${(selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.accent : C.borderStrong}`,
-                      backgroundColor: (selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.accentLight : '#fff',
+                      backgroundColor: (selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.accentLight : C.bgElevated,
                       color: (selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.primary : C.textSecondary,
                       cursor: 'pointer',
                       transition: 'all 0.12s',
@@ -673,6 +630,7 @@ const JeffreyInputPage = () => {
                   </button>
                 ))}
               </div>
+            <div style={{ marginBottom: 12 }}>
               <input
                 type="text"
                 value={customReply}
@@ -685,36 +643,27 @@ const JeffreyInputPage = () => {
                   border: `1.5px solid ${C.borderStrong}`,
                   fontSize: 14,
                   color: C.text,
+                  background: C.bg,
                   outline: 'none',
-                  marginBottom: 12,
                   boxSizing: 'border-box',
                   transition: 'border-color 0.12s',
                 }}
                 onFocus={e => (e.target.style.borderColor = C.accent)}
                 onBlur={e => (e.target.style.borderColor = C.borderStrong)}
               />
-              <button
+            </div>
+              <Button
+                variant="primary"
+                fullWidth
                 onClick={() => {
                   const reply = (customReply && customReply.trim()) ? customReply : (selectedQuickReply || '');
                   if (!reply) { alert('请输入回复内容或选择快捷回复'); return; }
                   handleSubmit(reply);
                 }}
                 disabled={(!selectedQuickReply && !customReply) || isProcessing}
-                style={{
-                  width: '100%',
-                  padding: '10px 0',
-                  borderRadius: 10,
-                  border: 'none',
-                  backgroundColor: (!selectedQuickReply && !customReply) || isProcessing ? '#d6d3d1' : C.primary,
-                  color: '#fff',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: (!selectedQuickReply && !customReply) || isProcessing ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s',
-                }}
               >
                 {isProcessing ? '发送中...' : '发送回复'}
-              </button>
+              </Button>
             </Card>
           )}
 
@@ -731,7 +680,7 @@ const JeffreyInputPage = () => {
                       alignItems: 'center',
                       gap: 10,
                       padding: '10px 12px',
-                      backgroundColor: C.surfaceAlt,
+                      backgroundColor: C.bgElevated,
                       borderRadius: 8,
                       border: `1px solid ${C.border}`,
                     }}
@@ -742,9 +691,9 @@ const JeffreyInputPage = () => {
                         borderRadius: 100,
                         fontSize: 11.5,
                         fontWeight: 600,
-                        backgroundColor: item.ownedBy === 'me' ? '#fee2e2' : item.ownedBy === 'them' ? '#dcfce7' : '#fef3c7',
-                        color: item.ownedBy === 'me' ? '#dc2626' : item.ownedBy === 'them' ? '#16a34a' : C.primary,
-                        border: `1px solid ${item.ownedBy === 'me' ? '#fca5a5' : item.ownedBy === 'them' ? '#bbf7d0' : '#fde68a'}`,
+                        backgroundColor: item.ownedBy === 'me' ? C.errorBg : item.ownedBy === 'them' ? C.successBg : C.warningBg,
+                        color: item.ownedBy === 'me' ? C.error : item.ownedBy === 'them' ? C.success : C.warning,
+                        border: `1px solid ${item.ownedBy === 'me' ? `${C.error}40` : item.ownedBy === 'them' ? `${C.success}40` : `${C.warning}40`}`,
                         flexShrink: 0,
                       }}
                     >
