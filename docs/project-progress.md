@@ -1,6 +1,6 @@
 # Jeffrey.AI 项目开发记录
 
-**最后更新**: 2026-04-11
+**最后更新**: 2026-04-20
 **项目状态**: Vercel 部署完成（已暂停），聚焦本地打磨
 **会话 ID**: 010 (Vercel 部署 + 邮箱验证临时禁用)
 
@@ -1916,3 +1916,58 @@ worktree: deploy-vercel (已合并到 master)
   1. 恢复邮箱验证代码
   2. 配置 Resend 替代 SMTP (更可靠)
   3. 执行 `vercel --prod` 重新部署
+
+---
+
+## 会话 011: Worktree 合并 + E2E 测试 + Bug 修复 (2026-04-20)
+
+### 完成内容
+
+1. **Worktree 合并**: `fix+merge-bug` 合并到 master
+   - 修复合并按钮无响应问题
+   - 简化 MergeConfirmDialog API
+
+2. **E2E 测试调试**: 7 个合并流程测试全部通过
+   - 调试 MERGE-005 flaky test：使用 `waitForFunction` 等待 DOM 状态变更
+   - 调试 radio button survivor 切换逻辑
+
+3. **Bug 修复**:
+   - `page.tsx`: 移除 Server Component 中的 `onMouseEnter`/`onMouseLeave` 事件处理器
+   - `MergeDialog.ts`: 修复 TypeScript 类型错误 `(radios[selectedIndex] as HTMLInputElement)?.checked`
+
+4. **构建验证**: `npm run build && npm start` 生产模式正常运行
+
+### Git 提交记录
+
+```
+a97d6f5 fix(page): remove event handlers from Server Component
+dae7cc6 fix(members): 修复合并按钮无响应的问题
+9aee996 chore: temporarily disable email verification for registration
+```
+
+### E2E 测试结果
+
+```
+7 passed (28.2s)
+- MERGE-001: 选择2+条记录后合并按钮可见
+- MERGE-002: 点击合并按钮显示加载状态
+- MERGE-003: 加载完成后对话框打开
+- MERGE-004: 默认选中关系分最高的主条目
+- MERGE-005: 单选按钮切换主条目
+- MERGE-006: 取消合并
+- MERGE-007: 确认合并后本地状态更新
+```
+
+### 调试经验
+
+详见 `docs/e2e-test-plan.md` 第 9 节：合并对话框单选按钮切换主条目
+
+### 内存清理
+
+```
+# 清理僵尸进程
+taskkill //F //PID <pid>
+
+# 检查残留
+wmic process where "name='node.exe' and CommandLine like '%Epstein%'" get ProcessId,CommandLine
+```
