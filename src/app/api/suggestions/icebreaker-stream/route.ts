@@ -247,7 +247,5 @@ export async function GET(request: NextRequest) {
       { error: "Failed to generate icebreaker: " + (err.message || String(error)) },
       { status: 500 }
     );
-  } finally {
-    await prisma?.$disconnect();
   }
 }

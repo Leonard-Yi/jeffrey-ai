@@ -43,7 +43,7 @@ function Input({ style, ...props }: React.InputHTMLAttributes<HTMLInputElement>)
         borderRadius: 9,
         fontSize: 14,
         color: C.text,
-        backgroundColor: "#fff",
+        backgroundColor: C.bgElevated,
         outline: "none",
         transition: "border-color 0.12s",
         ...style,
@@ -142,7 +142,7 @@ export default function MembersPage() {
 
   const getScoreColor = (score: number) => {
     if (score > 60) return C.success;
-    if (score >= 30) return "#d97706";
+    if (score >= 30) return C.warning;
     return C.error;
   };
 
@@ -170,9 +170,9 @@ export default function MembersPage() {
           borderRadius: 5,
           fontSize: 12,
           fontWeight: 500,
-          backgroundColor: count > 0 ? "#fef2f2" : C.surfaceAlt,
+          backgroundColor: count > 0 ? C.errorBg : C.bgElevated,
           color: count > 0 ? C.error : C.textMuted,
-          border: `1px solid ${count > 0 ? "#fecaca" : C.border}`,
+          border: `1px solid ${count > 0 ? C.error : C.border}`,
         }}>
           {count > 0 ? `${count}项待办` : "无待办"}
         </span>
@@ -219,7 +219,7 @@ export default function MembersPage() {
               style={{
                 padding: "8px 18px",
                 backgroundColor: C.primary,
-                color: "#fff",
+                color: C.textInverse,
                 border: "none",
                 borderRadius: 9,
                 fontSize: 14,
@@ -238,8 +238,8 @@ export default function MembersPage() {
                 disabled={mergeLoading}
                 style={{
                   padding: "8px 18px",
-                  backgroundColor: mergeLoading ? C.surfaceAlt : C.error,
-                  color: mergeLoading ? C.textMuted : "#fff",
+                  backgroundColor: mergeLoading ? C.bgElevated : C.error,
+                  color: mergeLoading ? C.textMuted : C.textInverse,
                   border: "none",
                   borderRadius: 9,
                   fontSize: 14,
@@ -271,7 +271,7 @@ export default function MembersPage() {
               <table style={{ minWidth: 900, borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    <th style={{ padding: "10px 14px", backgroundColor: C.surfaceAlt, borderBottom: `1px solid ${C.border}`, width: 42, textAlign: "left" }}>
+                    <th style={{ padding: "10px 14px", backgroundColor: C.bgElevated, borderBottom: `1px solid ${C.border}`, width: 42, textAlign: "left" }}>
                       <input
                         type="checkbox"
                         checked={selectedIds.length === rows.length && rows.length > 0}
@@ -286,7 +286,7 @@ export default function MembersPage() {
                         style={{
                           padding: "10px 14px",
                           textAlign: "left",
-                          backgroundColor: C.surfaceAlt,
+                          backgroundColor: C.bgElevated,
                           borderBottom: `1px solid ${C.border}`,
                           fontWeight: 600,
                           color: C.textSecondary,
@@ -313,11 +313,11 @@ export default function MembersPage() {
                       onClick={() => setSelectedId(row.id)}
                       style={{
                         cursor: "pointer",
-                        backgroundColor: selectedIds.includes(row.id) ? "#fffbf0" : ri % 2 === 0 ? "transparent" : C.surfaceAlt,
+                        backgroundColor: selectedIds.includes(row.id) ? C.bgActive : ri % 2 === 0 ? "transparent" : C.bgElevated,
                         transition: "background-color 0.1s",
                       }}
-                      onMouseEnter={e => { if (!selectedIds.includes(row.id)) e.currentTarget.style.backgroundColor = "#faf8f4"; }}
-                      onMouseLeave={e => { if (!selectedIds.includes(row.id)) e.currentTarget.style.backgroundColor = selectedIds.includes(row.id) ? "#fffbf0" : ri % 2 === 0 ? "transparent" : C.surfaceAlt; }}
+                      onMouseEnter={e => { if (!selectedIds.includes(row.id)) e.currentTarget.style.backgroundColor = C.bgHover; }}
+                      onMouseLeave={e => { if (!selectedIds.includes(row.id)) e.currentTarget.style.backgroundColor = selectedIds.includes(row.id) ? C.bgActive : ri % 2 === 0 ? "transparent" : C.bgElevated; }}
                     >
                       <td
                         style={{ padding: "9px 12px", borderBottom: `1px solid ${C.border}`, backgroundColor: "inherit" }}

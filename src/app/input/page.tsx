@@ -168,6 +168,7 @@ const JeffreyInputPage = () => {
   const [pendingText, setPendingText] = useState('');
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [dialogueComplete, setDialogueComplete] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   const [randomQuote] = useState(() => getRandomInputQuote());
@@ -253,15 +254,24 @@ const JeffreyInputPage = () => {
 
   const handleSubmitWithText = async (textToSubmit: string, isFollowUp = false) => {
     if (!textToSubmit.trim()) return;
+    setIsProcessing(true);
+    const userMsg: ChatMessage = { role: 'user', content: textToSubmit, timestamp: new Date().toLocaleString('zh-CN') };
+    if (isFollowUp) setConversationHistory(p => [...p, userMsg]);
     try {
-      setIsProcessing(true);
-      const userMsg: ChatMessage = { role: 'user', content: textToSubmit, timestamp: new Date().toLocaleString('zh-CN') };
-      if (isFollowUp) setConversationHistory(p => [...p, userMsg]);
-      const data: ExtractionResponse = await (await fetch('/api/analyze', {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify({ text: textToSubmit }),
-      })).json();
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data: ExtractionResponse = await res.json();
+      if (!res.ok) {
+        setErrorMessage('分析失败，请重试');
+        return;
+      }
       setJeffreyComment(data.jeffreyComment);
       setPersons(data.persons);
       setPersonIds(data.personIds || []);
@@ -283,21 +293,30 @@ const JeffreyInputPage = () => {
         setConversationHistory(p => [...p, { role: 'jeffrey', content: data.followUpQuestion, timestamp: new Date().toLocaleString('zh-CN') }]);
         setDialogueComplete(false);
       }
-    } finally { setIsProcessing(false); }
+    } catch {
+      setErrorMessage('网络请求失败，请重试');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSubmit = async (followUpReply?: string) => {
     const base = originalInputText || inputText;
     const textToSubmit = followUpReply ? `${base}\n\n追问回复：${followUpReply}` : inputText;
     if (!textToSubmit.trim()) return;
+    console.log('[DEBUG] handleSubmit called, textToSubmit:', textToSubmit.slice(0, 50));
     try {
       setIsProcessing(true);
       if (!followUpReply) setOriginalInputText(inputText);
       if (!followUpReply) {
+        console.log('[DEBUG] Calling resolve API...');
         const r = await fetch('/api/persons/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: textToSubmit }) });
+        console.log('[DEBUG] Resolve API returned, status:', r.status);
         if (r.ok) {
           const d = await r.json();
-          if (d.resolutions?.length > 0) {
+          console.log('[DEBUG] Resolve API resolutions:', JSON.stringify(d.resolutions));
+          if (d.resolutions?.some((r: { candidates: unknown[] }) => r.candidates?.length > 0)) {
+            console.log('[DEBUG] Showing name resolution prompt');
             setNameResolutions(d.resolutions);
             setPendingText(textToSubmit);
             setShowResolutionPrompt(true);
@@ -305,7 +324,9 @@ const JeffreyInputPage = () => {
             return;
           }
         }
+        console.log('[DEBUG] No resolutions, continuing to analyze API...');
       }
+      console.log('[DEBUG] Calling analyze API...');
       await handleSubmitWithText(textToSubmit, !!followUpReply);
       if (followUpReply) { setSelectedQuickReply(null); setCustomReply(''); setInputText(''); }
     } catch {} finally { if (!showResolutionPrompt) setIsProcessing(false); }
@@ -384,7 +405,7 @@ const JeffreyInputPage = () => {
           <Card>
             <Textarea
               value={inputText}
-              onChange={e => setInputText(e.target.value)}
+              onChange={e => { setInputText(e.target.value); setErrorMessage(''); }}
               placeholder="今天见了谁？聊了什么？有什么新的发现或约定吗？"
               style={{
                 height: 160,
@@ -463,6 +484,20 @@ const JeffreyInputPage = () => {
               {isProcessing ? 'Jeffrey 思考中...' : '汇报给 Jeffrey'}
             </Button>
           </div>
+
+          {errorMessage && (
+            <div style={{
+              marginTop: 8,
+              padding: '8px 12px',
+              background: C.errorBg,
+              color: C.error,
+              borderRadius: 8,
+              fontSize: 13,
+              border: `1px solid rgba(239,108,108,0.2)`,
+            }}>
+              {errorMessage}
+            </div>
+          )}
 
           {/* Recent Entries */}
           <Card>

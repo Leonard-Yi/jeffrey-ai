@@ -35,6 +35,10 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "test-minimax-api.ts",
+    "test-minimax.mjs",
+    "test_minimax.ts",
+    "test_minimax.mjs"
   ]
 }

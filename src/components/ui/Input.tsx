@@ -1,3 +1,5 @@
+"use client";
+
 import { C } from "@/lib/design-tokens";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {

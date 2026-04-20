@@ -96,8 +96,6 @@ export async function GET(
   } catch (error) {
     console.error("Error in GET /api/members/[id]:", error);
     return Response.json({ error: "Failed to fetch person" }, { status: 500 });
-  } finally {
-    await prisma?.$disconnect();
   }
 }
 
@@ -234,7 +232,5 @@ export async function PATCH(
     }
     console.error("Error in PATCH /api/members/[id]:", error);
     return Response.json({ error: "Failed to update person: " + String((error as Error).message) }, { status: 500 });
-  } finally {
-    await prisma?.$disconnect();
   }
 }

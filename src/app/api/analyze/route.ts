@@ -250,32 +250,60 @@ export async function POST(request: Request) {
     const normalizedText = normalizeRelativeDates(text);
     console.log("[Jeffrey.AI] Normalized text:", normalizedText);
 
-    // 调用 MiniMax LLM (Anthropic API 格式)
-    const apiResponse = await fetch("https://api.minimaxi.com/anthropic/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${getApiKey()}`,
-        "x-api-key": getApiKey(),
-      },
-      body: JSON.stringify({
-        model: getModel(),
-        system: SYSTEM_PROMPT,
-        messages: [
-          { role: "user", content: normalizedText },
-        ],
-        tools: [extractionTool],
-        temperature: 0.3,
-        max_tokens: 4000,
-      }),
-    });
+    // 添加超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+
+    console.log("[Jeffrey.AI] Calling MiniMax API with model:", getModel());
+    console.log("[Jeffrey.AI] API endpoint: https://api.minimaxi.com/anthropic/v1/messages");
+
+    let apiResponse;
+    try {
+      apiResponse = await fetch("https://api.minimaxi.com/anthropic/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${getApiKey()}`,
+          "x-api-key": getApiKey(),
+        },
+        body: JSON.stringify({
+          model: getModel(),
+          system: SYSTEM_PROMPT,
+          messages: [
+            { role: "user", content: normalizedText },
+          ],
+          tools: [extractionTool],
+          temperature: 0.3,
+          max_tokens: 4000,
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error("[Jeffrey.AI] MiniMax API timeout after 30 seconds");
+        return Response.json(
+          { error: "AI响应超时，请重试", status: "error" },
+          { status: 504 }
+        );
+      }
+      throw fetchError;
+    }
+
+    clearTimeout(timeoutId);
+    console.log("[Jeffrey.AI] MiniMax API response status:", apiResponse.status);
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
-      throw new Error(`MiniMax API error: ${apiResponse.status} - ${errorText}`);
+      console.error(`[Jeffrey.AI] MiniMax API error: ${apiResponse.status} - ${errorText.slice(0, 200)}`);
+      return Response.json(
+        { error: `AI服务暂时不可用 (${apiResponse.status})，请重试`, status: "error" },
+        { status: 502 }
+      );
     }
 
     const apiData = await apiResponse.json();
+    console.log("[Jeffrey.AI] MiniMax raw response:", JSON.stringify(apiData, null, 2).slice(0, 3000));
 
     // 从 content 数组中找到 tool_use 块
     const toolUseBlock = apiData.content?.find((c: { type: string }) => c.type === "tool_use");
@@ -294,7 +322,12 @@ export async function POST(request: Request) {
       if (jsonMatch) {
         rawJson = JSON.parse(jsonMatch[jsonMatch.length - 1]);
       } else {
-        throw new Error(`LLM did not call tool and no JSON found. Response: ${textContent.slice(0, 200)}`);
+        // LLM didn't call tool and returned non-JSON text - this is a failure
+        console.error("[Jeffrey.AI] LLM did not call tool and returned non-JSON text:", textContent.slice(0, 200));
+        return Response.json(
+          { error: "AI未能正确提取信息，请重试或简化输入", status: "error" },
+          { status: 500 }
+        );
       }
     } else {
       throw new Error("LLM returned empty response: " + JSON.stringify(apiData));
@@ -321,7 +354,10 @@ export async function POST(request: Request) {
         "[Jeffrey.AI] Zod validation failed for LLM output:",
         JSON.stringify(result.error.flatten(), null, 2)
       );
-      throw new Error(`LLM output failed schema validation: ${result.error.message}`);
+      return Response.json(
+        { error: "AI返回格式不完整，请重试或简化输入", status: "error" },
+        { status: 500 }
+      );
     }
 
     const data = result.data;
@@ -346,6 +382,11 @@ export async function POST(request: Request) {
         console.log("[Jeffrey.AI] Successfully saved complete data to database");
       } catch (dbError) {
         console.error("[Jeffrey.AI] Database save failed:", dbError);
+        console.error("[Jeffrey.AI] Error details:", {
+          message: dbError.message,
+          code: dbError.code,
+          meta: dbError.meta,
+        });
         // 不抛出错误，继续返回数据给前端
       }
     } else if (data.status === "pending" && data.persons && data.persons.length > 0) {

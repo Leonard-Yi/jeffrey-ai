@@ -1,65 +1,100 @@
-"use client";
-
 /**
- * Jeffrey.AI — Dark Academia Premium Design System
+ * Jeffrey.AI — Design System
  *
- * Aesthetic: Deep walnut + antique bronze + aged paper
- * "A refined gentleman's study at midnight"
+ * Light Theme: Warm Minimal
+ * "Clean intelligence, warm humanity"
  *
  * Key characteristics:
- * - Deep, warm darks (not cold blacks)
- * - Antique bronze/copper as accent (not generic gold)
- * - Cream/ivory for text on dark (not stark white)
- * - Subtle texture via noise grain
- * - Restrained, purposeful animations
- * - Serif display font for gravitas
+ * - Warm off-white backgrounds (not clinical white)
+ * - Dark charcoal text (readable, not harsh)
+ * - Warm amber as primary accent
+ * - Emerald green for success states
+ * - Soft, layered shadows on light surfaces
  */
 
 export const tokens = {
   // ── Backgrounds ──────────────────────────────────────────────
-  // ── Backgrounds ──────────────────────────────────────────────
-  bg: "#141210",                  // Deep walnut black (warm, not cold)
-  bgElevated: "#1c1917",          // Elevated surface
-  bgCard: "#231f1b",              // Card/surface
-  bgHover: "#2a2520",             // Hover state
-  bgActive: "#332c26",            // Active/selected
-  /* ── Backward-compat aliases ── */
-  surface: "#f5f3ef",              // Light fallback (not used in dark theme but needed by some pages)
-  surfaceAlt: "#faf8f4",           // Light alt surface
+  bg: "#f8f9fb",                   // Warm off-white base
+  bgElevated: "#ffffff",           // Pure white cards
+  bgCard: "#ffffff",              // Card surface
+  bgHover: "#f0f2f5",             // Hover state
+  bgActive: "#e8eaef",            // Active/selected
 
   // ── Text ───────────────────────────────────────────────────
-  text: "#f5f0e8",                // Warm ivory (primary text)
-  textSecondary: "#a8a29e",       // Muted stone
-  textMuted: "#78716c",           // Subtle text
-  textInverse: "#141210",         // Text on light surfaces
+  text: "#1a1a2e",                // Dark charcoal (readable)
+  textSecondary: "#5c6080",        // Muted slate
+  textMuted: "#9098b0",           // Subtle text
+  textInverse: "#ffffff",         // Text on dark surfaces
 
   // ── Brand Colors ─────────────────────────────────────────────
-  primary: "#c9956a",             // Antique bronze
-  primaryHover: "#d4a87a",        // Bronze highlight
-  primaryDeep: "#8b6914",         // Deep bronze (for gradients)
-  accent: "#e8b86d",              // Warm gold (highlights, CTAs)
-  accentLight: "rgba(232, 184, 109, 0.12)",  // Accent wash
+  primary: "#f59e0b",            // Warm amber
+  primaryHover: "#fbbf24",        // Bright amber
+  primaryDeep: "#d97706",         // Deep amber
+  accent: "#059669",              // Emerald green
+  accentLight: "rgba(5, 150, 105, 0.08)",  // Accent wash
 
   // ── Borders ─────────────────────────────────────────────────
-  border: "#2e2925",              // Subtle border
-  borderStrong: "#3d3530",        // Stronger border
-  borderAccent: "rgba(201, 149, 106, 0.3)",  // Accent border
+  border: "#e2e5ef",              // Light border
+  borderStrong: "#cdd2e1",        // Stronger border
+  borderAccent: "rgba(245, 158, 11, 0.4)",  // Accent border
 
   // ── Semantic ────────────────────────────────────────────────
-  error: "#ef6c6c",               // Muted red (not harsh)
-  errorBg: "rgba(239, 108, 108, 0.1)",
-  success: "#7cb377",              // Muted green
-  successBg: "rgba(124, 179, 119, 0.1)",
-  warning: "#e8b86d",             // Gold warning
-  warningBg: "rgba(232, 184, 109, 0.1)",
-  info: "#7aa2c9",                // Muted blue
-  infoBg: "rgba(122, 162, 201, 0.1)",
+  error: "#dc2626",               // Clear red
+  errorBg: "#fef2f2",
+  success: "#059669",              // Emerald green
+  successBg: "#ecfdf5",
+  warning: "#d97706",             // Amber warning
+  warningBg: "#fffbeb",
+  info: "#2563eb",                // Clear blue
+  infoBg: "#eff6ff",
+
+  // ── Graph Visualization Colors (Sigma.js) ───────────────────
+  graph: {
+    linkInteraction: '#3b82f6',
+    linkIntroducedBy: '#f59e0b',
+    linkSharedCareer: '#10b981',
+    linkSharedCity: '#8b5cf6',
+    linkSharedInterest: '#f97316',
+    linkSharedPlace: '#ec4899',
+    linkSharedVibe: '#6366f1',
+    clusterCity: '#3b82f6',
+    clusterCareer: '#10b981',
+    clusterInterest: '#f59e0b',
+    clusterPlace: '#ec4899',
+    clusterVibe: '#8b5cf6',
+    nodeDefault: '#3b82f6',
+    careerBanker: '#10b981',
+    careerLawyer: '#f59e0b',
+    careerDoctor: '#ef4444',
+    careerProfessor: '#8b5cf6',
+    careerFounder: '#f97316',
+    careerAI: '#6366f1',
+  },
+
+  // ── Semantic Color Overrides for Ambiguous/Merge UI ───────────
+  prompt: {
+    bg: "#fffbf0",
+    bgLight: "#fef9ec",
+    border: "#f0d78c",
+    borderLight: "#f59e0b",
+    text: "#1a1a2e",
+    textMuted: "#7a6a5a",
+    accent: "#d97706",
+    tagCareerBg: "#dbeafe",
+    tagCareerText: "#1e40af",
+    tagInterestBg: "#fef3c7",
+    tagInterestText: "#92400e",
+    tagVibeBg: "#e0e7ff",
+    tagVibeText: "#3730a3",
+    survivorBorder: "#f59e0b",
+    victimBg: "#faf8f4",
+  },
 
   // ── Shadows ─────────────────────────────────────────────────
-  shadowSm: "0 1px 2px rgba(0,0,0,0.3)",
-  shadowMd: "0 4px 12px rgba(0,0,0,0.4)",
-  shadowLg: "0 8px 32px rgba(0,0,0,0.5)",
-  shadowGlow: "0 0 20px rgba(201, 149, 106, 0.15)",  // Bronze glow
+  shadowSm: "0 1px 2px rgba(0,0,0,0.06)",
+  shadowMd: "0 4px 12px rgba(0,0,0,0.08)",
+  shadowLg: "0 8px 32px rgba(0,0,0,0.1)",
+  shadowGlow: "0 0 20px rgba(245, 158, 11, 0.15)",
 
   // ── Spacing ─────────────────────────────────────────────────
   space1: "4px",
@@ -105,7 +140,7 @@ export const tokens = {
   transitionFast: "0.1s ease",
   transitionBase: "0.15s ease",
   transitionSlow: "0.3s ease",
-  transitionSpring: "0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",  // Slight bounce
+  transitionSpring: "0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
 
   // ── Layout ─────────────────────────────────────────────────
   maxWidth: "1400px",

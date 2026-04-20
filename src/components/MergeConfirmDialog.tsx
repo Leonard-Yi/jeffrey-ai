@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { WeightedTag } from "@/lib/embedding";
+import { C } from "@/lib/design-tokens";
 
 type PersonSummary = {
   id: string;
@@ -34,7 +35,7 @@ const STYLES = {
     padding: "20px",
   },
   modal: {
-    backgroundColor: "#f5f3ef",
+    backgroundColor: C.prompt.bg,
     borderRadius: "16px",
     width: "90vw",
     maxWidth: "520px",
@@ -43,7 +44,7 @@ const STYLES = {
   },
   header: {
     padding: "20px 24px 12px",
-    borderBottom: "1px solid #e0d9cf",
+    borderBottom: `1px solid ${C.prompt.border}`,
   },
   body: {
     padding: "16px 24px",
@@ -55,22 +56,22 @@ const STYLES = {
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: "white",
-    border: "1px solid #e0d9cf",
+    backgroundColor: C.prompt.bgLight,
+    border: `1px solid ${C.prompt.border}`,
     borderRadius: "10px",
     padding: "12px 16px",
     marginBottom: "12px",
   },
   survivorCard: {
-    backgroundColor: "white",
-    border: "2px solid #c8a96e",
+    backgroundColor: C.prompt.bgLight,
+    border: `2px solid ${C.prompt.survivorBorder}`,
     borderRadius: "10px",
     padding: "12px 16px",
     marginBottom: "12px",
   },
   victimCard: {
-    backgroundColor: "#faf8f4",
-    border: "1px solid #e0d9cf",
+    backgroundColor: C.prompt.victimBg,
+    border: `1px solid ${C.prompt.border}`,
     borderRadius: "10px",
     padding: "12px 16px",
     marginBottom: "8px",
@@ -95,9 +96,9 @@ const STYLES = {
 
 function TagPill({ label, type }: { label: string; type: "career" | "interest" | "vibe" }) {
   const colors = {
-    career: { bg: "#dbeafe", color: "#1e40af" },
-    interest: { bg: "#fef3c7", color: "#92400e" },
-    vibe: { bg: "#e0e7ff", color: "#3730a3" },
+    career: { bg: C.prompt.tagCareerBg, color: C.prompt.tagCareerText },
+    interest: { bg: C.prompt.tagInterestBg, color: C.prompt.tagInterestText },
+    vibe: { bg: C.prompt.tagVibeBg, color: C.prompt.tagVibeText },
   };
   return (
     <span
@@ -135,10 +136,10 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
       <div style={STYLES.modal}>
         {/* Header */}
         <div style={STYLES.header}>
-          <h2 style={{ margin: 0, fontSize: "18px", color: "#3a2a1a" }}>
+          <h2 style={{ margin: 0, fontSize: "18px", color: C.prompt.text }}>
             合并 {allPersons.length} 条人脉记录
           </h2>
-          <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#7a6a5a" }}>
+          <p style={{ margin: "4px 0 0", fontSize: "13px", color: C.prompt.textMuted }}>
             合并后，被合并的记录将标记为已删除，所有信息汇总到主条目
           </p>
         </div>
@@ -147,32 +148,32 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
         <div style={STYLES.body}>
           {/* Summary stats */}
           <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
-            <div style={{ flex: 1, backgroundColor: "#fff", border: "1px solid #e0d9cf", borderRadius: "8px", padding: "10px 12px", textAlign: "center" }}>
-              <div style={{ fontSize: "20px", fontWeight: 600, color: "#c8a96e" }}>{allPersons.length}</div>
-              <div style={{ fontSize: "11px", color: "#7a6a5a" }}>合并条目</div>
+            <div style={{ flex: 1, backgroundColor: C.prompt.bgLight, border: `1px solid ${C.prompt.border}`, borderRadius: "8px", padding: "10px 12px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px", fontWeight: 600, color: C.prompt.accent }}>{allPersons.length}</div>
+              <div style={{ fontSize: "11px", color: C.prompt.textMuted }}>合并条目</div>
             </div>
-            <div style={{ flex: 1, backgroundColor: "#fff", border: "1px solid #e0d9cf", borderRadius: "8px", padding: "10px 12px", textAlign: "center" }}>
-              <div style={{ fontSize: "20px", fontWeight: 600, color: "#c8a96e" }}>
+            <div style={{ flex: 1, backgroundColor: C.prompt.bgLight, border: `1px solid ${C.prompt.border}`, borderRadius: "8px", padding: "10px 12px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px", fontWeight: 600, color: C.prompt.accent }}>
                 {victims.reduce((sum, v) => sum + v.interactionCount, 0)}
               </div>
-              <div style={{ fontSize: "11px", color: "#7a6a5a" }}>迁移互动</div>
+              <div style={{ fontSize: "11px", color: C.prompt.textMuted }}>迁移互动</div>
             </div>
-            <div style={{ flex: 1, backgroundColor: "#fff", border: "1px solid #e0d9cf", borderRadius: "8px", padding: "10px 12px", textAlign: "center" }}>
-              <div style={{ fontSize: "20px", fontWeight: 600, color: "#c8a96e" }}>
+            <div style={{ flex: 1, backgroundColor: C.prompt.bgLight, border: `1px solid ${C.prompt.border}`, borderRadius: "8px", padding: "10px 12px", textAlign: "center" }}>
+              <div style={{ fontSize: "20px", fontWeight: 600, color: C.prompt.accent }}>
                 {[
                   ...new Set([
                     ...allPersons.flatMap((p) => (p.careers || []).map((c) => c.name)),
                   ]),
                 ].length}
               </div>
-              <div style={{ fontSize: "11px", color: "#7a6a5a" }}>职业标签</div>
+              <div style={{ fontSize: "11px", color: C.prompt.textMuted }}>职业标签</div>
             </div>
           </div>
 
           {/* Aliases */}
           {victims.some((v) => v.name !== survivor.name) && (
             <div style={{ marginBottom: "16px" }}>
-              <div style={{ fontSize: "12px", color: "#7a6a5a", marginBottom: "4px" }}>别名汇总</div>
+              <div style={{ fontSize: "12px", color: C.prompt.textMuted, marginBottom: "4px" }}>别名汇总</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                 {[
                   survivor.name,
@@ -185,8 +186,8 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
                       style={{
                         fontSize: "12px",
                         padding: "2px 8px",
-                        backgroundColor: "#fef3c7",
-                        color: "#92400e",
+                        backgroundColor: C.prompt.tagInterestBg,
+                        color: C.prompt.tagInterestText,
                         borderRadius: "4px",
                       }}
                     >
@@ -198,7 +199,7 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
           )}
 
           {/* Person cards */}
-          <div style={{ fontSize: "13px", fontWeight: 600, color: "#3a2a1a", marginBottom: "8px" }}>
+          <div style={{ fontSize: "13px", fontWeight: 600, color: C.prompt.text, marginBottom: "8px" }}>
             选择主条目（保留）
           </div>
 
@@ -214,7 +215,7 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
               style={{
                 ...(p.id === survivorId ? STYLES.survivorCard : STYLES.victimCard),
                 cursor: "pointer",
-                border: p.id === survivorId ? "2px solid #c8a96e" : "1px solid #e0d9cf",
+                border: p.id === survivorId ? `2px solid ${C.prompt.survivorBorder}` : `1px solid ${C.prompt.border}`,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -226,12 +227,12 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
                       onSurvivorChange(p.id);
                     }
                   }}
-                  style={{ accentColor: "#c8a96e", width: "16px", height: "16px" }}
+                  style={{ accentColor: C.prompt.accent, width: "16px", height: "16px" }}
                 />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                    <span style={{ fontWeight: 600, color: "#3a2a1a", fontSize: "15px" }}>{p.name}</span>
-                    <span style={{ fontSize: "12px", color: "#7a6a5a" }}>关系 {p.relationshipScore}</span>
+                    <span style={{ fontWeight: 600, color: C.prompt.text, fontSize: "15px" }}>{p.name}</span>
+                    <span style={{ fontSize: "12px", color: C.prompt.textMuted }}>关系 {p.relationshipScore}</span>
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
                     {(p.careers || []).slice(0, 3).map((c) => (
@@ -242,7 +243,7 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
                     ))}
                   </div>
                 </div>
-                <span style={{ fontSize: "12px", color: p.id === survivorId ? "#c8a96e" : "#9a8a7a" }}>
+                <span style={{ fontSize: "12px", color: p.id === survivorId ? C.prompt.accent : C.prompt.textMuted }}>
                   {p.id === survivorId ? "主条目" : "→ 合并"}
                 </span>
               </div>
@@ -251,7 +252,7 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
 
 
           {error && (
-            <div style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>{error}</div>
+            <div style={{ color: C.error, fontSize: "13px", marginTop: "8px" }}>{error}</div>
           )}
         </div>
 
@@ -262,9 +263,9 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
             disabled={loading}
             style={{
               ...STYLES.btn,
-              backgroundColor: "white",
-              borderColor: "#d1d5db",
-              color: "#4b5563",
+              backgroundColor: C.prompt.bgLight,
+              borderColor: C.borderStrong,
+              color: C.textSecondary,
             }}
           >
             取消
@@ -274,9 +275,9 @@ export default function MergeConfirmDialog({ allPersons, survivorId, onSurvivorC
             disabled={loading}
             style={{
               ...STYLES.btn,
-              backgroundColor: loading ? "#f5f3ef" : "#c8a96e",
-              borderColor: "#c8a96e",
-              color: loading ? "#9a8a7a" : "white",
+              backgroundColor: loading ? C.prompt.bgLight : C.prompt.accent,
+              borderColor: C.prompt.accent,
+              color: loading ? C.prompt.textMuted : C.bg,
             }}
           >
             {loading ? "合并中..." : "确认合并"}

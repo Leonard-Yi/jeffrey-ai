@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { C } from "@/lib/design-tokens";
 
 type AmbiguousPerson = {
   name: string;
@@ -37,14 +38,14 @@ export default function AmbiguousPrompt({
   return (
     <div
       style={{
-        backgroundColor: "#fffbf0",
-        border: "1px solid #f0d78c",
+        backgroundColor: C.prompt.bg,
+        border: `1px solid ${C.prompt.borderLight}`,
         borderRadius: "12px",
         padding: "20px 24px",
         marginTop: "16px",
       }}
     >
-      <div style={{ fontSize: "14px", fontWeight: 600, color: "#92400e", marginBottom: "12px" }}>
+      <div style={{ fontSize: "14px", fontWeight: 600, color: C.prompt.accent, marginBottom: "12px" }}>
         🔍 发现疑似重复记录
       </div>
 
@@ -58,13 +59,13 @@ export default function AmbiguousPrompt({
 
         return (
           <div key={person.name} style={{ marginBottom: "16px" }}>
-            <div style={{ fontSize: "14px", color: "#3a2a1a", marginBottom: "8px" }}>
+            <div style={{ fontSize: "14px", color: C.prompt.text, marginBottom: "8px" }}>
               <span style={{ fontWeight: 600 }}>{person.name}</span>
               {person.ambiguousWith.length > 0 && (
-                <span style={{ color: "#7a6a5a" }}>
+                <span style={{ color: C.prompt.textMuted }}>
                   {" "}可能与{" "}
                   {person.ambiguousWith.map((aw, i) => (
-                    <span key={aw} style={{ color: "#c8a96e", fontWeight: 600 }}>
+                    <span key={aw} style={{ color: C.prompt.accent, fontWeight: 600 }}>
                       {aw}
                       {i < person.ambiguousWith.length - 1 ? "、" : ""}
                     </span>
@@ -83,8 +84,8 @@ export default function AmbiguousPrompt({
                     fontSize: "11px",
                     padding: "1px 6px",
                     borderRadius: "4px",
-                    backgroundColor: "#dbeafe",
-                    color: "#1e40af",
+                    backgroundColor: C.prompt.tagCareerBg,
+                    color: C.prompt.tagCareerText,
                   }}
                 >
                   {c.name}
@@ -97,8 +98,8 @@ export default function AmbiguousPrompt({
                     fontSize: "11px",
                     padding: "1px 6px",
                     borderRadius: "4px",
-                    backgroundColor: "#fef3c7",
-                    color: "#92400e",
+                    backgroundColor: C.prompt.tagInterestBg,
+                    color: C.prompt.tagInterestText,
                   }}
                 >
                   {i.name}
@@ -119,9 +120,9 @@ export default function AmbiguousPrompt({
                     borderRadius: "6px",
                     fontSize: "13px",
                     cursor: loading === person.name ? "not-allowed" : "pointer",
-                    backgroundColor: loading === person.name ? "#f5f3ef" : "#c8a96e",
-                    border: "1px solid #c8a96e",
-                    color: loading === person.name ? "#9a8a7a" : "white",
+                    backgroundColor: loading === person.name ? C.prompt.bgLight : C.prompt.accent,
+                    border: `1px solid ${C.prompt.accent}`,
+                    color: loading === person.name ? C.prompt.textMuted : C.bg,
                     transition: "all 0.15s",
                   }}
                 >
@@ -138,9 +139,9 @@ export default function AmbiguousPrompt({
                   borderRadius: "6px",
                   fontSize: "13px",
                   cursor: loading === person.name ? "not-allowed" : "pointer",
-                  backgroundColor: "white",
-                  border: "1px solid #d1d5db",
-                  color: "#4b5563",
+                  backgroundColor: C.bg,
+                  border: `1px solid ${C.borderStrong}`,
+                  color: C.textSecondary,
                   transition: "all 0.15s",
                 }}
               >
@@ -152,7 +153,7 @@ export default function AmbiguousPrompt({
       })}
 
       {ambiguousPersons.length === 0 && (
-        <div style={{ fontSize: "13px", color: "#7a6a5a" }}>
+        <div style={{ fontSize: "13px", color: C.prompt.textMuted }}>
           未找到疑似重复的记录
         </div>
       )}

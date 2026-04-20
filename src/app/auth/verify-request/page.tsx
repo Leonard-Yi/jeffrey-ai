@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link"
 import AuthLayout from "@/components/AuthLayout"
 import { AuthCard } from "../_components/AuthCard"

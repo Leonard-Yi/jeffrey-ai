@@ -19,7 +19,5 @@ export async function GET() {
   } catch (error) {
     console.error("Error in GET /api/members/count:", error);
     return Response.json({ error: "Failed to fetch count" }, { status: 500 });
-  } finally {
-    await prisma?.$disconnect();
   }
 }

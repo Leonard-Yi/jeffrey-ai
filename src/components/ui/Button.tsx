@@ -1,3 +1,5 @@
+"use client";
+
 import { C } from "@/lib/design-tokens";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "accent";

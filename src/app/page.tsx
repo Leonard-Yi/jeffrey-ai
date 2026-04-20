@@ -15,9 +15,9 @@ export default async function LandingPage() {
       style={{
         minHeight: "100vh",
         background: `
-          radial-gradient(ellipse 80% 60% at 20% -10%, rgba(201, 149, 106, 0.06) 0%, transparent 50%),
-          radial-gradient(ellipse 60% 50% at 80% 110%, rgba(139, 105, 20, 0.05) 0%, transparent 50%),
-          linear-gradient(180deg, #0f0d0b 0%, #141210 40%, #1a1714 100%)
+          radial-gradient(ellipse 80% 60% at 20% -10%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse 60% 50% at 80% 110%, rgba(5, 150, 105, 0.05) 0%, transparent 50%),
+          ${C.bg}
         `,
         position: "relative",
         overflow: "hidden",
@@ -37,7 +37,7 @@ export default async function LandingPage() {
           right: "-100px",
           width: "600px",
           height: "600px",
-          border: "1px solid rgba(201, 149, 106, 0.05)",
+          border: `1px solid ${C.borderAccent}`,
           borderRadius: "50%",
           pointerEvents: "none",
         }}
@@ -49,7 +49,7 @@ export default async function LandingPage() {
           right: "-50px",
           width: "500px",
           height: "500px",
-          border: "1px solid rgba(201, 149, 106, 0.04)",
+          border: `1px solid ${C.borderAccent.replace("0.4", "0.2")}`,
           borderRadius: "50%",
           pointerEvents: "none",
         }}
@@ -61,7 +61,7 @@ export default async function LandingPage() {
           left: "-100px",
           width: "400px",
           height: "400px",
-          border: "1px solid rgba(201, 149, 106, 0.04)",
+          border: `1px solid ${C.borderAccent.replace("0.4", "0.2")}`,
           borderRadius: "50%",
           pointerEvents: "none",
         }}
@@ -112,7 +112,7 @@ export default async function LandingPage() {
               padding: "9px 20px",
               fontSize: "14px",
               fontWeight: 500,
-              color: C.bg,
+              color: C.textInverse,
               textDecoration: "none",
               background: C.primary,
               borderRadius: "8px",
@@ -209,7 +209,7 @@ export default async function LandingPage() {
               padding: "14px 32px",
               fontSize: "15px",
               fontWeight: 500,
-              color: C.bg,
+              color: C.textInverse,
               textDecoration: "none",
               background: C.primary,
               borderRadius: "10px",
@@ -257,7 +257,7 @@ export default async function LandingPage() {
               title: "自然录入",
               desc: "像写日记一样，把见闻随手记下来。不用填表，不用想格式。",
               accent: C.primary,
-              bg: "rgba(201, 149, 106, 0.08)",
+              bg: C.accentLight,
             },
             {
               icon: (
@@ -271,8 +271,8 @@ export default async function LandingPage() {
               ),
               title: "关系图谱",
               desc: "一眼看清你的人际网络。谁是节点、谁在连接，一目了然。",
-              accent: "#7aa2c9",
-              bg: "rgba(122, 162, 201, 0.08)",
+              accent: C.info,
+              bg: C.infoBg,
             },
             {
               icon: (
@@ -283,7 +283,7 @@ export default async function LandingPage() {
               title: "智能提醒",
               desc: "该联系谁了？Jeffrey 会悄悄提醒你。别让人脉断在你手里。",
               accent: C.accent,
-              bg: "rgba(232, 184, 109, 0.08)",
+              bg: C.accentLight,
             },
           ].map((feature, i) => (
             <div
@@ -346,7 +346,7 @@ export default async function LandingPage() {
           style={{
             marginTop: "100px",
             padding: "28px 32px",
-            background: "rgba(201, 149, 106, 0.04)",
+            background: C.accentLight,
             borderRadius: "14px",
             border: `1px solid ${C.borderAccent}`,
             maxWidth: "560px",

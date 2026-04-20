@@ -146,6 +146,12 @@ DATABASE_URL=        # PostgreSQL connection string
 - Array fields from JSONB: always add `?? []` guard before `.join()` or `.map()`
 - Recursive Zod schemas can cause TypeScript infinite instantiation — use `@ts-ignore` as workaround
 
+### MiniMax API
+- **端点**: `https://api.minimaxi.com/anthropic/v1/messages`（注意是 `minimaxi.com`，不是 `minimax.chat`）
+- **Headers**: 需要同时传 `Authorization: Bearer` 和 `x-api-key`
+- **Content 格式**: 返回的 `content` 是数组，`type === "tool_use"` 是工具调用，`type === "text"` 是文本，`type === "thinking"` 是思考过程（忽略）
+- **Null 值**: MiniMax 返回 `null` 而非 `undefined`，Zod 严格模式会拒绝 — 用 `nullToUndefined()` 归一化后再验证
+
 ### Prisma
 - JSONB fields default to `null`, not `[]` — add `default([])` in schema or handle null in code
 - After schema changes: run `npx prisma generate` before rebuilding

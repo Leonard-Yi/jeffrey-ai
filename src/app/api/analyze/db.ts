@@ -30,10 +30,12 @@ async function upsertPerson(
   interactionDate: Date,
   userId: string
 ): Promise<string> {
+  console.log("[Jeffrey.AI] upsertPerson called:", { name: extracted.name, userId, interactionDate });
   const name = extracted.name || "未知";
   const existing = await prisma.person.findFirst({
     where: { name, userId },
   });
+  console.log("[Jeffrey.AI] Existing person lookup:", { name, userId, found: !!existing });
 
   if (existing) {
     const mergedCareers = mergeTags(existing.careers as WeightedTag[], extracted.careers || []);
@@ -86,6 +88,7 @@ async function upsertPerson(
     console.error("[Jeffrey.AI] Failed to generate embedding:", embErr);
   }
 
+  console.log("[Jeffrey.AI] Creating person:", { name, userId, embeddingLength: embedding.length });
   const person = await prisma.person.create({
     data: {
       name,
@@ -99,6 +102,7 @@ async function upsertPerson(
       embedding,
     },
   });
+  console.log("[Jeffrey.AI] Person created:", person.id);
 
   return person.id;
 }
@@ -163,6 +167,7 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
     personIds,
   });
 
+  console.log("[Jeffrey.AI] About to create interaction for userId:", userId);
   const interaction = await prisma.interaction.create({
     data: {
       userId: userId!,

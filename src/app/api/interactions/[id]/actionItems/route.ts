@@ -27,7 +27,5 @@ export async function PATCH(
   } catch (error) {
     console.error("Error updating actionItems:", error);
     return Response.json({ error: "Failed to update actionItems" }, { status: 500 });
-  } finally {
-    await prisma?.$disconnect();
   }
 }

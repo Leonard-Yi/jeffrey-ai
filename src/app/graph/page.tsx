@@ -35,7 +35,7 @@ const NODE_COLORS: Record<string, string> = {
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+      background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 12,
       padding: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 2px 12px rgba(0,0,0,0.04)",
       ...style,
     }}>{children}</div>
@@ -116,7 +116,7 @@ const JeffreyGraphPage = () => {
       <Header />
 
       {/* Filter Bar */}
-      <div style={{ backgroundColor: C.surface, borderBottom: `1px solid ${C.border}`, padding: "10px 24px", display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+      <div style={{ backgroundColor: C.bgCard, borderBottom: `1px solid ${C.border}`, padding: "10px 24px", display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
         {/* Group Filter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 13, color: C.textSecondary }}>职业</span>
@@ -152,7 +152,7 @@ const JeffreyGraphPage = () => {
         <button
           onClick={fetchGraphData}
           style={{
-            padding: "5px 14px", backgroundColor: C.primary, color: "#fff",
+            padding: "5px 14px", backgroundColor: C.primary, color: C.textInverse,
             border: "none", borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer',
           }}
         >
@@ -193,7 +193,7 @@ const JeffreyGraphPage = () => {
       {/* Legend Card */}
       <div style={{
         position: 'absolute', bottom: 20, left: 20,
-        backgroundColor: C.surface, border: `1px solid ${C.border}`,
+        backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
         borderRadius: 10, padding: '12px 16px',
         boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
       }}>

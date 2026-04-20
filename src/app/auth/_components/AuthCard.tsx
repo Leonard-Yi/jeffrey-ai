@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { C } from "@/lib/design-tokens";
 
@@ -19,9 +21,9 @@ export function AuthCard({ children, showFooter = true, footerLink, title, subti
         alignItems: "center",
         justifyContent: "center",
         background: `
-          radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201, 149, 106, 0.07) 0%, transparent 60%),
-          radial-gradient(ellipse 60% 40% at 90% 80%, rgba(139, 105, 20, 0.04) 0%, transparent 50%),
-          #141210
+          radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245, 158, 11, 0.07) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 40% at 90% 80%, rgba(245, 158, 11, 0.04) 0%, transparent 50%),
+          ${C.bg}
         `,
         overflow: "hidden",
       }}
@@ -45,7 +47,7 @@ export function AuthCard({ children, showFooter = true, footerLink, title, subti
           right: "-80px",
           width: "400px",
           height: "400px",
-          border: `1px solid rgba(201, 149, 106, 0.06)`,
+          border: `1px solid ${C.borderAccent}`,
           borderRadius: "50%",
           pointerEvents: "none",
           zIndex: 0,

@@ -113,7 +113,7 @@ export default function SuggestionsPage() {
           <p style={{ fontFamily: "var(--font-display)", fontSize: 17, fontStyle: "italic", color: C.textSecondary, margin: "0 0 6px", lineHeight: 1.7 }}>
             &ldquo;{quote.text}&rdquo;
           </p>
-          <p style={{ fontSize: 12, color: C.textMuted }}>— {quote.author}</p>
+          <p style={{ fontSize: 12, color: C.textMuted }}>— {quote.author ?? "Jeffrey"}</p>
         </div>
 
         {/* Section 1: Stale Contacts */}
@@ -135,16 +135,16 @@ export default function SuggestionsPage() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {staleContacts.slice(0, 5).map(c => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", backgroundColor: C.surfaceAlt, borderRadius: 9, border: `1px solid ${C.border}`, gap: 12 }}>
+                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", backgroundColor: C.bgElevated, borderRadius: 9, border: `1px solid ${C.border}`, gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 14.5, fontWeight: 500, color: C.text, marginBottom: 2 }}>{c.name}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}>{c.careers} · {c.lastContactDate} · 关系 {c.relationshipScore}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, color: c.daysSinceContact > 60 ? C.error : "#f59e0b", fontWeight: 500 }}>
+                    <span style={{ fontSize: 12, color: c.daysSinceContact > 60 ? C.error : C.warning, fontWeight: 500 }}>
                       {c.daysSinceContact}天未联系
                     </span>
-                    <Link href={`/input?personId=${c.id}`} style={{ padding: "5px 12px", backgroundColor: C.primary, color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 500, textDecoration: "none", whiteSpace: "nowrap" }}>
+                    <Link href={`/input?personId=${c.id}`} style={{ padding: "5px 12px", backgroundColor: C.primary, color: C.textInverse, borderRadius: 7, fontSize: 12, fontWeight: 500, textDecoration: "none", whiteSpace: "nowrap" }}>
                       戳他
                     </Link>
                   </div>
@@ -168,8 +168,8 @@ export default function SuggestionsPage() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {pendingDebts.slice(0, 5).map(d => (
-                <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", backgroundColor: C.surfaceAlt, borderRadius: 8, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.error}` }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", backgroundColor: C.error, padding: "1px 7px", borderRadius: 10, flexShrink: 0 }}>我欠</span>
+                <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", backgroundColor: C.bgElevated, borderRadius: 8, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.error}` }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: C.textInverse, backgroundColor: C.error, padding: "1px 7px", borderRadius: 10, flexShrink: 0 }}>我欠</span>
                   <span style={{ flex: 1, fontSize: 13.5, color: C.text }}>{d.description}</span>
                   <span style={{ fontSize: 12, color: C.textMuted, flexShrink: 0 }}>{d.personName} · {d.daysSinceCreated}天</span>
                 </div>
@@ -188,7 +188,7 @@ export default function SuggestionsPage() {
           </SectionLabel>
 
           {/* Batch Pre-generate */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", backgroundColor: C.accentLight, borderRadius: 9, border: `1px solid #fde68a`, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", backgroundColor: C.accentLight, borderRadius: 9, border: `1px solid ${C.warning}`, marginBottom: 14 }}>
             <div style={{ fontSize: 13, color: C.primary }}>
               <span style={{ fontWeight: 600 }}>预生成破冰文案</span>
               <span style={{ marginLeft: 8, color: C.textMuted, fontSize: 12 }}>开启后查询更快，但会消耗更多 token</span>
@@ -200,7 +200,7 @@ export default function SuggestionsPage() {
                 padding: "5px 14px",
                 borderRadius: 7,
                 border: `1.5px solid ${C.accent}`,
-                backgroundColor: batchGenerating ? C.surfaceAlt : "#fff",
+                backgroundColor: batchGenerating ? C.bgElevated : C.bg,
                 color: batchGenerating ? C.textMuted : C.primary,
                 fontSize: 13,
                 fontWeight: 500,
@@ -218,7 +218,7 @@ export default function SuggestionsPage() {
             <select
               value={selectedPersonId}
               onChange={e => setSelectedPersonId(e.target.value)}
-              style={{ width: "100%", padding: "9px 12px", border: `1.5px solid ${C.borderStrong}`, borderRadius: 9, fontSize: 14, color: C.text, backgroundColor: "#fff", cursor: "pointer", outline: "none" }}
+              style={{ width: "100%", padding: "9px 12px", border: `1.5px solid ${C.borderStrong}`, borderRadius: 9, fontSize: 14, color: C.text, backgroundColor: C.bg, cursor: "pointer", outline: "none" }}
             >
               <option value="">搜索选择联系人...</option>
               {allPersons.map(p => <option key={p.id} value={p.id}>{p.name}（关系 {p.relationshipScore}）</option>)}
@@ -237,7 +237,7 @@ export default function SuggestionsPage() {
                     padding: "6px 13px",
                     borderRadius: 8,
                     border: `1.5px solid ${selectedStyle === s.value ? C.accent : C.borderStrong}`,
-                    backgroundColor: selectedStyle === s.value ? C.accentLight : "#fff",
+                    backgroundColor: selectedStyle === s.value ? C.accentLight : C.bg,
                     color: selectedStyle === s.value ? C.primary : C.textSecondary,
                     fontSize: 13,
                     fontWeight: selectedStyle === s.value ? 600 : 400,
@@ -254,25 +254,25 @@ export default function SuggestionsPage() {
           {/* Icebreaker Result */}
           {icebreakerLoading && (
             <div style={{ textAlign: "center", padding: "20px 0", color: C.textMuted, fontSize: 14 }}>
-              <div style={{ width: 28, height: 28, border: "2.5px solid #e7e5e4", borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.7s linear infinite", margin: "0 auto 10px" }} />
+              <div style={{ width: 28, height: 28, border: "2.5px solid #3d4660", borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.7s linear infinite", margin: "0 auto 10px" }} />
               <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
               Jeffrey 正在为您准备开场白...
             </div>
           )}
 
           {icebreaker && !icebreakerLoading && (
-            <div style={{ backgroundColor: "#fffcf7", border: `1px solid #fde68a`, borderRadius: 10, padding: 16 }}>
+            <div style={{ backgroundColor: C.bgCard, border: `1px solid ${C.warning}`, borderRadius: 10, padding: 16 }}>
               {icebreaker.recentContext && (
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 6 }}>记忆切入点</div>
-                  <div style={{ fontSize: 13.5, color: C.text, padding: "8px 12px", backgroundColor: "#fff", borderRadius: 7, lineHeight: 1.6 }}>{icebreaker.recentContext}</div>
+                  <div style={{ fontSize: 13.5, color: C.text, padding: "8px 12px", backgroundColor: C.bg, borderRadius: 7, lineHeight: 1.6 }}>{icebreaker.recentContext}</div>
                 </div>
               )}
               {icebreaker.openingLines?.length > 0 && (
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 6 }}>开场白建议</div>
                   {icebreaker.openingLines.map((line, i) => (
-                    <div key={i} style={{ fontSize: 14, color: C.text, padding: "8px 12px", backgroundColor: "#fff", border: `1px solid ${C.border}`, borderRadius: 7, marginBottom: 5, cursor: "default", lineHeight: 1.55 }}>
+                    <div key={i} style={{ fontSize: 14, color: C.text, padding: "8px 12px", backgroundColor: C.bg, border: `1px solid ${C.border}`, borderRadius: 7, marginBottom: 5, cursor: "default", lineHeight: 1.55 }}>
                       {line}
                     </div>
                   ))}

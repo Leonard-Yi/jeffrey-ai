@@ -95,7 +95,5 @@ export async function GET(request: NextRequest) {
       { error: "Failed to fetch table data: " + String((error as Error).message) },
       { status: 500 }
     );
-  } finally {
-    await prisma?.$disconnect();
   }
 }
