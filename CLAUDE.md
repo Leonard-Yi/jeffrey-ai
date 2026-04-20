@@ -13,17 +13,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Start**: `npm run dev`
 - **Profile**: Uses Turbopack, runs ~18 Node workers, heavy CPU/memory usage
 - **When to use**: Active coding, code changes frequently
-- **⚠️ Warning**: Dev mode leaves background node processes after termination. Always kill manually:
-  ```bash
-  # Kill all Epstein-related node processes
-  wmic process where "name='node.exe' and CommandLine like '%Epstein%'" get ProcessId | tail -n +2 | xargs -I{} taskkill //F //PID {}
-  ```
-- **⚠️ Memory issue**: Next.js 16 + Turbopack requires ~22GB+ free RAM. If free RAM is low, dev server will be extremely slow. Close other apps (VSCode, WSL, Docker) before running.
+- **⚠️ Warning**: Dev mode leaves background node processes after termination. Always kill manually after use.
+- **⚠️ Memory issue**: Everytime you start the server, `npm start` or `npm build`, CHECK THE MEMORY FIRST. If available memory is not enough, clean it first!
 
 ### Production Mode (`npm start`)
 - **Port**: 3000
 - **Build first**: `npm run build` (requires ~22GB free RAM)
 - **Start**: `npm start`
+- **⚠️ Before build**: Kill all node processes first, otherwise build fails with ENOENT errors on Windows:
+  ```bash
+  wmic process where "name='node.exe' and CommandLine like '%Epstein%'" get ProcessId | tail -n +2 | xargs -I{} taskkill //F //PID {}
+  ```
 - **Profile**: Single process, minimal CPU/memory (~50MB), stable and fast
 - **When to use**: Daily usage, demo, extended sessions
 
@@ -31,6 +31,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 改代码 → npm run dev 测试 → 确认没问题 → npm run build && npm start 生产模式
 不用 server 时 → 关掉 terminal 或 kill node 进程
+出现bug → 使用/systematic-debugging技能
+完成工作后 → 调用 ecc:e2e 技能跑一个测试
 ```
 
 ### Prerequisites
@@ -115,8 +117,43 @@ DATABASE_URL=        # PostgreSQL connection string
 
 ## Key Design Decisions
 - **Chinese-first** — system prompts, vibe tags, and test data are all in Mandarin
+- **Design tokens** — all colors in `src/lib/design-tokens.ts` (LIGHT_THEME/DARK_THEME); components reference tokens, never raw values
+- **Frontend design** — use `ecc:frontend-design` skill for UI/styling changes to ensure cohesive design
 - **Test isolation** — full pipeline tests prefix all records with `__test__` and clean up before/after to avoid polluting real data
 - `tsx` is used as the TypeScript runtime (no build step needed for development)
+
+## Common Pitfalls
+
+### Chinese Text / Encoding
+- Always specify `charset=utf-8` in Content-Type headers
+- Use `request.text()` for raw body parsing, not `request.json()` — avoids encoding issues
+- When testing APIs with curl on Windows, use Node.js HTTP client instead (curl corrupts UTF-8)
+
+### Server/Client Component Boundary
+- Event handlers (`onClick`, `onMouseEnter`, etc.) belong only in Client Components
+- Hooks must be at the top level of components
+- If you see "event handlers not valid in Server Component" — move the handler to a Client Component
+
+### Playwright E2E Testing
+- **Navigation**: Use link clicks (`page.click('a')`) instead of `page.goto()` — preserves session cookies
+- **State waiting**: Use `waitForFunction` for React state, not fixed `waitForTimeout`
+- **Selectors**: Avoid inline style selectors (`[style*="..."]`); use semantic selectors or `data-testid`
+- **Locators vs ElementHandle**: Prefer locators — ElementHandle goes stale easily
+- **Test isolation**: Merge operations soft-delete; reset test data in `beforeEach`
+
+### Type Safety / Zod
+- MiniMax API returns `null` for empty fields — use `nullToUndefined()` normalizer before Zod validation
+- Array fields from JSONB: always add `?? []` guard before `.join()` or `.map()`
+- Recursive Zod schemas can cause TypeScript infinite instantiation — use `@ts-ignore` as workaround
+
+### Prisma
+- JSONB fields default to `null`, not `[]` — add `default([])` in schema or handle null in code
+- After schema changes: run `npx prisma generate` before rebuilding
+
+### Build / Memory
+- Turbopack starts ~15 workers during build — requires ~22GB available memory
+- If build OOMs: close other programs (Docker Desktop, WSL, VSCode) first
+- Before any `npm run build`: kill residual node processes to avoid ENOENT errors
 
 ## Version Control
 
@@ -124,7 +161,7 @@ See [docs/version-control-strategy.md](docs/version-control-strategy.md) for the
 
 ### Branch Model
 ```
-main          ← 生产环境（受保护，禁止直接推送）
+master        ← 生产环境（受保护，禁止直接推送）
     ↑
 feature/*    ← 新功能分支
 hotfix/*     ← 紧急修复分支
@@ -145,8 +182,8 @@ git checkout -b feature/my-feature
 # 提交更改
 git add -A && git commit -m "feat(analyze): 添加新功能"
 
-# 切回 main 并拉取最新
-git checkout main && git pull
+# 切回 master 并拉取最新
+git checkout master && git pull
 
 # 查看提交历史
 git log --oneline -10
@@ -162,7 +199,6 @@ git checkout v1.0.0 && npm run build && npm start
 ```
 
 ### Worktree 强制使用规则
-
 **所有新功能/修复必须通过 Worktree 开发，禁止直接在主目录操作**：
 
 ```bash
@@ -172,16 +208,19 @@ cd .claude/worktrees/feature/my-feature
 # 开发 → 测试 → 提交
 
 # 完成后切回主目录合并
-git checkout main
+git checkout master
 git merge --no-ff feature/my-feature
 git branch -d feature/my-feature
 git worktree remove .claude/worktrees/feature/my-feature
 ```
 
-**为什么**：保持主目录（main 分支）始终处于干净状态，可随时切到其他项目而不影响本项目。
+**为什么**：保持主目录（master 分支）始终处于干净状态，可随时切到其他项目而不影响本项目。
 
-**当前 Worktree 列表**：
-- 主目录 (`d:\Epstein.AI`) — main 分支，稳定版本
+**Worktree 列表**：
+- 主目录 (`d:\Epstein.AI`) — master 分支
+- `.claude/worktrees/deploy-vercel` — worktree-deploy-vercel
+- `.claude/worktrees/fix+merge-bug` — worktree-fix+merge-bug
+- `.claude/worktrees/ralph-frontend-redesign` — ralph/frontend-redesign
 
 ---
 
