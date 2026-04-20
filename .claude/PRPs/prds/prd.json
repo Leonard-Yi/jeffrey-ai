@@ -1,0 +1,151 @@
+{
+  "project": "Jeffrey.AI Frontend Redesign",
+  "branchName": "ralph/frontend-redesign",
+  "description": "Dark Academia Premium redesign with unified design system, Jeffrey voice rewrite, TTS integration, and mascot",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Header Component Redesign",
+      "description": "As a user, I want a consistent global navigation header so that I can navigate between pages seamlessly.",
+      "acceptanceCriteria": [
+        "Header uses design tokens from src/lib/design-tokens.ts (dark bgCard, bronze primary)",
+        "Header displays Jeffrey logo/chin mascot, navigation links (Input, Members, Graph, Suggestions)",
+        "Header has hover states using bgHover token",
+        "Header is consistent across all pages (Landing, Auth, Input, Members, Graph, Suggestions)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Completed: Header uses dark bgCard background, bronze primary accents, JeffreyLogo SVG mascot, hover states use bgHover token."
+    },
+    {
+      "id": "US-002",
+      "title": "Input Page Redesign",
+      "description": "As a user, I want a redesigned Input page with Dark Academia styling so that recording interactions feels premium.",
+      "acceptanceCriteria": [
+        "Input page uses Dark Academia color palette (bg #141210, primary #c9956a, text #f5f0e8)",
+        "Textarea and button use shared UI components (Input, Button from src/components/ui/)",
+        "Jeffrey greeting copy uses natural Chinese tone (not stiff/translated)",
+        "Design tokens覆盖率 ≥90% (most styles use design-tokens.ts)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Completed: Input page uses Dark Academia color palette (bg #141210, primary #c9956a, text #f5f0e8). Textarea uses shared UI component, Button uses shared UI component. Jeffrey greeting copy uses natural Chinese tone from jeffrey-quotes.ts. Design tokens coverage >= 90%."
+    },
+    {
+      "id": "US-003",
+      "title": "Members Page Redesign",
+      "description": "As a user, I want a consistently styled Members page so that browsing relationships feels cohesive.",
+      "acceptanceCriteria": [
+        "Members page uses Dark Academia design tokens",
+        "Member cards use shared Card component with bgCard background",
+        "Tags use shared Tag/Badge components",
+        "Design tokens覆盖率 ≥90%",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Graph Page Redesign",
+      "description": "As a user, I want a redesigned Graph page so that visualizing relationships feels premium.",
+      "acceptanceCriteria": [
+        "Graph page uses Dark Academia color scheme",
+        "Graph nodes/edges styled with bronze/ivory palette",
+        "Page header and controls use shared UI components",
+        "Design tokens覆盖率 ≥90%",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Suggestions Page Redesign",
+      "description": "As a user, I want a redesigned Suggestions page so that AI recommendations feel insightful and stylish.",
+      "acceptanceCriteria": [
+        "Suggestions page uses Dark Academia design tokens",
+        "Suggestion cards use shared Card component",
+        "Jeffrey copy uses natural Chinese tone (observant, dry wit, concise)",
+        "Design tokens覆盖率 ≥90%",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "MiniMax TTS Service Creation",
+      "description": "As a developer, I need a TTS service so that Jeffrey can speak his lines aloud.",
+      "acceptanceCriteria": [
+        "Create src/services/tts.ts with MiniMax TTS client",
+        "Support streaming audio via fetch + ReadableStream",
+        "Handle API key authentication via environment variable",
+        "Export playText(text) function that returns audio stream",
+        "Typecheck passes",
+        "Tests pass (if test file exists)"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "API: POST https://api.minimaxi.com/v1/t2a_v2, Model: speech-2.8-hd, Voice: male-qn-qingse, Auth: Bearer token (MINIMAX_API_KEY env var)"
+    },
+    {
+      "id": "US-007",
+      "title": "TTS UI Integration",
+      "description": "As a user, I want to hear Jeffrey speak so that the interaction feels more alive.",
+      "acceptanceCriteria": [
+        "Add play button next to Jeffrey's text on Input page",
+        "Add play button next to Jeffrey's text on Suggestions page",
+        "Clicking play triggers TTS streaming audio playback",
+        "New input interrupts current playback",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Depends on US-006 TTS service"
+    },
+    {
+      "id": "US-008",
+      "title": "Jeffrey Mascot SVG Component",
+      "description": "As a user, I want to see Jeffrey's mascot so that the brand is more memorable.",
+      "acceptanceCriteria": [
+        "Create src/components/JeffreyMascot.tsx SVG component",
+        "Style: antique bronze (#c9956a) chin silhouette, Vault-style",
+        "Sizes: 40px (header), 80px (input), 200px (landing)",
+        "States: idle, speaking, thinking, smiling, warning",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Mascot TTS Sync Animation",
+      "description": "As a user, I want the mascot to animate in sync with TTS so that the interaction feels cohesive.",
+      "acceptanceCriteria": [
+        "When TTS starts: mascot enters 'speaking' state with mouth animation",
+        "When TTS ends: mascot returns to 'idle' state",
+        "Animation uses CSS (no JS animation library)",
+        "Idle state has subtle breathing animation (scale 0.98-1.02)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Depends on US-007 TTS UI integration"
+    }
+  ]
+}

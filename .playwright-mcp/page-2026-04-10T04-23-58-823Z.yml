@@ -1,0 +1,39 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]: Jeffrey.AI
+      - generic [ref=e5]:
+        - link "登录" [ref=e6] [cursor=pointer]:
+          - /url: /auth/signin
+        - link "注册" [ref=e7] [cursor=pointer]:
+          - /url: /auth/signup
+    - main [ref=e8]:
+      - generic [ref=e9]: AI 人脉管理系统
+      - heading "你的人脉， 值得被认真对待。" [level=1] [ref=e11]:
+        - text: 你的人脉，
+        - text: 值得被认真对待。
+      - paragraph [ref=e12]: 用自然对话录入，AI 自动提取关键信息。 不再错过任何一个重要的名字、约定或线索。
+      - generic [ref=e13]:
+        - link "开始使用" [ref=e14] [cursor=pointer]:
+          - /url: /auth/signup
+        - link "已有账号" [ref=e15] [cursor=pointer]:
+          - /url: /auth/signin
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e19]
+          - heading "自然录入" [level=3] [ref=e21]
+          - paragraph [ref=e22]: 像写日记一样，记录你与他人的对话。不用填表，不用想格式。
+        - generic [ref=e23]:
+          - img [ref=e25]
+          - heading "关系图谱" [level=3] [ref=e31]
+          - paragraph [ref=e32]: 可视化你的人际网络。发现被遗忘的连接，追踪重要关系。
+        - generic [ref=e33]:
+          - img [ref=e35]
+          - heading "智能建议" [level=3] [ref=e37]
+          - paragraph [ref=e38]: AI 分析你的社交模式，在恰当时刻提醒你：谁该联系了。
+      - generic [ref=e39]:
+        - paragraph [ref=e40]: "\"人脉不是资源，是资产。不打理，就会贬值。\""
+        - paragraph [ref=e41]: — Jeffrey.AI
+    - contentinfo [ref=e42]: © 2024 Jeffrey.AI
+  - button "Open Next.js Dev Tools" [ref=e48] [cursor=pointer]:
+    - img [ref=e49]

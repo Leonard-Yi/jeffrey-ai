@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill //F //PID 23116)",
+      "Bash(mkdir -p d:/Epstein.AI/.claude/worktrees/frontend-redesign/.claude/PRPs/prds)",
+      "Bash(cp d:/Epstein.AI/.claude/PRPs/prds/prd.json d:/Epstein.AI/.claude/worktrees/frontend-redesign/.claude/PRPs/prds/)",
+      "Bash(npx playwright *)",
+      "Bash(git push *)"
+    ],
+    "additionalDirectories": [
+      "d:\\Epstein.AI\\.claude\\PRPs",
+      "d:\\Epstein.AI\\.claude\\worktrees\\frontend-redesign\\.claude\\PRPs\\plans"
+    ]
+  }
+}

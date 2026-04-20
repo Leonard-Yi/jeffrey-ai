@@ -19,6 +19,7 @@
     "@react-sigma/core": "^5.0.6",
     "@react-sigma/layout-forceatlas2": "^5.0.6",
     "bcrypt": "^6.0.0",
+    "d3-force": "^3.0.0",
     "dotenv": "^17.3.1",
     "graphology": "^0.26.0",
     "graphology-layout": "^0.6.1",

@@ -1,0 +1,26 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Jeffrey.AI
+      - generic [ref=e5]: 你的 AI 人脉管理助手
+      - heading "登录账号" [level=1] [ref=e6]
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e9]: 邮箱
+          - textbox "邮箱" [ref=e10]:
+            - /placeholder: you@example.com
+        - generic [ref=e11]:
+          - generic [ref=e12]: 密码
+          - textbox "密码" [ref=e13]:
+            - /placeholder: ••••••••
+        - link "忘记密码？" [ref=e15] [cursor=pointer]:
+          - /url: /auth/forgot-password
+        - button "登录" [ref=e16] [cursor=pointer]
+      - generic [ref=e18]:
+        - text: 还没有账号？
+        - link "注册 Jeffrey.AI" [ref=e19] [cursor=pointer]:
+          - /url: /auth/signup
+    - generic [ref=e20]: Jeffrey.AI
+  - button "Open Next.js Dev Tools" [ref=e26] [cursor=pointer]:
+    - img [ref=e27]
+  - alert [ref=e30]

@@ -1,0 +1,18 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - heading "登录 Jeffrey.AI" [level=1] [ref=e4]
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: 邮箱
+        - textbox [ref=e8]
+      - generic [ref=e9]:
+        - generic [ref=e10]: 密码
+        - textbox [ref=e11]
+      - button "登录" [ref=e12] [cursor=pointer]
+    - link "忘记密码？" [ref=e14] [cursor=pointer]:
+      - /url: /auth/forgot-password
+    - generic [ref=e15]:
+      - text: 还没有账号？
+      - link "注册" [ref=e16] [cursor=pointer]:
+        - /url: /auth/signup
+  - alert [ref=e17]
