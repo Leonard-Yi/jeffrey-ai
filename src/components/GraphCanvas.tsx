@@ -65,6 +65,9 @@ export default function GraphCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const draggingRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
+  // 用 ref 存储 onTick，避免 effect 因回调引用变化而频繁重启
+  const onTickRef = useRef(onTick);
+  onTickRef.current = onTick;
 
   // 查找节点
   const findNodeAt = useCallback((canvasX: number, canvasY: number): SimNode | null => {
@@ -243,7 +246,7 @@ export default function GraphCanvas({
     };
 
     const loop = () => {
-      onTick();
+      onTickRef.current();
       draw();
       animFrameRef.current = requestAnimationFrame(loop);
     };
@@ -252,7 +255,8 @@ export default function GraphCanvas({
     return () => {
       cancelAnimationFrame(animFrameRef.current);
     };
-  }, [width, height, hoveredNodeId, selectedNodeId, nodesRef, linksRef, onTick]);
+    // 注意：不放 onTick 进依赖项，避免动画循环频繁重启
+  }, [width, height, hoveredNodeId, selectedNodeId, nodesRef, linksRef]);
 
   return (
     <canvas
