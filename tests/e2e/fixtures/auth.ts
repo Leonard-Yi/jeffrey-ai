@@ -5,6 +5,15 @@ export const test = base.extend({
 });
 
 export async function signIn(page: any, email = 'test@test.com', password = 'testpassword') {
+  // Create user if not exists (ignore failure = already exists)
+  try {
+    await fetch('http://localhost:3000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name: 'Test User' }),
+    });
+  } catch { /* ignore */ }
+
   await page.goto('/auth/signin');
   await page.waitForLoadState('networkidle');
 

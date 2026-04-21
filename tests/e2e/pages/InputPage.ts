@@ -10,7 +10,7 @@ export class InputPage {
   readonly resultCards = () => this.page.locator('[class*="card"], [class*="person-card"], [data-testid="person-card"]');
   readonly jeffreyBubble = () => this.page.locator('[class*="bubble"], [class*="message"]');
   readonly quickReplies = () => this.page.locator('[class*="quick-reply"], button:has-text("快捷回复")');
-  readonly micButton = () => this.page.locator('button[aria-label*="mic"], button[aria-label*="麦克风"]');
+  readonly micButton = () => this.page.locator('button:has-text("语音录入")');
 
   constructor(page: Page) {
     this.page = page;
