@@ -76,6 +76,10 @@ export default function GraphCanvas({
   hoveredNodeIdRef.current = hoveredNodeId;
   selectedNodeIdRef.current = selectedNodeId;
 
+  // Hover stability: only report after 3 consecutive detections of same node
+  const hoverStableCountRef = useRef<number>(0);
+  const hoverStableNodeRef = useRef<string | null>(null);
+
   // Throttled logging
   const lastLogRef = useRef<number>(0);
   const initCountRef = useRef<number>(0);
@@ -126,8 +130,17 @@ export default function GraphCanvas({
       } else {
         const node = findNodeAt(pos.x, pos.y);
         const newHoverId = node ? node.id : null;
+
+        // Hover stability: only report when same node detected 3+ consecutive frames
+        if (newHoverId === hoverStableNodeRef.current) {
+          hoverStableCountRef.current++;
+        } else {
+          hoverStableNodeRef.current = newHoverId;
+          hoverStableCountRef.current = 1;
+        }
+
         const prevHoverId = hoveredNodeIdRef.current;
-        if (newHoverId !== prevHoverId) {
+        if (newHoverId !== prevHoverId && hoverStableCountRef.current >= 3) {
           hoveredNodeIdRef.current = newHoverId;
           onNodeHover(newHoverId);
           log('hover', newHoverId ? newHoverId.slice(0, 8) : 'null');

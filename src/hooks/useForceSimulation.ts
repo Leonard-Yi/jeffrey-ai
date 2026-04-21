@@ -31,7 +31,7 @@ const DEFAULT_OPTIONS: ForceSimOptions = {
   repelForce: 4000,
   linkForce: 1.0,
   linkDistanceBase: 40,
-  damping: 0.92,
+  damping: 0.95,     // 更高阻尼：速度快速衰减，节点更快稳定
   ticksPerFrame: 2,
 };
 
@@ -107,7 +107,7 @@ export function useForceSimulation(
         .strength(opts.linkForce!)
       )
       .velocityDecay(opts.damping!)
-      .alphaDecay(0.04);
+      .alphaDecay(0.06); // 更快衰减：约15帧稳定
 
     simRef.current = sim;
     return sim;
