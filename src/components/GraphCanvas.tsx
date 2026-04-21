@@ -63,16 +63,21 @@ export default function GraphCanvas({
   onTick,
 }: GraphCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const lastHoverRef = useRef<string | null>(null);
-  const drawEffectRunsRef = useRef(0);
   const animFrameRef = useRef<number>(0);
-  const loopStartedRef = useRef(false); // 幂等：确保动画循环只启动一次
   const draggingRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
-  // 用 ref 存储 onTick，避免 effect 因回调引用变化而频繁重启
+
+  // 将 onTick 存储在 ref 中，这样动画循环不需要是依赖项
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
 
-  // 节流日志：每 1 秒最多输出一次
+  // 将 hover/select 状态存储在 ref 中，动画循环读取这些 ref
+  // 而不依赖于 React 重新渲染
+  const hoveredNodeIdRef = useRef<string | null>(hoveredNodeId);
+  const selectedNodeIdRef = useRef<string | null>(selectedNodeId);
+  hoveredNodeIdRef.current = hoveredNodeId;
+  selectedNodeIdRef.current = selectedNodeId;
+
+  // 节流日志
   const lastLogRef = useRef<number>(0);
   const throttleLog = (label: string, msg: string) => {
     const now = Date.now();
@@ -81,6 +86,9 @@ export default function GraphCanvas({
       console.error('[GraphCanvas] ' + label + ': ' + msg);
     }
   };
+
+  // 初始化次数追踪
+  const initCountRef = useRef(0);
 
   // 查找节点
   const findNodeAt = useCallback((canvasX: number, canvasY: number): SimNode | null => {
@@ -121,12 +129,15 @@ export default function GraphCanvas({
       } else {
         const node = findNodeAt(pos.x, pos.y);
         const newHoverId = node?.id ?? null;
-        onNodeHover(newHoverId);
-        canvas.style.cursor = node ? 'grab' : 'default';
-        if (newHoverId !== lastHoverRef.current) {
-          lastHoverRef.current = newHoverId;
-          throttleLog('hover', newHoverId ? newHoverId.slice(0, 8) : 'null');
+        const prevHoverId = hoveredNodeIdRef.current;
+        if (newHoverId !== prevHoverId) {
+          hoveredNodeIdRef.current = newHoverId;
+          onNodeHover(newHoverId);
+          if (newHoverId !== prevHoverId) {
+            throttleLog('hover', newHoverId ? newHoverId.slice(0, 8) : 'null');
+          }
         }
+        canvas.style.cursor = node ? 'grab' : 'default';
       }
     };
 
@@ -151,37 +162,32 @@ export default function GraphCanvas({
     };
   }, [findNodeAt, onNodeHover, onDragStart, onDragMove, onDragEnd]);
 
-  // 绘制循环
+  // 绘制循环（只依赖 nodesRef/linksRef，不依赖 hover/select 状态）
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // DPR 缩放：限制最大为 1.5 倍，避免高分辨率屏幕性能问题
+    initCountRef.current++;
+    throttleLog('init', 'draw effect run #' + initCountRef.current);
+
+    // DPR 缩放：限制最大为 1.5 倍
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    const internalWidth = Math.round(width * dpr);
-    const internalHeight = Math.round(height * dpr);
-    canvas.width = internalWidth;
-    canvas.height = internalHeight;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     ctx.scale(dpr, dpr);
-
-    // 调试：追踪 effect 是否频繁运行
-    const drawEffectRuns = (drawEffectRunsRef.current || 0) + 1;
-    drawEffectRunsRef.current = drawEffectRuns;
-    if (drawEffectRuns <= 3 || drawEffectRuns % 10 === 0) {
-      throttleLog('effect', 'draw effect run #' + drawEffectRuns);
-    }
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
 
       const nodes = nodesRef.current;
       const links = linksRef.current;
-      const hovered = hoveredNodeId;
-      const selected = selectedNodeId;
+      // 从 ref 读取 hover/select 状态（不触发 React 重新渲染）
+      const hovered = hoveredNodeIdRef.current;
+      const selected = selectedNodeIdRef.current;
 
       // 构建高亮连接节点集合
       const connectedNodes = new Set<string>();
@@ -231,7 +237,6 @@ export default function GraphCanvas({
         const isDimmed = (hovered || selected) && !isHovered && !isSelected && !connectedNodes.has(node.id);
         const baseColor = getGroupColor(node.group);
 
-        // 外发光（仅选中时）
         if (isSelected) {
           ctx.save();
           ctx.shadowColor = baseColor;
@@ -244,20 +249,17 @@ export default function GraphCanvas({
           ctx.restore();
         }
 
-        // 节点主体
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.fillStyle = isDimmed ? baseColor + '50' : baseColor;
         ctx.fill();
 
-        // 清晰描边
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.strokeStyle = isDimmed ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.85)';
         ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5;
         ctx.stroke();
 
-        // 标签
         if (!isDimmed) {
           const fontSize = isHovered || isSelected ? 13 : 12;
           ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
@@ -275,27 +277,9 @@ export default function GraphCanvas({
       draw();
       animFrameRef.current = requestAnimationFrame(loop);
     };
-    // 幂等：即使 effect 重新运行，动画循环也只启动一次
-    if (!loopStartedRef.current) {
-      loopStartedRef.current = true;
-      animFrameRef.current = requestAnimationFrame(loop);
-    }
+    animFrameRef.current = requestAnimationFrame(loop);
 
     return () => {
       cancelAnimationFrame(animFrameRef.current);
-      loopStartedRef.current = false;
     };
-    // 注意：不放 onTick 进依赖项，避免动画循环频繁重启
-  }, [width, height, hoveredNodeId, selectedNodeId, nodesRef, linksRef]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'block',
-      }}
-    />
-  );
-}
+  }, [width, height, nodesRef, linksRef]); // 不依赖 hoveredNodeId/selectedNodeId！
