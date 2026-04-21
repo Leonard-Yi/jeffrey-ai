@@ -66,20 +66,20 @@ export default function GraphCanvas({
   const animFrameRef = useRef<number>(0);
   const draggingRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
 
-  // 将 onTick 存储在 ref 中，这样动画循环不需要是依赖项
+  // Store onTick in ref to avoid effect restart on callback reference change
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
 
-  // 将 hover/select 状态存储在 ref 中，动画循环读取这些 ref
-  // 而不依赖于 React 重新渲染
+  // Store hover/select in refs - animation loop reads these directly
   const hoveredNodeIdRef = useRef<string | null>(hoveredNodeId);
   const selectedNodeIdRef = useRef<string | null>(selectedNodeId);
   hoveredNodeIdRef.current = hoveredNodeId;
   selectedNodeIdRef.current = selectedNodeId;
 
-  // 节流日志
+  // Throttled logging
   const lastLogRef = useRef<number>(0);
-  const throttleLog = (label: string, msg: string) => {
+  const initCountRef = useRef<number>(0);
+  const log = (label: string, msg: string) => {
     const now = Date.now();
     if (now - lastLogRef.current > 1000) {
       lastLogRef.current = now;
@@ -87,10 +87,7 @@ export default function GraphCanvas({
     }
   };
 
-  // 初始化次数追踪
-  const initCountRef = useRef(0);
-
-  // 查找节点
+  // Find node at canvas position
   const findNodeAt = useCallback((canvasX: number, canvasY: number): SimNode | null => {
     const nodes = nodesRef.current;
     for (let i = nodes.length - 1; i >= 0; i--) {
@@ -105,7 +102,7 @@ export default function GraphCanvas({
     return null;
   }, [nodesRef]);
 
-  // 绑定鼠标事件
+  // Mouse event binding
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -128,14 +125,12 @@ export default function GraphCanvas({
         onDragMove(pos.x, pos.y);
       } else {
         const node = findNodeAt(pos.x, pos.y);
-        const newHoverId = node?.id ?? null;
+        const newHoverId = node ? node.id : null;
         const prevHoverId = hoveredNodeIdRef.current;
         if (newHoverId !== prevHoverId) {
           hoveredNodeIdRef.current = newHoverId;
           onNodeHover(newHoverId);
-          if (newHoverId !== prevHoverId) {
-            throttleLog('hover', newHoverId ? newHoverId.slice(0, 8) : 'null');
-          }
+          log('hover', newHoverId ? newHoverId.slice(0, 8) : 'null');
         }
         canvas.style.cursor = node ? 'grab' : 'default';
       }
@@ -162,22 +157,22 @@ export default function GraphCanvas({
     };
   }, [findNodeAt, onNodeHover, onDragStart, onDragMove, onDragEnd]);
 
-  // 绘制循环（只依赖 nodesRef/linksRef，不依赖 hover/select 状态）
+  // Draw loop - depends only on nodesRef/linksRef, NOT on hover/select state
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    initCountRef.current++;
-    throttleLog('init', 'draw effect run #' + initCountRef.current);
+    initCountRef.current = initCountRef.current + 1;
+    log('init', 'draw effect run #' + initCountRef.current);
 
-    // DPR 缩放：限制最大为 1.5 倍
+    // DPR scaling: cap at 1.5x for performance
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
     ctx.scale(dpr, dpr);
 
     const draw = () => {
@@ -185,14 +180,13 @@ export default function GraphCanvas({
 
       const nodes = nodesRef.current;
       const links = linksRef.current;
-      // 从 ref 读取 hover/select 状态（不触发 React 重新渲染）
       const hovered = hoveredNodeIdRef.current;
       const selected = selectedNodeIdRef.current;
 
-      // 构建高亮连接节点集合
+      // Build connected nodes set for highlight
       const connectedNodes = new Set<string>();
       if (hovered || selected) {
-        const targetId = hovered ?? selected;
+        const targetId = hovered || selected;
         links.forEach(link => {
           const srcId = typeof link.source === 'string' ? link.source : (link.source as SimNode).id;
           const tgtId = typeof link.target === 'string' ? link.target : (link.target as SimNode).id;
@@ -201,7 +195,7 @@ export default function GraphCanvas({
         });
       }
 
-      // 绘制边
+      // Draw edges
       for (const link of links) {
         const srcId = typeof link.source === 'string' ? link.source : (link.source as SimNode).id;
         const tgtId = typeof link.target === 'string' ? link.target : (link.target as SimNode).id;
@@ -217,7 +211,7 @@ export default function GraphCanvas({
         ctx.moveTo(sourceNode.x, sourceNode.y);
         ctx.lineTo(targetNode.x, targetNode.y);
 
-        const color = LINK_COLORS[link.type] ?? '#999';
+        const color = LINK_COLORS[link.type] || '#999';
         const alpha = dimmed ? 0.08 : 0.5;
         const lineWidth = isConnected || isSelectedConnected ? 2 : Math.max(link.strength * 1.5, 0.8);
 
@@ -229,7 +223,7 @@ export default function GraphCanvas({
         ctx.globalAlpha = 1;
       }
 
-      // 绘制节点
+      // Draw nodes
       for (const node of nodes) {
         const r = Math.sqrt(node.val) * 10 + 14;
         const isHovered = node.id === hovered;
@@ -237,6 +231,7 @@ export default function GraphCanvas({
         const isDimmed = (hovered || selected) && !isHovered && !isSelected && !connectedNodes.has(node.id);
         const baseColor = getGroupColor(node.group);
 
+        // Glow for selected
         if (isSelected) {
           ctx.save();
           ctx.shadowColor = baseColor;
@@ -249,20 +244,23 @@ export default function GraphCanvas({
           ctx.restore();
         }
 
+        // Node body
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.fillStyle = isDimmed ? baseColor + '50' : baseColor;
         ctx.fill();
 
+        // Border
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.strokeStyle = isDimmed ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.85)';
         ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5;
         ctx.stroke();
 
+        // Label
         if (!isDimmed) {
           const fontSize = isHovered || isSelected ? 13 : 12;
-          ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+          ctx.font = '500 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = C.text;
@@ -282,4 +280,16 @@ export default function GraphCanvas({
     return () => {
       cancelAnimationFrame(animFrameRef.current);
     };
-  }, [width, height, nodesRef, linksRef]); // 不依赖 hoveredNodeId/selectedNodeId！
+  }, [width, height, nodesRef, linksRef]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'block',
+      }}
+    />
+  );
+}
