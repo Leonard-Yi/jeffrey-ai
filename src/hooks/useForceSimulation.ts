@@ -31,7 +31,7 @@ const DEFAULT_OPTIONS: ForceSimOptions = {
   repelForce: 4000,
   linkForce: 1.0,
   linkDistanceBase: 40,
-  damping: 0.92,      // 更强的阻尼：速度快速衰减
+  damping: 0.92,
   ticksPerFrame: 2,
 };
 
@@ -68,7 +68,7 @@ export function useForceSimulation(
       last.canvasW === snapshot.canvasW &&
       last.canvasH === snapshot.canvasH
     ) {
-      return; // 跳过重复初始化
+      return;
     }
     lastInitRef.current = snapshot;
 
@@ -77,10 +77,9 @@ export function useForceSimulation(
       simRef.current.stop();
     }
 
-    console.error('[ForceSim] initSimulation: NEW init, nodes:', snapshot.nodeCount, 'links:', snapshot.linkCount);
+    console.error('[ForceSim] NEW init: nodes=' + snapshot.nodeCount + ' links=' + snapshot.linkCount);
 
-    // 预先解析 links 的 source/target 为节点对象（而不是让 d3-force 用 .id() 查找）
-    // 这样完全避免了 d3-force 内部节点查找的问题
+    // 预先解析 links 的 source/target 为节点对象
     const nodeById = new Map(nodesRef.current.map(n => [n.id, n]));
     const resolvedLinks = linksRef.current
       .filter(link => {
@@ -108,15 +107,13 @@ export function useForceSimulation(
         .strength(opts.linkForce!)
       )
       .velocityDecay(opts.damping!)
-      .alphaDecay(0.04); // 更快衰减：约25 ticks就能稳定
+      .alphaDecay(0.04);
 
     simRef.current = sim;
-    lastAlphaRef.current = 0;
     return sim;
   }, [nodesRef, linksRef, edgeLengthsRef, canvasSize, opts]);
 
   // 驱动 tick（每帧调用多次）
-  const lastAlphaRef = useRef(0);
   const tick = useCallback(() => {
     if (!simRef.current) return 0;
     const sim = simRef.current;
@@ -132,12 +129,7 @@ export function useForceSimulation(
     for (let i = 0; i < ticksThisFrame; i++) {
       sim.tick();
     }
-    const newAlpha = sim.alpha();
-    if (Math.abs(newAlpha - lastAlphaRef.current) > 0.05) {
-      console.error('[ForceSim] alpha jump:', lastAlphaRef.current.toFixed(3), '->', newAlpha.toFixed(3));
-      lastAlphaRef.current = newAlpha;
-    }
-    return newAlpha;
+    return sim.alpha();
   }, [opts.ticksPerFrame]);
 
   // 停止模拟
@@ -147,7 +139,6 @@ export function useForceSimulation(
 
   // 重新启动（拖拽释放后）
   const reheat = useCallback(() => {
-    console.error('[ForceSim] reheat called!');
     simRef.current?.alpha(0.1).restart();
   }, []);
 
@@ -160,14 +151,13 @@ export function useForceSimulation(
     }
   }, [nodesRef]);
 
-  // 释放节点（拖拽结束）- 不要 reheating，否则会弹开刚放好的节点
+  // 释放节点（拖拽结束）
   const releaseNode = useCallback((nodeId: string) => {
     const node = nodesRef.current.find(n => n.id === nodeId);
     if (node) {
       node.fx = null;
       node.fy = null;
     }
-    // 不调用 reheat()，让节点自然停在当前位置
   }, [nodesRef]);
 
   useEffect(() => {

@@ -81,18 +81,7 @@ export default function GraphCanvas({
     return null;
   }, [nodesRef]);
 
-  // 调试：追踪跳变
-  const lastHoverRef = useRef<string | null>(null);
-  const lastNodePosRef = useRef<Map<string, {x: number, y: number}>>(new Map());
-
-  const debugNodePos = useCallback((label: string) => {
-    const nodes = nodesRef.current;
-    if (!nodes.length) return;
-    const posStr = nodes.map(n => `${n.id.slice(0,8)}@(${Math.round(n.x)},${Math.round(n.y)})`).join(' ');
-    console.error(`[GraphCanvas] ${label}: nodes=${nodes.length} ${posStr}`);
-  }, [nodesRef]);
-
-  // 绑定鼠标事件（使用 CSS 像素坐标，不需要 DPR 转换）
+  // 绑定鼠标事件
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -115,17 +104,12 @@ export default function GraphCanvas({
         onDragMove(pos.x, pos.y);
       } else {
         const node = findNodeAt(pos.x, pos.y);
-        const newHoverId = node?.id ?? null;
-        if (newHoverId !== lastHoverRef.current) {
-          lastHoverRef.current = newHoverId;
-          debugNodePos(`hover change: ${lastHoverRef.current?.slice(0,8) ?? 'null'}`);
-        }
-        onNodeHover(newHoverId);
+        onNodeHover(node?.id ?? null);
         canvas.style.cursor = node ? 'grab' : 'default';
       }
     };
 
-    const onMouseUp = (e: MouseEvent) => {
+    const onMouseUp = () => {
       if (draggingRef.current) {
         onDragEnd(draggingRef.current.id);
         draggingRef.current = null;
@@ -153,8 +137,8 @@ export default function GraphCanvas({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // DPR 缩放：设置内部分辨率 = CSS像素 × DPR，实现真正高清
-    const dpr = window.devicePixelRatio || 1;
+    // DPR 缩放：限制最大为 1.5 倍，避免高分辨率屏幕性能问题
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const internalWidth = Math.round(width * dpr);
     const internalHeight = Math.round(height * dpr);
     canvas.width = internalWidth;
@@ -168,28 +152,6 @@ export default function GraphCanvas({
 
       const nodes = nodesRef.current;
       const links = linksRef.current;
-
-      // 检测节点位置是否有突变（调试跳变问题）
-      let hasJump = false;
-      for (const node of nodes) {
-        const lastPos = lastNodePosRef.current.get(node.id);
-        if (lastPos) {
-          const dx = node.x - lastPos.x;
-          const dy = node.y - lastPos.y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          if (dist > 50) { // 超过50像素的移动视为异常跳变
-            hasJump = true;
-            break;
-          }
-        }
-      }
-      if (hasJump) {
-        debugNodePos('JUMP DETECTED');
-      }
-      // 更新上次位置
-      for (const node of nodes) {
-        lastNodePosRef.current.set(node.id, { x: node.x, y: node.y });
-      }
       const hovered = hoveredNodeId;
       const selected = selectedNodeId;
 
@@ -267,7 +229,7 @@ export default function GraphCanvas({
         ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5;
         ctx.stroke();
 
-        // 标签（始终显示）- 简洁清晰，无阴影
+        // 标签
         if (!isDimmed) {
           const fontSize = isHovered || isSelected ? 13 : 12;
           ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
