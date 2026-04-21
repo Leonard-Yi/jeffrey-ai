@@ -45,16 +45,39 @@ export function useForceSimulation(
   const simRef = useRef<ReturnType<typeof forceSimulation> | null>(null);
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
-  // 初始化/重启模拟
+  // 上一次初始化的快照（用于幂等检测）
+  const lastInitRef = useRef<{ nodeCount: number; linkCount: number; canvasW: number; canvasH: number } | null>(null);
+
+  // 初始化/重启模拟（幂等：只有数据真正变化才重新初始化）
   const initSimulation = useCallback(() => {
     if (!nodesRef.current.length) return;
+
+    const snapshot = {
+      nodeCount: nodesRef.current.length,
+      linkCount: linksRef.current.length,
+      canvasW: canvasSize.width,
+      canvasH: canvasSize.height,
+    };
+
+    // 幂等检查：节点数、边数、画布尺寸都没变，则跳过初始化
+    const last = lastInitRef.current;
+    if (
+      last &&
+      last.nodeCount === snapshot.nodeCount &&
+      last.linkCount === snapshot.linkCount &&
+      last.canvasW === snapshot.canvasW &&
+      last.canvasH === snapshot.canvasH
+    ) {
+      return; // 跳过重复初始化
+    }
+    lastInitRef.current = snapshot;
 
     // 终止旧模拟
     if (simRef.current) {
       simRef.current.stop();
     }
 
-    console.error('[ForceSim] initSimulation called, nodes:', nodesRef.current.length);
+    console.error('[ForceSim] initSimulation: NEW init, nodes:', snapshot.nodeCount, 'links:', snapshot.linkCount);
 
     // 预先解析 links 的 source/target 为节点对象（而不是让 d3-force 用 .id() 查找）
     // 这样完全避免了 d3-force 内部节点查找的问题
@@ -70,11 +93,6 @@ export function useForceSimulation(
         source: nodeById.get(typeof link.source === 'string' ? link.source : (link.source as any)?.id)!,
         target: nodeById.get(typeof link.target === 'string' ? link.target : (link.target as any)?.id)!,
       }));
-
-    console.error('[ForceSim] resolvedLinks:', resolvedLinks.length, 'node IDs:', [...nodeById.keys()]);
-    for (const l of resolvedLinks) {
-      console.error('[ForceSim] resolved link source id:', (l.source as SimNode).id, 'target id:', (l.target as SimNode).id);
-    }
 
     const sim = forceSimulation<SimNode>(nodesRef.current)
       .force('center', forceCenter(canvasSize.width / 2, canvasSize.height / 2).strength(opts.centerForce!))
