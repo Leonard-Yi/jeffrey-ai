@@ -28,10 +28,10 @@ export interface ForceSimOptions {
 
 const DEFAULT_OPTIONS: ForceSimOptions = {
   centerForce: 0.05,
-  repelForce: 4000,
+  repelForce: 300,  // 降低排斥力：避免节点被弹飞
   linkForce: 1.0,
   linkDistanceBase: 40,
-  damping: 0.95,     // 更高阻尼：速度快速衰减，节点更快稳定
+  damping: 0.98,   // 更高阻尼：速度快速衰减，节点更快稳定
   ticksPerFrame: 2,
 };
 
@@ -107,7 +107,7 @@ export function useForceSimulation(
         .strength(opts.linkForce!)
       )
       .velocityDecay(opts.damping!)
-      .alphaDecay(0.06); // 更快衰减：约15帧稳定
+      .alphaDecay(0.3); // 激进衰减：约7帧内稳定
 
     simRef.current = sim;
     return sim;
@@ -137,10 +137,9 @@ export function useForceSimulation(
     simRef.current?.stop();
   }, []);
 
-  // 重新启动（拖拽释放后）
+  // 重新启动（拖拽释放后）- 禁用，防止节点被弹开
   const reheat = useCallback(() => {
-    console.error('[ForceSim] reheat!');
-    simRef.current?.alpha(0.1).restart();
+    // 不做任何事，物理模拟只初始化一次
   }, []);
 
   // 固定节点位置（拖拽时）
