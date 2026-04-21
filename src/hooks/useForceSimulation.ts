@@ -54,20 +54,37 @@ export function useForceSimulation(
       simRef.current.stop();
     }
 
-    // 过滤掉引用了不存在节点的 links（防止 d3-force 报错）
-    const validNodeIds = new Set(nodesRef.current.map(n => n.id));
-    const validLinks = linksRef.current.filter(
-      link => validNodeIds.has(link.source as string) && validNodeIds.has(link.target as string)
-    );
+    console.error('[ForceSim] initSimulation called, nodes:', nodesRef.current.length);
+
+    // 预先解析 links 的 source/target 为节点对象（而不是让 d3-force 用 .id() 查找）
+    // 这样完全避免了 d3-force 内部节点查找的问题
+    const nodeById = new Map(nodesRef.current.map(n => [n.id, n]));
+    const resolvedLinks = linksRef.current
+      .filter(link => {
+        const srcId = typeof link.source === 'string' ? link.source : (link.source as any)?.id;
+        const tgtId = typeof link.target === 'string' ? link.target : (link.target as any)?.id;
+        return srcId && tgtId && nodeById.has(srcId) && nodeById.has(tgtId);
+      })
+      .map(link => ({
+        ...link,
+        source: nodeById.get(typeof link.source === 'string' ? link.source : (link.source as any)?.id)!,
+        target: nodeById.get(typeof link.target === 'string' ? link.target : (link.target as any)?.id)!,
+      }));
+
+    console.error('[ForceSim] resolvedLinks:', resolvedLinks.length, 'node IDs:', [...nodeById.keys()]);
+    for (const l of resolvedLinks) {
+      console.error('[ForceSim] resolved link source id:', (l.source as SimNode).id, 'target id:', (l.target as SimNode).id);
+    }
 
     const sim = forceSimulation<SimNode>(nodesRef.current)
       .force('center', forceCenter(canvasSize.width / 2, canvasSize.height / 2).strength(opts.centerForce!))
       .force('charge', forceManyBody<SimNode>().strength(-opts.repelForce!))
       .force('collision', forceCollide<SimNode>().radius(d => Math.sqrt(d.val) * 10 + 20))
-      .force('link', forceLink<SimNode, GraphLink>(validLinks)
-        .id(d => d.source as string)
+      .force('link', forceLink<SimNode, SimNode>(resolvedLinks)
         .distance(d => {
-          const key = `${d.source}-${d.target}`;
+          const srcId = (d.source as SimNode).id;
+          const tgtId = (d.target as SimNode).id;
+          const key = `${srcId}-${tgtId}`;
           return edgeLengthsRef.current.get(key) ?? opts.linkDistanceBase!;
         })
         .strength(opts.linkForce!)
@@ -76,17 +93,24 @@ export function useForceSimulation(
       .alphaDecay(0.01);
 
     simRef.current = sim;
+    lastAlphaRef.current = 0;
     return sim;
   }, [nodesRef, linksRef, edgeLengthsRef, canvasSize, opts]);
 
   // 驱动 tick（每帧调用多次）
+  const lastAlphaRef = useRef(0);
   const tick = useCallback(() => {
     if (!simRef.current) return 0;
     const sim = simRef.current;
     for (let i = 0; i < (opts.ticksPerFrame ?? 2); i++) {
       sim.tick();
     }
-    return sim.alpha();
+    const alpha = sim.alpha();
+    if (Math.abs(alpha - lastAlphaRef.current) > 0.05) {
+      console.error('[ForceSim] alpha jump:', lastAlphaRef.current.toFixed(3), '->', alpha.toFixed(3));
+      lastAlphaRef.current = alpha;
+    }
+    return alpha;
   }, [opts.ticksPerFrame]);
 
   // 停止模拟
@@ -96,7 +120,8 @@ export function useForceSimulation(
 
   // 重新启动（拖拽释放后）
   const reheat = useCallback(() => {
-    simRef.current?.alpha(0.3).restart();
+    console.error('[ForceSim] reheat called!');
+    simRef.current?.alpha(0.1).restart();
   }, []);
 
   // 固定节点位置（拖拽时）
@@ -108,15 +133,15 @@ export function useForceSimulation(
     }
   }, [nodesRef]);
 
-  // 释放节点（拖拽结束）
+  // 释放节点（拖拽结束）- 不要 reheating，否则会弹开刚放好的节点
   const releaseNode = useCallback((nodeId: string) => {
     const node = nodesRef.current.find(n => n.id === nodeId);
     if (node) {
       node.fx = null;
       node.fy = null;
     }
-    reheat();
-  }, [nodesRef, reheat]);
+    // 不调用 reheat()，让节点自然停在当前位置
+  }, [nodesRef]);
 
   useEffect(() => {
     return () => {

@@ -67,13 +67,13 @@ export default function GraphCanvas({
   const draggingRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
 
   // 查找节点
-  const findNodeAt = useCallback((x: number, y: number): SimNode | null => {
+  const findNodeAt = useCallback((canvasX: number, canvasY: number): SimNode | null => {
     const nodes = nodesRef.current;
     for (let i = nodes.length - 1; i >= 0; i--) {
       const node = nodes[i];
-      const r = Math.sqrt(node.val) * 10 + 12; // 节点半径
-      const dx = x - node.x;
-      const dy = y - node.y;
+      const r = Math.sqrt(node.val) * 10 + 14;
+      const dx = canvasX - node.x;
+      const dy = canvasY - node.y;
       if (dx * dx + dy * dy <= r * r) {
         return node;
       }
@@ -81,18 +81,25 @@ export default function GraphCanvas({
     return null;
   }, [nodesRef]);
 
-  // 绑定鼠标事件
+  // 调试：追踪跳变
+  const lastHoverRef = useRef<string | null>(null);
+  const lastNodePosRef = useRef<Map<string, {x: number, y: number}>>(new Map());
+
+  const debugNodePos = useCallback((label: string) => {
+    const nodes = nodesRef.current;
+    if (!nodes.length) return;
+    const posStr = nodes.map(n => `${n.id.slice(0,8)}@(${Math.round(n.x)},${Math.round(n.y)})`).join(' ');
+    console.error(`[GraphCanvas] ${label}: nodes=${nodes.length} ${posStr}`);
+  }, [nodesRef]);
+
+  // 绑定鼠标事件（使用 CSS 像素坐标，不需要 DPR 转换）
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const getPos = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    };
-
     const onMouseDown = (e: MouseEvent) => {
-      const pos = getPos(e);
+      const rect = canvas.getBoundingClientRect();
+      const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       const node = findNodeAt(pos.x, pos.y);
       if (node) {
         draggingRef.current = { id: node.id, startX: pos.x, startY: pos.y };
@@ -102,12 +109,18 @@ export default function GraphCanvas({
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      const pos = getPos(e);
+      const rect = canvas.getBoundingClientRect();
+      const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       if (draggingRef.current) {
         onDragMove(pos.x, pos.y);
       } else {
         const node = findNodeAt(pos.x, pos.y);
-        onNodeHover(node?.id ?? null);
+        const newHoverId = node?.id ?? null;
+        if (newHoverId !== lastHoverRef.current) {
+          lastHoverRef.current = newHoverId;
+          debugNodePos(`hover change: ${lastHoverRef.current?.slice(0,8) ?? 'null'}`);
+        }
+        onNodeHover(newHoverId);
         canvas.style.cursor = node ? 'grab' : 'default';
       }
     };
@@ -140,36 +153,68 @@ export default function GraphCanvas({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 设置 canvas 尺寸
-    canvas.width = width;
-    canvas.height = height;
+    // DPR 缩放：设置内部分辨率 = CSS像素 × DPR，实现真正高清
+    const dpr = window.devicePixelRatio || 1;
+    const internalWidth = Math.round(width * dpr);
+    const internalHeight = Math.round(height * dpr);
+    canvas.width = internalWidth;
+    canvas.height = internalHeight;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.scale(dpr, dpr);
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
 
       const nodes = nodesRef.current;
       const links = linksRef.current;
+
+      // 检测节点位置是否有突变（调试跳变问题）
+      let hasJump = false;
+      for (const node of nodes) {
+        const lastPos = lastNodePosRef.current.get(node.id);
+        if (lastPos) {
+          const dx = node.x - lastPos.x;
+          const dy = node.y - lastPos.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist > 50) { // 超过50像素的移动视为异常跳变
+            hasJump = true;
+            break;
+          }
+        }
+      }
+      if (hasJump) {
+        debugNodePos('JUMP DETECTED');
+      }
+      // 更新上次位置
+      for (const node of nodes) {
+        lastNodePosRef.current.set(node.id, { x: node.x, y: node.y });
+      }
       const hovered = hoveredNodeId;
       const selected = selectedNodeId;
 
-      // 构建节点 ID set（用于高亮相连边）
+      // 构建高亮连接节点集合
       const connectedNodes = new Set<string>();
       if (hovered || selected) {
         const targetId = hovered ?? selected;
         links.forEach(link => {
-          if (link.source === targetId) connectedNodes.add(link.target);
-          if (link.target === targetId) connectedNodes.add(link.source);
+          const srcId = typeof link.source === 'string' ? link.source : (link.source as SimNode).id;
+          const tgtId = typeof link.target === 'string' ? link.target : (link.target as SimNode).id;
+          if (srcId === targetId) connectedNodes.add(tgtId);
+          if (tgtId === targetId) connectedNodes.add(srcId);
         });
       }
 
       // 绘制边
       for (const link of links) {
-        const sourceNode = nodes.find(n => n.id === link.source);
-        const targetNode = nodes.find(n => n.id === link.target);
+        const srcId = typeof link.source === 'string' ? link.source : (link.source as SimNode).id;
+        const tgtId = typeof link.target === 'string' ? link.target : (link.target as SimNode).id;
+        const sourceNode = nodes.find(n => n.id === srcId);
+        const targetNode = nodes.find(n => n.id === tgtId);
         if (!sourceNode || !targetNode) continue;
 
-        const isConnected = hovered && (link.source === hovered || link.target === hovered);
-        const isSelectedConnected = selected && (link.source === selected || link.target === selected);
+        const isConnected = hovered && (srcId === hovered || tgtId === hovered);
+        const isSelectedConnected = selected && (srcId === selected || tgtId === selected);
         const dimmed = (hovered || selected) && !isConnected && !isSelectedConnected;
 
         ctx.beginPath();
@@ -177,67 +222,66 @@ export default function GraphCanvas({
         ctx.lineTo(targetNode.x, targetNode.y);
 
         const color = LINK_COLORS[link.type] ?? '#999';
-        const alpha = dimmed ? 0.1 : 0.6;
-        const lineWidth = isConnected || isSelectedConnected ? 3 : Math.max(link.strength * 2, 1);
+        const alpha = dimmed ? 0.08 : 0.5;
+        const lineWidth = isConnected || isSelectedConnected ? 2 : Math.max(link.strength * 1.5, 0.8);
 
-        ctx.strokeStyle = color + Math.round(alpha * 255).toString(16).padStart(2, '0');
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = color;
         ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
         ctx.stroke();
+        ctx.globalAlpha = 1;
       }
 
       // 绘制节点
       for (const node of nodes) {
-        const r = Math.sqrt(node.val) * 10 + 12;
+        const r = Math.sqrt(node.val) * 10 + 14;
         const isHovered = node.id === hovered;
         const isSelected = node.id === selected;
-        const dimmed = (hovered || selected) && !isHovered && !isSelected && !connectedNodes.has(node.id);
+        const isDimmed = (hovered || selected) && !isHovered && !isSelected && !connectedNodes.has(node.id);
         const baseColor = getGroupColor(node.group);
 
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, isHovered ? r * 1.2 : r, 0, Math.PI * 2);
-
-        // 填充
-        ctx.fillStyle = dimmed ? baseColor + '40' : baseColor;
-        ctx.fill();
-
-        // 白色描边
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // hover 发光效果
-        if (isHovered && !dimmed) {
-          ctx.save();
-          ctx.shadowColor = baseColor;
-          ctx.shadowBlur = 15;
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, isHovered ? r * 1.2 : r, 0, Math.PI * 2);
-          ctx.fillStyle = baseColor + '60';
-          ctx.fill();
-          ctx.restore();
-        }
-
-        // 选中高亮
+        // 外发光（仅选中时）
         if (isSelected) {
           ctx.save();
+          ctx.shadowColor = baseColor;
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r + 4, 0, Math.PI * 2);
           ctx.strokeStyle = baseColor;
-          ctx.lineWidth = 2.5;
+          ctx.lineWidth = 2;
           ctx.stroke();
           ctx.restore();
         }
 
-        // 标签（hover 时或未缩放时显示）
-        if (isHovered || isSelected) {
-          ctx.font = '12px sans-serif';
-          ctx.fillStyle = C.text;
+        // 节点主体
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = isDimmed ? baseColor + '50' : baseColor;
+        ctx.fill();
+
+        // 清晰描边
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+        ctx.strokeStyle = isDimmed ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = isHovered || isSelected ? 2.5 : 1.5;
+        ctx.stroke();
+
+        // 标签（始终显示）- 简洁清晰，无阴影
+        if (!isDimmed) {
+          const fontSize = isHovered || isSelected ? 13 : 12;
+          ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
           ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = C.text;
           ctx.fillText(node.label, node.x, node.y + r + 14);
+          ctx.textBaseline = 'alphabetic';
         }
       }
     };
 
     const loop = () => {
-      onTick();  // 驱动物理模拟
+      onTick();
       draw();
       animFrameRef.current = requestAnimationFrame(loop);
     };
