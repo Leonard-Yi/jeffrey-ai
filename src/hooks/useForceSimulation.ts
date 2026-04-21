@@ -54,11 +54,17 @@ export function useForceSimulation(
       simRef.current.stop();
     }
 
+    // 过滤掉引用了不存在节点的 links（防止 d3-force 报错）
+    const validNodeIds = new Set(nodesRef.current.map(n => n.id));
+    const validLinks = linksRef.current.filter(
+      link => validNodeIds.has(link.source as string) && validNodeIds.has(link.target as string)
+    );
+
     const sim = forceSimulation<SimNode>(nodesRef.current)
       .force('center', forceCenter(canvasSize.width / 2, canvasSize.height / 2).strength(opts.centerForce!))
       .force('charge', forceManyBody<SimNode>().strength(-opts.repelForce!))
       .force('collision', forceCollide<SimNode>().radius(d => Math.sqrt(d.val) * 10 + 20))
-      .force('link', forceLink<SimNode, GraphLink>(linksRef.current)
+      .force('link', forceLink<SimNode, GraphLink>(validLinks)
         .id(d => d.source as string)
         .distance(d => {
           const key = `${d.source}-${d.target}`;

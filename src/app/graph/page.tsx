@@ -64,10 +64,17 @@ export default function JeffreyGraphPage() {
       if (filter.group) params.append('group', filter.group);
       if (filter.linkType) params.append('linkType', filter.linkType);
       if (filter.minStrength > 0) params.append('minStrength', filter.minStrength.toString());
-      const data: GraphData = await (await fetch(`/api/graph?${params}`)).json();
+      const res = await fetch(`/api/graph?${params}`);
+      if (!res.ok) {
+        console.error(`Graph API error: ${res.status}`);
+        setGraphData({ nodes: [], links: [], clusters: [] });
+        return;
+      }
+      const data: GraphData = await res.json();
       setGraphData(data);
     } catch (err) {
       console.error(err);
+      setGraphData({ nodes: [], links: [], clusters: [] });
     } finally {
       setLoading(false);
     }
