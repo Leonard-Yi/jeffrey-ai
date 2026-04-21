@@ -66,6 +66,7 @@ export default function GraphCanvas({
   const lastHoverRef = useRef<string | null>(null);
   const drawEffectRunsRef = useRef(0);
   const animFrameRef = useRef<number>(0);
+  const loopStartedRef = useRef(false); // 幂等：确保动画循环只启动一次
   const draggingRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
   // 用 ref 存储 onTick，避免 effect 因回调引用变化而频繁重启
   const onTickRef = useRef(onTick);
@@ -274,10 +275,15 @@ export default function GraphCanvas({
       draw();
       animFrameRef.current = requestAnimationFrame(loop);
     };
-    animFrameRef.current = requestAnimationFrame(loop);
+    // 幂等：即使 effect 重新运行，动画循环也只启动一次
+    if (!loopStartedRef.current) {
+      loopStartedRef.current = true;
+      animFrameRef.current = requestAnimationFrame(loop);
+    }
 
     return () => {
       cancelAnimationFrame(animFrameRef.current);
+      loopStartedRef.current = false;
     };
     // 注意：不放 onTick 进依赖项，避免动画循环频繁重启
   }, [width, height, hoveredNodeId, selectedNodeId, nodesRef, linksRef]);
