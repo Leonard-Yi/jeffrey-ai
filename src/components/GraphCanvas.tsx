@@ -63,11 +63,23 @@ export default function GraphCanvas({
   onTick,
 }: GraphCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastHoverRef = useRef<string | null>(null);
+  const drawEffectRunsRef = useRef(0);
   const animFrameRef = useRef<number>(0);
   const draggingRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
   // 用 ref 存储 onTick，避免 effect 因回调引用变化而频繁重启
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
+
+  // 节流日志：每 1 秒最多输出一次
+  const lastLogRef = useRef<number>(0);
+  const throttleLog = (label: string, msg: string) => {
+    const now = Date.now();
+    if (now - lastLogRef.current > 1000) {
+      lastLogRef.current = now;
+      console.error('[GraphCanvas] ' + label + ': ' + msg);
+    }
+  };
 
   // 查找节点
   const findNodeAt = useCallback((canvasX: number, canvasY: number): SimNode | null => {
@@ -107,8 +119,13 @@ export default function GraphCanvas({
         onDragMove(pos.x, pos.y);
       } else {
         const node = findNodeAt(pos.x, pos.y);
-        onNodeHover(node?.id ?? null);
+        const newHoverId = node?.id ?? null;
+        onNodeHover(newHoverId);
         canvas.style.cursor = node ? 'grab' : 'default';
+        if (newHoverId !== lastHoverRef.current) {
+          lastHoverRef.current = newHoverId;
+          throttleLog('hover', newHoverId ? newHoverId.slice(0, 8) : 'null');
+        }
       }
     };
 
@@ -149,6 +166,13 @@ export default function GraphCanvas({
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     ctx.scale(dpr, dpr);
+
+    // 调试：追踪 effect 是否频繁运行
+    const drawEffectRuns = (drawEffectRunsRef.current || 0) + 1;
+    drawEffectRunsRef.current = drawEffectRuns;
+    if (drawEffectRuns <= 3 || drawEffectRuns % 10 === 0) {
+      throttleLog('effect', 'draw effect run #' + drawEffectRuns);
+    }
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
