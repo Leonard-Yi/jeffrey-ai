@@ -31,7 +31,7 @@ const DEFAULT_OPTIONS: ForceSimOptions = {
   repelForce: 4000,
   linkForce: 1.0,
   linkDistanceBase: 40,
-  damping: 0.85,
+  damping: 0.92,      // 更强的阻尼：速度快速衰减
   ticksPerFrame: 2,
 };
 
@@ -108,7 +108,7 @@ export function useForceSimulation(
         .strength(opts.linkForce!)
       )
       .velocityDecay(opts.damping!)
-      .alphaDecay(0.01);
+      .alphaDecay(0.04); // 更快衰减：约25 ticks就能稳定
 
     simRef.current = sim;
     lastAlphaRef.current = 0;
@@ -120,15 +120,24 @@ export function useForceSimulation(
   const tick = useCallback(() => {
     if (!simRef.current) return 0;
     const sim = simRef.current;
-    for (let i = 0; i < (opts.ticksPerFrame ?? 2); i++) {
+    const alpha = sim.alpha();
+
+    // alpha < 0.005 时认为已稳定，不再驱动模拟
+    if (alpha < 0.005) {
+      return alpha;
+    }
+
+    // alpha 较低时减少每帧 ticks 数，减少震荡
+    const ticksThisFrame = alpha < 0.05 ? 1 : (opts.ticksPerFrame ?? 2);
+    for (let i = 0; i < ticksThisFrame; i++) {
       sim.tick();
     }
-    const alpha = sim.alpha();
-    if (Math.abs(alpha - lastAlphaRef.current) > 0.05) {
-      console.error('[ForceSim] alpha jump:', lastAlphaRef.current.toFixed(3), '->', alpha.toFixed(3));
-      lastAlphaRef.current = alpha;
+    const newAlpha = sim.alpha();
+    if (Math.abs(newAlpha - lastAlphaRef.current) > 0.05) {
+      console.error('[ForceSim] alpha jump:', lastAlphaRef.current.toFixed(3), '->', newAlpha.toFixed(3));
+      lastAlphaRef.current = newAlpha;
     }
-    return alpha;
+    return newAlpha;
   }, [opts.ticksPerFrame]);
 
   // 停止模拟
