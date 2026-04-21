@@ -21,9 +21,9 @@ export default function JeffreyGraphPage() {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [filter, setFilter] = useState({ group: '', linkType: '', minStrength: 0 });
 
-  // Canvas dimensions
+  // Canvas dimensions — 初始为 0，等 ResizeObserver 给出真实尺寸后再渲染画布
   const containerRef = useRef<HTMLDivElement>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   // Render data refs
   const nodesRef = useRef<SimNode[]>([]);
@@ -82,7 +82,11 @@ export default function JeffreyGraphPage() {
 
   useEffect(() => { fetchGraphData(); }, [fetchGraphData]);
 
-  // Update refs when data changes
+  // Update refs when data changes — 仅在 graphData 变化时重置节点位置
+  // canvasSize 不在依赖数组中，避免尺寸更新时重新初始化节点
+  const canvasSizeRef = useRef(canvasSize);
+  canvasSizeRef.current = canvasSize;
+
   useEffect(() => {
     if (!graphData.nodes.length) {
       nodesRef.current = [];
@@ -90,27 +94,47 @@ export default function JeffreyGraphPage() {
       return;
     }
 
-    // Initialize node positions (scattered around canvas center)
-    const cx = canvasSize.width / 2;
-    const cy = canvasSize.height / 2;
-    nodesRef.current = graphData.nodes.map((node, i) => {
-      const angle = (i / graphData.nodes.length) * Math.PI * 2;
-      const r = 50 + Math.random() * 100;
+    // 必须等到有真实画布尺寸才能初始化（canvasSize 初始为 0×0）
+    const { width, height } = canvasSizeRef.current;
+    if (width === 0 || height === 0) return;
+
+    // Place ALL nodes at canvas center initially
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // Create node map first
+    const nodeMap = new Map(graphData.nodes.map(n => [n.id, true]));
+
+    nodesRef.current = graphData.nodes.map((node) => {
+      // Small random offset from center so nodes don't all start at exact same point
+      const jitter = 20;
       return {
         ...node,
-        x: cx + Math.cos(angle) * r,
-        y: cy + Math.sin(angle) * r,
+        x: cx + (Math.random() - 0.5) * jitter,
+        y: cy + (Math.random() - 0.5) * jitter,
         vx: 0,
         vy: 0,
       };
     });
 
-    linksRef.current = graphData.links;
+    // Filter links to only include those where BOTH source and target exist in nodes
+    // Deep clone to avoid D3 forceLink mutating the original graphData.links objects
+    linksRef.current = graphData.links
+      .filter(link => nodeMap.has(link.source as string) && nodeMap.has(link.target as string))
+      .map(link => ({ ...link }));
     edgeLengthsRef.current = computeEdgeLengths();
 
     // Start physics simulation
     initSimulation();
-  }, [graphData, canvasSize, computeEdgeLengths, initSimulation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graphData]); // 故意不依赖 canvasSize，避免尺寸变化时重置节点位置
+
+  // canvasSize 变化时只更新模拟中心力，不重置节点
+  useEffect(() => {
+    if (canvasSize.width > 0 && canvasSize.height > 0 && nodesRef.current.length > 0) {
+      initSimulation();
+    }
+  }, [canvasSize, initSimulation]);
 
   // Drag callbacks
   const handleDragStart = useCallback((id: string, x: number, y: number) => {
@@ -132,7 +156,7 @@ export default function JeffreyGraphPage() {
   }, [releaseNode]);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: C.bg, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100vh', overflow: 'hidden', backgroundColor: C.bg, display: 'flex', flexDirection: 'column' }}>
       <Header />
 
       {/* Filter Bar */}
@@ -183,7 +207,7 @@ export default function JeffreyGraphPage() {
       </div>
 
       {/* Graph Canvas */}
-      <div ref={containerRef} style={{ flex: 1, position: 'relative' }}>
+      <div ref={containerRef} style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
         <GraphCanvas
           nodesRef={nodesRef}
           linksRef={linksRef}
