@@ -139,6 +139,7 @@ export function useForceSimulation(
 
   // 重新启动（拖拽释放后）
   const reheat = useCallback(() => {
+    console.error('[ForceSim] reheat!');
     simRef.current?.alpha(0.1).restart();
   }, []);
 
