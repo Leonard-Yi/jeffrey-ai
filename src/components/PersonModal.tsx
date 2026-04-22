@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { renderArray, renderRelativeDate } from "@/lib/schemaReader";
+import { C } from "@/lib/design-tokens";
 
 type ActionItem = {
   description: string;

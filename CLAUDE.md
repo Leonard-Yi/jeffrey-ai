@@ -33,7 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 不用 server 时 → 关掉 terminal 或 kill node 进程
 出现bug → 使用/systematic-debugging技能
 遇到 graph/图谱 相关问题时 → 查阅 `docs/knowledge-graph-visualization-research.md` 第22行"调试经验记录"章节
-遇到 Vercel/部署 相关问题时 → 查阅 `docs/vercel-deployment.md`
+处理 Vercel/部署 相关问题时 → 查阅 `docs/vercel-deployment.md`，尤其是在commit之后要用vercel CLI手动部署并再次检查版本是否最新
 完成工作后 → 调用 ecc:e2e 技能跑一个测试
 ```
 
@@ -131,14 +131,10 @@ DATABASE_URL=        # PostgreSQL connection string
 - **Database**: Supabase (Session Pooler for IPv4 compatibility)
 - **Branch**: Vercel watches `master` branch — changes must be merged to master to deploy
 
-### Deployment Checklist
+### Vercel Deployment Checklist
 1. 确保修复在 `master` 分支上（Vercel 只部署 master）
-2. 推送后检查 Vercel Dashboard 确认部署完成
+2. 推送后检查 Vercel Dashboard 确认部署完成，确保版本正确
 3. 清除浏览器缓存或用隐私模式验证（避免旧 JS 缓存）
-
-### Docker 自部署（备用方案）
-如果需要自部署，服务器内存至少需要 4GB（npm build 阶段需要 ~2GB+）。
-相关文件已创建但未使用：Dockerfile, docker-compose.yml, .dockerignore
 
 ## Common Pitfalls
 
