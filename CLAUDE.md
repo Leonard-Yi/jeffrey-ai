@@ -140,12 +140,21 @@ DATABASE_URL=        # PostgreSQL connection string
 ### Current Platform: Vercel
 - **URL**: https://jeffrey-ai.vercel.app
 - **Database**: Supabase (Session Pooler for IPv4 compatibility)
-- **Branch**: Vercel watches `master` branch — changes must be merged to master to deploy
+- **Branch**: `master` 分支
+
+### ⚠️ Vercel 部署方式：必须手动执行
+**Vercel 并不会在 git push 后自动部署，必须手动运行命令：**
+```bash
+vercel --prod
+```
+仅 commit + push 不会触发部署。
 
 ### Vercel Deployment Checklist
-1. 确保修复在 `master` 分支上（Vercel 只部署 master）
-2. 推送后检查 Vercel Dashboard 确认部署完成，确保版本正确
-3. 清除浏览器缓存或用隐私模式验证（避免旧 JS 缓存）
+1. 确保修复在 `master` 分支上
+2. `git push` 推送代码
+3. 运行 `vercel --prod` 手动部署
+4. 检查 Vercel Dashboard 确认部署完成，确保版本正确
+5. 清除浏览器缓存或用隐私模式验证（避免旧 JS 缓存）
 
 ## Common Pitfalls
 
