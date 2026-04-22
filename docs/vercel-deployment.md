@@ -66,7 +66,8 @@ postgresql://postgres.xxx@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 ### 当前部署
 
 - **URL**: https://jeffrey-ai.vercel.app
-- **Git**: master 分支，Vercel 自动监听推送
+- **Git**: master 分支
+- **部署方式**: `vercel --prod`（必须手动运行，git push 不会自动部署）
 - **数据库**: Supabase PostgreSQL (Session Pooler)
 
 ### 历史部署
