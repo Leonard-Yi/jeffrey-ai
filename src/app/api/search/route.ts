@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       }>
     >(Prisma.sql`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate", "embedding", "searchText"
       FROM "Person"
-      WHERE "userId" = ${session.user.id}::uuid
+      WHERE "userId" = ${session.user.id}
         AND "deletedAt" IS NULL`);
 
     // 3. Compute semantic scores for persons that have an embedding
