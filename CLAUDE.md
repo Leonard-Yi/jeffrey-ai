@@ -32,6 +32,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 改代码 → npm run dev 测试 → 确认没问题 → npm run build && npm start 生产模式
 不用 server 时 → 关掉 terminal 或 kill node 进程
 出现bug → 使用/systematic-debugging技能
+遇到 graph/图谱 相关问题时 → 查阅 `docs/knowledge-graph-visualization-research.md` 第22行"调试经验记录"章节
+遇到 Vercel/部署 相关问题时 → 查阅 `docs/vercel-deployment.md`
 完成工作后 → 调用 ecc:e2e 技能跑一个测试
 ```
 
@@ -122,6 +124,22 @@ DATABASE_URL=        # PostgreSQL connection string
 - **Test isolation** — full pipeline tests prefix all records with `__test__` and clean up before/after to avoid polluting real data
 - `tsx` is used as the TypeScript runtime (no build step needed for development)
 
+## Deployment
+
+### Current Platform: Vercel
+- **URL**: https://jeffrey-ai.vercel.app
+- **Database**: Supabase (Session Pooler for IPv4 compatibility)
+- **Branch**: Vercel watches `master` branch — changes must be merged to master to deploy
+
+### Deployment Checklist
+1. 确保修复在 `master` 分支上（Vercel 只部署 master）
+2. 推送后检查 Vercel Dashboard 确认部署完成
+3. 清除浏览器缓存或用隐私模式验证（避免旧 JS 缓存）
+
+### Docker 自部署（备用方案）
+如果需要自部署，服务器内存至少需要 4GB（npm build 阶段需要 ~2GB+）。
+相关文件已创建但未使用：Dockerfile, docker-compose.yml, .dockerignore
+
 ## Common Pitfalls
 
 ### Chinese Text / Encoding
@@ -160,6 +178,7 @@ DATABASE_URL=        # PostgreSQL connection string
 - Turbopack starts ~15 workers during build — requires ~22GB available memory
 - If build OOMs: close other programs (Docker Desktop, WSL, VSCode) first
 - Before any `npm run build`: kill residual node processes to avoid ENOENT errors
+
 
 ## Version Control
 
@@ -203,6 +222,9 @@ git revert <commit-hash>
 # 回滚到指定版本
 git checkout v1.0.0 && npm run build && npm start
 ```
+
+### ⚠️ Vercel 部署与 Git Branch 对齐
+**关键**：Vercel 监听 master 分支。在 worktree 或其他分支上开发的修复必须先合并到 master 才能部署。经常犯的错误是在 feature 分支上修复了 bug 但没有合并，导致在 Vercel 上测试时发现修复没生效。
 
 ### Worktree 强制使用规则
 **所有新功能/修复必须通过 Worktree 开发，禁止直接在主目录操作**：

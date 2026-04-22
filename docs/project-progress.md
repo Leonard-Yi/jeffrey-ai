@@ -1,8 +1,8 @@
 # Jeffrey.AI 项目开发记录
 
-**最后更新**: 2026-04-20
-**项目状态**: Vercel 部署完成（已暂停），聚焦本地打磨
-**会话 ID**: 010 (Vercel 部署 + 邮箱验证临时禁用)
+**最后更新**: 2026-04-21
+**项目状态**: Vercel 部署完成，Graph 页面修复部署中
+**会话 ID**: 012 (Vercel 重新部署 + Graph 页面修复)
 
 ---
 
@@ -1971,3 +1971,117 @@ taskkill //F //PID <pid>
 # 检查残留
 wmic process where "name='node.exe' and CommandLine like '%Epstein%'" get ProcessId,CommandLine
 ```
+
+---
+
+## 会话 012: Vercel 重新部署 + Graph 页面白屏修复 (2026-04-21)
+
+### 背景
+
+用户需要让所有人通过互联网访问网站。之前尝试 DigitalOcean VPS + Docker 部署失败（服务器只有 2GB RAM，npm build OOM）。
+
+### 部署决策
+
+**最终方案**: Vercel + Supabase
+
+| 决策 | 内容 |
+|------|------|
+| 部署平台 | Vercel (https://jeffrey-ai.vercel.app) |
+| 数据库 | Supabase PostgreSQL |
+| 连接方式 | Session Pooler（免费版不支持直连 IPv4） |
+| 监听分支 | master |
+
+### 技术问题 1: Supabase IPv4 不兼容
+
+**问题**: Supabase 免费版只支持 IPv6，直连格式 `postgresql://...@aws-0-ap-south-1.supabase.co:5432/postgres` 在 Vercel 上连接失败。
+
+**解决**: 使用 Session Pooler 连接字符串：
+```
+postgresql://postgres.xxx@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+```
+
+### 技术问题 2: Graph 页面白屏 "node not found"
+
+**症状**: 访问 `/graph` 页面时控制台报错：
+```
+Uncaught Error: node not found: 0de864d0-758a-4ad3-94a5-7021982b1f97
+    at $ (d3-force internal)
+    at c.force.force.force.force.u.initialize
+```
+
+**根本原因**: d3-force 的 `forceLink` 在初始化时，links 数组中有链接引用了不存在的节点 ID。可能原因：
+1. 筛选节点后 links 未同步过滤
+2. 数据库中存在已删除但链接仍引用它的人物记录
+
+**修复方案**:
+
+1. `src/hooks/useForceSimulation.ts` — 过滤无效链接：
+```typescript
+// 过滤掉引用了不存在节点的 links（防止 d3-force 报错）
+const validNodeIds = new Set(nodesRef.current.map(n => n.id));
+const validLinks = linksRef.current.filter(
+  link => validNodeIds.has(link.source as string) && validNodeIds.has(link.target as string)
+);
+```
+
+2. `src/app/graph/page.tsx` — API 错误处理：
+```typescript
+const res = await fetch(`/api/graph?${params}`);
+if (!res.ok) {
+  console.error(`Graph API error: ${res.status}`);
+  setGraphData({ nodes: [], links: [], clusters: [] });
+  return;
+}
+const data: GraphData = await res.json();
+```
+
+### 部署流程
+
+1. **代码合并到 master**:
+   ```bash
+   git checkout feature/graph-redesign
+   git add src/hooks/useForceSimulation.ts src/app/graph/page.tsx
+   git commit -m "fix(graph): prevent white screen by filtering invalid links"
+   git checkout master
+   git merge feature/graph-redesign
+   git push origin master
+   ```
+
+2. **Vercel 自动检测到推送并部署**
+
+3. **验证**: 清除浏览器缓存后访问 https://jeffrey-ai.vercel.app/graph
+
+### Docker 自部署文件（备用）
+
+以下文件已创建但当前部署到 Vercel，文件保留用于未来可能的对接：
+
+| 文件 | 用途 |
+|------|------|
+| `Dockerfile` | 多阶段构建 (builder + runner) |
+| `docker-compose.yml` | 包含 app 和 db 服务 |
+| `.dockerignore` | 排除 node_modules, .next, .git |
+| `next.config.js` | 已添加 `output: 'standalone'` |
+
+**注意**: Docker 部署需要服务器至少 4GB RAM（npm build 阶段需要 ~2GB+）
+
+### Git 提交
+
+```
+7225fab fix(graph): prevent white screen by filtering invalid links and handling API errors
+```
+
+### 经验教训
+
+1. **Vercel 只监听 master 分支** — 在 feature 分支修复 bug 后必须合并到 master 才能部署
+2. **浏览器缓存** — 部署后清除缓存或用隐私模式验证
+3. **节点过滤时必须同步过滤 links** — d3-force 不会自动忽略无效引用
+
+### 当前状态
+
+| 组件 | 状态 |
+|------|------|
+| Vercel 部署 | ✅ 完成 (https://jeffrey-ai.vercel.app) |
+| Supabase 数据库连接 | ✅ 完成 |
+| graph/page.tsx 错误处理 | ✅ 已修复并部署 |
+| useForceSimulation.ts d3-force | ✅ 已修复并部署 |
+| Graph 页面验证 | ⏳ 待用户确认 |

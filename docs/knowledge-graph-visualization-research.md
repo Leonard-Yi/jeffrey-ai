@@ -19,6 +19,111 @@ Obsidian 标志性的流畅图谱交互核心依赖 **三大技术支柱**：
 
 ---
 
+## 调试经验记录 (2026-04-22)
+
+### 1. 调试日志的双刃剑效应
+
+**问题**: 大量 `up/ud/iv` React 调度日志和控制台日志（每秒多次）导致浏览器严重卡顿，甚至无法复制信息。
+
+**教训**:
+- 调试日志必须带**频率限制**（throttle / 计数器上限），不能裸用 `console.log`
+- 日志量控制在每秒钟最多 1 条，信息要丰富（包含前后状态值）
+- 一旦日志开始影响被测系统的行为，日志就变成了新的 bug 来源
+
+**正确做法**:
+```typescript
+// ❌ 错误：每帧都打
+console.log('tick', alpha);
+
+// ✅ 正确：有频率限制的日志（每60帧约1秒1次）
+const logInterval = useRef(0);
+if (logInterval.current++ % 60 === 0) {
+  console.log('alpha:', alpha);
+}
+```
+
+---
+
+### 2. 部署版本不一致是最容易忽略的"低级"错误
+
+**问题**: Vercel 部署的是 11 小时前的旧 commit，本地已是更新后的版本。所有调试都基于旧代码行为。
+
+**教训**:
+- 每次部署后**立即验证** Vercel 上的 commit SHA
+- 复现问题时，第一步永远是确认「本地版本 === 部署版本」
+- `vercel --prod --force` 可以强制跳过缓存重新构建
+
+**验证方法**:
+```bash
+git log --oneline -1        # 本地
+# Vercel Dashboard → Deployment → 底部有 commit SHA
+```
+
+---
+
+### 3. React StrictMode 导致的 Effect 双重挂载
+
+**问题**: 开发环境下 React StrictMode 会让 useEffect 挂载两次，导致 `initSimulation` 被调用两次。
+
+**教训**:
+- 调试 Effect 相关 bug 时，**先关闭 React StrictMode** 排除干扰
+- 生产环境（无 StrictMode）行为可能与开发环境不同
+
+---
+
+### 4. 异步状态初始化 + Effect 依赖 = 隐形 Race Condition
+
+**问题链**:
+```
+useState({ width: 800, height: 600 })   // 初始值
+→ ResizeObserver 异步更新为真实尺寸
+→ GraphCanvas 挂载时 width=800
+→ draw effect 运行（800×600）
+→ ResizeObserver 触发 setCanvasSize
+→ GraphCanvas 重新渲染，draw effect 又运行（真实尺寸）
+→ 两次 initSimulation，节点位置瞬间跳变
+```
+
+**教训**:
+- 组件挂载时的**初始状态值**非常重要，会直接影响 Effect 的第一次运行
+- **修复思路**: 初始值设为「不合法」状态（如 `{ width: 0, height: 0 }`），只当 ResizeObserver 返回真实尺寸后才渲染组件
+
+---
+
+### 5. D3 Force 物理模拟的"自然抖动" vs 真正 Bug
+
+**问题**: D3 forceSimulation 的 `alpha` 衰减和 `velocityDecay` 控制不好时，节点本来就会有自然振荡。难以区分是「物理模拟正常现象」还是「bug」。
+
+**教训**:
+- 物理模拟参数（`alphaDecay`, `velocityDecay`）要调到「节点看起来稳定但不死死不动」的程度
+- `alpha` 降到 0 后模拟才完全停止，在此之前节点会有微小运动
+- **验证方法**: 观察 `alpha <= 0` 时节点是否还动；若还动，说明有外部不断触发 reheat
+
+---
+
+### 6. 系统性调试流程的执行问题
+
+本次 session 反复出现：
+
+| 症状 | 根因 |
+|------|------|
+| 改了代码但 Vercel 没变 | 没验证部署版本 |
+| 每次改一点就部署，循环 | 没先在本地充分验证 |
+| 日志太多 → 系统变卡 | 没加频率限制 |
+| effect 双重运行搞不清 | 没先关 StrictMode |
+
+**核心缺失**: 每次改动后没有独立的「验证步骤」，而是直接部署 + 等用户反馈，循环太慢。
+
+**正确流程**:
+1. 改了代码 → 本地 `npm run dev` 验证
+2. 确认修复 → 部署
+3. 部署后**立刻**比对 commit SHA
+4. 报告 bug 时带上：Vercel URL + commit SHA + 完整 console 文本日志
+
+Vercel 部署的详细经验（包括强制重部署、Supabase 连接串、master 分支监听等）记录在 `docs/project-progress.md` 的会话 010 和 012 中。
+
+---
+
 ## 一、渲染引擎深度对比
 
 ### 1.1 三种渲染技术性能天花板
