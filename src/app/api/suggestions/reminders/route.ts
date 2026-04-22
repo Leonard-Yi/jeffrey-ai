@@ -82,13 +82,14 @@ export async function GET(_request: NextRequest) {
       const items = ip.actionItems as ActionItem[];
       // 过滤出有效的 actionItems（非空数组）
       if (!items || !Array.isArray(items) || items.length === 0) continue;
-      for (const item of items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
         if (item.ownedBy === "me" && !item.resolved) {
           // 找到这个 interaction 中第一个人（通常是"我"）
           const firstPerson = ip.persons[0]?.person;
           if (firstPerson) {
             pendingDebts.push({
-              id: `${ip.id}-${item.description.slice(0, 20)}`,
+              id: `${ip.id}-${i}`,
               personId: firstPerson.id,
               personName: firstPerson.name,
               description: item.description,

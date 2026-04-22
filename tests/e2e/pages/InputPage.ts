@@ -6,7 +6,7 @@ export class InputPage {
 
   // Selectors
   readonly textarea = () => this.page.locator('textarea');
-  readonly submitButton = () => this.page.locator('button[type="submit"], button:has-text("提交"), button:has-text("汇报")');
+  readonly submitButton = () => this.page.locator('button:has-text("告诉")');
   readonly resultCards = () => this.page.locator('[class*="card"], [class*="person-card"], [data-testid="person-card"]');
   readonly jeffreyBubble = () => this.page.locator('[class*="bubble"], [class*="message"]');
   readonly quickReplies = () => this.page.locator('[class*="quick-reply"], button:has-text("快捷回复")');

@@ -60,6 +60,10 @@ export async function GET(
         introducedBy: {
           select: { id: true, name: true },
         },
+        introductions: {
+          where: { deletedAt: null },
+          select: { id: true, name: true },
+        },
         interactions: {
           include: {
             interaction: {

@@ -28,6 +28,57 @@ const ExtractionPayloadSchema = z.object({
   followUpQuestion: z.string().optional(),
 });
 
+// ==================== Jeffrey 点评分层系统 ====================
+
+type JeffreyMood = 'sarcastic' | 'appreciative' | 'gentle' | 'observant' | 'neutral';
+
+function getJeffreyMood(opts: {
+  hasAnxiety: boolean;
+  hasHighValueCareer: boolean;
+  hasCareers: boolean;
+  meOwedCount: number;
+  themOwedCount: number;
+}): JeffreyMood {
+  if (opts.meOwedCount > 2 || opts.themOwedCount > 2) return 'sarcastic';
+  if (opts.hasHighValueCareer && !opts.hasAnxiety) return 'appreciative';
+  if (!opts.hasCareers) return 'gentle';
+  if (opts.hasAnxiety) return 'observant';
+  return 'neutral';
+}
+
+function getJeffreyOpening(mood: JeffreyMood, name: string, meOwedCount: number, themOwedCount: number): string {
+  const templates: Record<JeffreyMood, string[]> = {
+    sarcastic: [
+      `先生，${name}已经在案了。欠您${themOwedCount}件事的人——这种资源不盯紧点，转眼就忘。`,
+      `${name}...好，记下来了。您现在有${meOwedCount}件事拖着没处理。我帮您记着，您可别忘了。`,
+      `${name}的社交价值我帮您评估好了。建议您尽快兑现承诺——人情这东西，过期不候。`,
+    ],
+    appreciative: [
+      `${name}在这个圈子里有些分量。这种人主动维护一下，比躺在通讯录里强十倍。`,
+      `${name}？这类资源不常有。建议您主动出击，别等对方先想起来。`,
+      `${name}对您来说是块好拼图。要不要趁热度在，约一次？`,
+    ],
+    gentle: [
+      `${name}，已录入。人脉这东西，平时不烧香，急时抱佛脚是没用的。`,
+      `${name}已记录。但我得提醒您——关系需要经营，不然就只是认识而已。`,
+      `${name}...记下来了。后续怎么维护，可以想想。别等要用了才发现生疏了。`,
+    ],
+    observant: [
+      `${name}目前似乎有些压力。这种时候建立的交情，往往最记得住。`,
+      `${name}最近状态值得关注。有时候低谷期的关心，比顺境时的锦上添花更有效。`,
+    ],
+    neutral: [
+      `${name}，已记录在案。`,
+      `${name}的情况我整理好了。还有什么要补充的吗？`,
+      `收到，${name}的信息已经录入系统。`,
+    ],
+  };
+  const list = templates[mood];
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+// ==================== 结束 ====================
+
 // 完备性检查函数
 function describeCompleteness(data: z.infer<typeof ExtractionPayloadSchema>): string | null {
   const missing: string[] = [];
@@ -95,6 +146,8 @@ const SYSTEM_PROMPT = `
 - 如果缺少日期，追问示例："这是什么时候的事？今天还是前几天？"
 - 如果缺少 career，追问示例："老王这次聊了很多，他现在主要的工作方向是什么？"
 - 如果缺少 actionItem，追问示例："这次聊完有没有什么约定或者你想跟进的事情？"
+
+**重要约束**：followUpQuestion 每次只问 1 个问题，选择最影响记录质量的缺失项，不要一次列举多个问题。
 
 ## 同名检测（自动识别）
 
@@ -362,12 +415,16 @@ export async function POST(request: Request) {
 
     const data = result.data;
 
-    // 服务器端完备性检查：如果缺少日期，强制设为 pending
+    // 服务器端完备性检查：LLM 若标记 complete 但缺字段，强制改为 pending
     const missing = describeCompleteness(data);
     if (missing && data.status === "complete") {
-      console.warn("[Jeffrey.AI] LLM marked complete but missing fields:", missing);
-      // date 缺失时不设为 pending，因为可能通过追问补全
-      // 但如果确实无法获取，才在追问回复时用当前日期兜底
+      console.warn("[Jeffrey.AI] LLM marked complete but missing fields, forcing pending:", missing);
+      data.status = "pending";
+      if (!data.followUpQuestion) {
+        // 取第一个缺失项作为追问内容
+        const firstMissing = missing.split('；')[0];
+        data.followUpQuestion = `还需要补充：${firstMissing}`;
+      }
     }
 
     // 用于返回给前端的人物ID
@@ -413,50 +470,39 @@ export async function POST(request: Request) {
       console.log("[Jeffrey.AI] Ambiguous status detected, returning ambiguous persons for user confirmation");
     }
 
-    // 生成 Jeffrey 风格的评论
-    const personNames = data.persons.map(p => p.name).join(',');
+    // 生成 Jeffrey 风格的评论（三层结构：基调→主体模板→动态补充）
+    const personNames = data.persons.map(p => p.name).join('、');
     const hasAnxiety = data.persons.some(p =>
       p.vibeTags.some(v => v.includes('焦虑') || v.includes('压力'))
     );
     const meOwedCount = data.actionItems.filter(a => a.ownedBy === 'me').length;
     const themOwedCount = data.actionItems.filter(a => a.ownedBy === 'them').length;
-
-    // 分析人物价值
     const allCareers = data.persons.flatMap(p => p.careers.map(c => c.name));
     const allInterests = data.persons.flatMap(p => p.interests.map(i => i.name));
     const hasHighValueCareer = allCareers.some(c =>
-      ['投资', '金融', '科技', '创始人', 'CEO', '合伙人', '律师', '医生', '教授'].some(keyword => c.includes(keyword))
+      ['投资', '金融', '科技', '创始人', 'CEO', '合伙人', '律师', '医生', '教授'].some(k => c.includes(k))
     );
-    const hasUniqueInterest = allInterests.length > 0;
+    const hasCareers = allCareers.length > 0;
 
     let jeffreyComment = "";
 
-    // Jeffrey 的毒舌点评
     if (data.persons.length === 0) {
       jeffreyComment = "先生，您告诉我这么多，却没提到任何人的名字。是在考验我的记忆力吗？";
     } else {
-      // 开场白
-      if (hasAnxiety) {
-        jeffreyComment += `${personNames}目前似乎有些焦虑。这种时候建立的交情，往往最记得住。`;
-      } else if (hasHighValueCareer) {
-        jeffreyComment += `${personNames}在这个圈子里应该有些分量。建议您主动保持联系，别等对方先找你。`;
-      } else {
-        jeffreyComment += `${personNames}，已经记录在案。人脉这东西，平时不烧香，急时抱佛脚是没用的。`;
-      }
-
-      // 社交债务点评
+      // 第一层：判断基调
+      const mood = getJeffreyMood({ hasAnxiety, hasHighValueCareer, hasCareers, meOwedCount, themOwedCount });
+      // 第二层：随机选主体模板
+      jeffreyComment = getJeffreyOpening(mood, personNames, meOwedCount, themOwedCount);
+      // 第三层：动态补充（避免和 sarcastic 模板内容重复）
       if (meOwedCount > 0 && themOwedCount > 0) {
         jeffreyComment += ` 这次互动双方都有承诺要履行——这种"互相亏欠"的状态，其实是最稳固的关系。`;
-      } else if (meOwedCount > 0) {
+      } else if (meOwedCount > 0 && mood !== 'sarcastic') {
         jeffreyComment += ` 您有${meOwedCount}件事要做。先生，欠人情是要还的，建议您尽快处理。`;
-      } else if (themOwedCount > 0) {
+      } else if (themOwedCount > 0 && mood !== 'sarcastic') {
         jeffreyComment += ` 对方欠您${themOwedCount}件事。这种人情的债，往往比金钱更值得记住。`;
       }
-
-      // 兴趣点评
-      if (hasUniqueInterest) {
-        const topInterest = allInterests[0];
-        jeffreyComment += ` 对了，${personNames}对${topInterest}感兴趣——这是个不错的切入点，比聊工作容易拉近距离。`;
+      if (allInterests.length > 0 && (mood === 'neutral' || mood === 'appreciative')) {
+        jeffreyComment += ` 对了，${personNames}对${allInterests[0]}感兴趣——这是个不错的切入点。`;
       }
     }
 

@@ -35,8 +35,13 @@ export async function POST(request: Request) {
 
     console.log(`[Jeffrey.AI] Semantic search: "${q}", k=${k}`);
 
-    // Generate query embedding
-    const queryEmbedding = await generateEmbedding(q);
+    // Generate query embedding (failure is handled below via fallback)
+    let queryEmbedding: number[] = [];
+    try {
+      queryEmbedding = await generateEmbedding(q);
+    } catch (embError) {
+      console.warn(`[Jeffrey.AI] Embedding generation failed, will use fuzzy search:`, embError);
+    }
 
     // Fetch all persons with non-empty embeddings AND at least one career or interest
     // This filters out placeholder contacts with no real profile data (e.g. "矿泉水")
@@ -57,8 +62,48 @@ export async function POST(request: Request) {
         AND jsonb_array_length("embedding") > 0
         AND (jsonb_array_length("careers") > 0 OR jsonb_array_length("interests") > 0)`);
 
+    // 如果 embedding 生成失败（空数组），跳过向量搜索，直接走 fallback
+    if (queryEmbedding.length === 0) {
+      const allPersons = await prisma.$queryRaw<
+        Array<{ id: string; name: string; careers: unknown; interests: unknown; vibeTags: string[]; relationshipScore: number; lastContactDate: Date }>
+      >(Prisma.sql`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate"
+        FROM "Person"
+        WHERE "userId" = ${session.user.id}::uuid
+          AND "deletedAt" IS NULL`);
+      const q_lower = q.toLowerCase();
+      const fuzzyResults = allPersons
+        .filter(p => {
+          const nameMatch = p.name.toLowerCase().includes(q_lower);
+          const careerMatch = (p.careers as Array<{ name: string }>).some(c => (c.name || "").toLowerCase().includes(q_lower));
+          const interestMatch = (p.interests as Array<{ name: string }>).some(i => (i.name || "").toLowerCase().includes(q_lower));
+          return nameMatch || careerMatch || interestMatch;
+        })
+        .slice(0, k)
+        .map(p => ({ ...p, similarity: 0.5 }));
+      return Response.json({ results: fuzzyResults });
+    }
+
     if (persons.length === 0) {
-      return Response.json({ results: [] });
+      // Fallback: embedding 全空，改用模糊字符串匹配
+      console.log(`[Jeffrey.AI] No persons with embeddings, falling back to fuzzy search for "${q}"`);
+      const allPersons = await prisma.$queryRaw<
+        Array<{ id: string; name: string; careers: unknown; interests: unknown; vibeTags: string[]; relationshipScore: number; lastContactDate: Date }>
+      >(Prisma.sql`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate"
+        FROM "Person"
+        WHERE "userId" = ${session.user.id}::uuid
+          AND "deletedAt" IS NULL`);
+      const q_lower = q.toLowerCase();
+      const fuzzyResults = allPersons
+        .filter(p => {
+          const nameMatch = p.name.toLowerCase().includes(q_lower);
+          const careerMatch = (p.careers as Array<{ name: string }>).some(c => (c.name || "").toLowerCase().includes(q_lower));
+          const interestMatch = (p.interests as Array<{ name: string }>).some(i => (i.name || "").toLowerCase().includes(q_lower));
+          return nameMatch || careerMatch || interestMatch;
+        })
+        .slice(0, k)
+        .map(p => ({ ...p, similarity: 0.5 }));
+      console.log(`[Jeffrey.AI] Fuzzy fallback found ${fuzzyResults.length} results`);
+      return Response.json({ results: fuzzyResults });
     }
 
     // Compute cosine similarity for each person
