@@ -8,29 +8,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Server Modes
 
-### Development Mode (`npm run dev`)
-- **Port**: 30081 (not 3000, to avoid conflicts)
-- **Start**: `npm run dev`
-- **Profile**: Uses Turbopack, runs ~18 Node workers, heavy CPU/memory usage
-- **When to use**: Active coding, code changes frequently
-- **⚠️ Warning**: Dev mode leaves background node processes after termination. Always kill manually after use.
-- **⚠️ Memory issue**: Everytime you start the server, `npm start` or `npm build`, CHECK THE MEMORY FIRST. If available memory is not enough, clean it first!
+### ⚠️ Development Mode (`npm run dev`) — **已禁用，禁止使用**
 
-### Production Mode (`npm start`)
+Next.js 16 的 Turbopack 会在启动时瞬间产生 10+ 个 node worker 进程（每个 50-60MB），极易导致内存爆满和系统卡顿，且无有效方式禁用 Turbopack。**绝对不要运行 `npm run dev`**。
+
+如确需开发模式调试（非常不推荐），需自行手动运行并密切监控内存：
+```bash
+npx tsx scripts/check-resources.ts && next dev -p 30081
+```
+
+### Production Mode (`npm start`) — **唯一允许的模式**
 - **Port**: 3000
-- **Build first**: `npm run build` (requires ~22GB free RAM)
+- **Build first**: `npm run build` (Node.js capped at 8GB via `NODE_OPTIONS=--max-old-space-size=8192`)
+- **Type check separately**: `npm run typecheck` (runs `tsc --noEmit` without triggering bundling)
 - **Start**: `npm start`
-- **⚠️ Before build**: Kill all node processes first, otherwise build fails with ENOENT errors on Windows:
+- **⚠️ Before build**: Kill all node processes first:
   ```bash
-  wmic process where "name='node.exe' and CommandLine like '%Epstein%'" get ProcessId | tail -n +2 | xargs -I{} taskkill //F //PID {}
+  taskkill //F //IM node.exe
   ```
 - **Profile**: Single process, minimal CPU/memory (~50MB), stable and fast
-- **When to use**: Daily usage, demo, extended sessions
+- **When to use**: 所有场景（开发、测试、生产）
+
+### Resource Check
+```bash
+# 启动前检查系统内存（会自动运行，也可以单独跑）
+npm run check-mem
+
+# 查看运行中服务器的内存占用
+curl http://localhost:3000/api/health
+```
 
 ### Workflow
 ```
-改代码 → npm run dev 测试 → 确认没问题 → npm run build && npm start 生产模式
-不用 server 时 → 关掉 terminal 或 kill node 进程
+改代码 → npm run build && npm start 测试 → 确认没问题 → npm run typecheck（类型检查）
+不用 server 时 → 关掉 terminal 或 taskkill //F //IM node.exe
 出现bug → 使用/systematic-debugging技能
 遇到 graph/图谱 相关问题时 → 查阅 `docs/knowledge-graph-visualization-research.md` 第22行"调试经验记录"章节
 处理 Vercel/部署 相关问题时 → 查阅 `docs/vercel-deployment.md`，尤其是在commit之后要用vercel CLI手动部署并再次检查版本是否最新

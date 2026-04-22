@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { buildPersonSearchText, generateEmbedding, type WeightedTag } from "@/lib/embedding";
 
 const EDITABLE_FIELDS = [
   "name",
@@ -224,12 +225,47 @@ export async function PATCH(
         dbValue = value;
     }
 
-    const updated = await prisma.person.update({
+    await prisma.person.update({
       where: { id, userId: session.user.id },
       data: { [field]: dbValue },
     });
 
-    return Response.json({ success: true, person: updated });
+    // 若修改了影响 embedding 的字段，则重新生成向量
+    if (field === "name" || field === "vibeTags") {
+      const current = await prisma.person.findUnique({
+        where: { id, userId: session.user.id },
+        select: { name: true, careers: true, interests: true, vibeTags: true },
+      });
+      if (current) {
+        const searchText = buildPersonSearchText({
+          name: current.name,
+          careers: (current.careers ?? []) as WeightedTag[],
+          interests: (current.interests ?? []) as WeightedTag[],
+          vibeTags: current.vibeTags ?? [],
+        });
+        try {
+          const embedding = await generateEmbedding(searchText);
+          await prisma.person.update({
+            where: { id, userId: session.user.id },
+            data: { searchText, embedding },
+          });
+        } catch (embErr) {
+          console.error("[Jeffrey.AI] PATCH: failed to regenerate embedding:", embErr);
+        }
+      }
+    }
+
+    // 取最新完整数据返回（含新 embedding），避免返回旧向量
+    const latest = await prisma.person.findUnique({
+      where: { id, userId: session.user.id },
+      select: {
+        id: true, name: true, careers: true, interests: true, vibeTags: true,
+        baseCities: true, favoritePlaces: true, relationshipScore: true,
+        lastContactDate: true, searchText: true,
+      },
+    });
+
+    return Response.json({ success: true, person: latest });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return Response.json({ error: "Person not found" }, { status: 404 });
