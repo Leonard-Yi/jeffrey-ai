@@ -1140,20 +1140,60 @@ export default function PersonModal({ personId, onClose, onSaved }: PersonModalP
                     setPerson((prev) =>
                       prev ? { ...prev, introducedByIds: newIds } : prev
                     );
-                    await fetch(`/api/members/${person.id}`, {
+                    const res = await fetch(`/api/members/${person.id}`, {
                       method: "PATCH",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ field: "introducedByIds", value: newIds }),
                     });
+                    if (res.ok) {
+                      onSaved?.();
+                    }
                   }}
                 />
               </div>
+
+              {/* Introduced Others - 此人引见过谁 */}
+              {(person as any).introductions && (person as any).introductions.length > 0 && (
+                <div style={STYLES.fieldCard}>
+                  <div style={STYLES.fieldLabel}>引见过的人</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                    {(person as any).introductions.map((p: { id: string; name: string }) => (
+                      <span
+                        key={p.id}
+                        onClick={() => handleNavigateToPerson(p.id)}
+                        style={{
+                          cursor: "pointer",
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          fontSize: 13,
+                          background: C.bgElevated,
+                          border: `1px solid ${C.borderStrong}`,
+                          color: C.accent,
+                          transition: "opacity 0.12s",
+                        }}
+                        onMouseEnter={e => ((e.target as HTMLElement).style.opacity = "0.7")}
+                        onMouseLeave={e => ((e.target as HTMLElement).style.opacity = "1")}
+                      >
+                        {p.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Core Memories */}
               <FieldCard
                 label="核心记忆"
                 fieldKey="coreMemories"
-                value={(person.coreMemories ?? []).join(", ") || "—"}
+                value={
+                  (() => {
+                    const mems = (person.interactions ?? [])
+                      .flatMap((ip: any) => (ip.interaction?.coreMemories ?? []) as string[])
+                      .filter((m: string, i: number, arr: string[]) => m && arr.indexOf(m) === i)
+                      .slice(-20);
+                    return mems.length > 0 ? mems.join(" / ") : "—";
+                  })()
+                }
                 editingField={editingField}
                 editValue={editValue}
                 onStartEdit={() => startEditing("coreMemories", person.coreMemories)}

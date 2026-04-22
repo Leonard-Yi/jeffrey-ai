@@ -467,9 +467,9 @@ const JeffreyInputPage = () => {
           <div style={{ display: 'flex', gap: 10 }}>
             <Button
               variant="secondary"
-              fullWidth
               onClick={handleClear}
               disabled={isProcessing || (!inputText && !jeffreyComment)}
+              style={{ flex: 1 }}
             >
               清空
             </Button>
@@ -479,9 +479,9 @@ const JeffreyInputPage = () => {
               loading={isProcessing}
               onClick={() => handleSubmit()}
               disabled={!inputText.trim() || isProcessing}
-              style={{ flex: 2 }}
+              style={{ flex: 3 }}
             >
-              {isProcessing ? 'Jeffrey 思考中...' : '汇报给 Jeffrey'}
+              {isProcessing ? 'Jeffrey 思考中...' : '告诉'}
             </Button>
           </div>
 
@@ -698,6 +698,23 @@ const JeffreyInputPage = () => {
                 disabled={(!selectedQuickReply && !customReply) || isProcessing}
               >
                 {isProcessing ? '发送中...' : '发送回复'}
+              </Button>
+              <Button
+                variant="secondary"
+                fullWidth
+                style={{ marginTop: 8 }}
+                onClick={() => {
+                  setDialogueComplete(true);
+                  setStatus('complete');
+                  setConversationHistory(p => [...p, {
+                    role: 'jeffrey' as const,
+                    content: '好的，信息已记录。如需补充随时告诉我。',
+                    timestamp: new Date().toLocaleString('zh-CN'),
+                  }]);
+                }}
+                disabled={isProcessing}
+              >
+                差不多了，不用问了
               </Button>
             </Card>
           )}

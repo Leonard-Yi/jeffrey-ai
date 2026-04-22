@@ -70,4 +70,27 @@ test.describe('录入页 (/input)', () => {
     await expect(inputPage.textarea()).toBeVisible();
     await expect(inputPage.submitButton()).toBeVisible();
   });
+
+  test('INPUT-004: Feature 1 - 按钮文案为"告诉"且宽度比例正确', async ({ page }) => {
+    // 验证按钮文案为"告诉"（不是"汇报给 Jeffrey"）
+    const tellButton = page.locator('button:has-text("告诉")');
+    await expect(tellButton).toBeVisible();
+    const tellButtonText = await tellButton.textContent();
+    expect(tellButtonText).toContain('告诉');
+    expect(tellButtonText).not.toContain('汇报给 Jeffrey');
+
+    // 验证"清空"按钮存在
+    const clearButton = page.locator('button:has-text("清空")');
+    await expect(clearButton).toBeVisible();
+
+    // 验证两个按钮的宽度比例（约3:1）
+    const tellBox = await tellButton.boundingBox();
+    const clearBox = await clearButton.boundingBox();
+    expect(tellBox).not.toBeNull();
+    expect(clearBox).not.toBeNull();
+    const ratio = (tellBox!.width) / (clearBox!.width);
+    // tell 按钮应该约是 clear 按钮的 3 倍（flex: 3 vs flex: 1）
+    expect(ratio).toBeGreaterThan(2);
+    expect(ratio).toBeLessThan(4);
+  });
 });
