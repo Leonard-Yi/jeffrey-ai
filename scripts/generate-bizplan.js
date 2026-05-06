@@ -147,6 +147,11 @@ function coverPage() {
       spacing: { after: 40, line: 340 },
       children: [new TextRun({ text: "版本 1.0 — 寻找技术合伙人", font: FONT, size: FONT_SIZE_SUBTITLE, color: TEXT_BODY })],
     }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40, line: 340 },
+      children: [new TextRun({ text: "作者：易子尧  leonardyi@163.com", font: FONT, size: FONT_SIZE_SMALL, color: "999999" })],
+    }),
     emptyLine(), emptyLine(), emptyLine(), emptyLine(), emptyLine(),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -250,6 +255,11 @@ const doc = new Document({
         // TOC
         heading("目录", 1),
         new TableOfContents("目录", { hyperlink: true, headingStyleRange: "1-3" }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 60, after: 120, line: 300 },
+          children: [new TextRun({ text: "（打开文档后按 Ctrl+A 再按 F9 即可自动生成目录）", font: FONT, size: 18, color: "999999", italics: true })],
+        }),
         new Paragraph({ children: [new PageBreak()] }),
 
         // ═══════════════════ 第一章 ═══════════════════
@@ -613,31 +623,23 @@ const doc = new Document({
         emptyLine(),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { before: 400, after: 200, line: 400 },
-          children: [new TextRun({ text: "了解，先生。", font: FONT, size: 32, color: ACCENT, italics: true })],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 400, line: 340 },
-          children: [new TextRun({ text: "—— Jeffrey", font: FONT, size: FONT_SIZE_BODY, color: TEXT_BODY })],
-        }),
-        emptyLine(),
-        divider(),
-        emptyLine(),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
           spacing: { after: 200, line: 360 },
-          children: [new TextRun({ text: "联系我们", font: FONT, size: FONT_SIZE_H2, color: PRIMARY, bold: true })],
+          children: [new TextRun({ text: "作者与联系方式", font: FONT, size: FONT_SIZE_H2, color: PRIMARY, bold: true })],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60, line: 340 },
+          children: [new TextRun({ text: "易子尧", font: FONT, size: 28, color: TEXT_DARK, bold: true })],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60, line: 340 },
+          children: [new TextRun({ text: "leonardyi@163.com", font: FONT, size: FONT_SIZE_BODY, color: TEXT_BODY })],
         }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { after: 60, line: 340 },
           children: [new TextRun({ text: "产品地址：https://jeffrey-ai.vercel.app", font: FONT, size: FONT_SIZE_BODY, color: TEXT_BODY })],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 60, line: 340 },
-          children: [new TextRun({ text: "联系邮箱：请通过产品页面获取", font: FONT, size: FONT_SIZE_BODY, color: TEXT_BODY })],
         }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
@@ -651,7 +653,19 @@ const doc = new Document({
 
 // ─── Generate ───
 const OUTPUT = "d:\\Epstein.AI\\docs\\Jeffrey.AI商业计划书.docx";
-Packer.toBuffer(doc).then((buf) => {
+const JSZip = require("jszip");
+Packer.toBuffer(doc).then(async (buf) => {
+  // Inject w:updateFields so Word auto-updates TOC on open
+  const zip = await JSZip.loadAsync(buf);
+  const settingsXml = await zip.file("word/settings.xml")?.async("string");
+  if (settingsXml && !settingsXml.includes("w:updateFields")) {
+    const fixed = settingsXml.replace(
+      "</w:settings>",
+      "<w:updateFields w:val=\"true\"/></w:settings>"
+    );
+    zip.file("word/settings.xml", fixed);
+    buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+  }
   fs.writeFileSync(OUTPUT, buf);
   console.log("Generated: " + OUTPUT);
   console.log("Size: " + (buf.length / 1024).toFixed(1) + " KB");

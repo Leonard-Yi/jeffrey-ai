@@ -663,7 +663,7 @@ sentiment: z.string().optional(),                      // pending 时可为空
 
 ---
 
-**项目口号**: "了解，先生。" — Jeffrey
+**项目口号**: 让每一段关系都被认真对待。
 
 ---
 
