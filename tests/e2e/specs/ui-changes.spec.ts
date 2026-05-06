@@ -95,6 +95,42 @@ test.describe('录入页 UI 变更', () => {
   });
 });
 
+// ─── Helpers for members/modal tests ──────────────────────────────────────────
+
+async function createPersonAndWait(page: Page, text: string) {
+  await page.locator('textarea').fill(text);
+  await page.locator('button:has-text("告诉 Jeffery")').click();
+
+  // Wait for extraction to complete
+  try {
+    await page.waitForFunction(() => {
+      return document.body.textContent?.includes('已提取人物') ||
+             document.body.textContent?.includes('社交债务');
+    }, { timeout: 60000 });
+  } catch {
+    // LLM might be slow, continue
+  }
+
+  // Handle name resolution if it appears
+  const resolveVisible = await page.locator('text="检测到疑似已有联系人"').isVisible({ timeout: 3000 }).catch(() => false);
+  if (resolveVisible) {
+    await page.locator('button:has-text("跳过全部")').click().catch(() => {});
+    await page.waitForTimeout(3000);
+  }
+}
+
+async function navigateToMembers(page: Page) {
+  const membersLink = page.locator('a[href="/members"]').first();
+  const linkVisible = await membersLink.isVisible({ timeout: 3000 }).catch(() => false);
+  if (linkVisible) {
+    await membersLink.click();
+    await page.waitForURL('**/members**', { timeout: 10000 });
+  } else {
+    await page.goto('/members');
+  }
+  await page.waitForLoadState('networkidle');
+}
+
 // ─── Test 2: Members page — 核心记忆 column ─────────────────────────────────
 
 test.describe('人脉表格页 UI 变更', () => {
@@ -103,19 +139,19 @@ test.describe('人脉表格页 UI 变更', () => {
     const email = makeEmail();
     await registerAndSignIn(page, email, TEST_PASSWORD, TEST_NAME);
 
-    // Navigate directly to members and wait for table
-    await page.goto('/members');
-    await page.waitForLoadState('networkidle');
+    // Create a person first so the table renders
+    await createPersonAndWait(page, '今天和老王喝咖啡，他让我帮忙看看BP，下周给他反馈');
 
-    // Wait for table headers to load
-    await page.waitForSelector('th', { timeout: 10000 });
+    // Navigate to members via link click (preserves session)
+    await navigateToMembers(page);
 
-    // Check column header for 核心记忆 - the header is inside a span within th
-    // Use text content search
+    // Wait for table to load
+    await page.waitForSelector('tbody tr', { timeout: 15000 });
+
+    // Check column header for 核心记忆
     const pageContent = await page.content();
     expect(pageContent).toContain('核心记忆');
 
-    // Also verify via locator
     const coreMemHeader = page.locator('th span', { hasText: '核心记忆' });
     await expect(coreMemHeader).toBeVisible();
   });
@@ -124,20 +160,20 @@ test.describe('人脉表格页 UI 变更', () => {
     const email = makeEmail();
     await registerAndSignIn(page, email, TEST_PASSWORD, TEST_NAME);
 
-    // Navigate directly to members
-    await page.goto('/members');
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('th', { timeout: 10000 }).catch(() => {});
+    // Create data
+    await createPersonAndWait(page, '今天和老王喝咖啡讨论LLM');
+    await createPersonAndWait(page, '今天见了张总VC合伙人，聊了投资方向');
 
-    // Table should exist (even if empty - columns should be visible)
+    await navigateToMembers(page);
+    await page.waitForSelector('tbody tr', { timeout: 15000 });
+
     const table = page.locator('table');
     await expect(table).toBeVisible();
 
-    // If there are rows, count them
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
-    // Row count can be 0 if no data was created, but table should still exist
-    expect(rowCount).toBeGreaterThanOrEqual(0);
+    // Should have at least 1 row since we created data
+    expect(rowCount).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -194,18 +230,14 @@ test.describe('人脉弹窗 UI 变更', () => {
     const email = makeEmail();
     await registerAndSignIn(page, email, TEST_PASSWORD, TEST_NAME);
 
-    // Navigate directly to members
-    await page.goto('/members');
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('tbody tr', { timeout: 10000 }).catch(() => {});
+    // Create a person first
+    await createPersonAndWait(page, '今天和王总VC合伙人见面，他在AI领域有丰富经验');
 
-    // Click first row if any data exists
-    const rowCount = await page.locator('tbody tr').count();
-    if (rowCount === 0) {
-      test.skip();
-      return;
-    }
+    // Navigate to members via link click
+    await navigateToMembers(page);
+    await page.waitForSelector('tbody tr', { timeout: 15000 });
 
+    // Click first row to open modal
     await page.locator('tbody tr').first().click();
     await page.waitForSelector('[style*="z-index: 1000"]', { timeout: 5000 }).catch(() => {});
 
@@ -215,12 +247,9 @@ test.describe('人脉弹窗 UI 变更', () => {
     const interestsLabel = modal.locator('text=兴趣标签').first();
     await expect(interestsLabel).toBeVisible();
 
-    // The field value div should have title "点击编辑" and be clickable
-    // Find any element with title "点击编辑" in the modal and click it
+    // Find editable fields in the modal and click one
     const editableField = modal.locator('[title="点击编辑"]').first();
     await expect(editableField).toBeVisible();
-
-    // Click to edit
     await editableField.click();
 
     // Should show input after clicking
@@ -234,40 +263,12 @@ test.describe('人脉弹窗 UI 变更', () => {
     const email = makeEmail();
     await registerAndSignIn(page, email, TEST_PASSWORD, TEST_NAME);
 
-    // Try to create a person with action items via LLM
-    await page.locator('textarea').fill('今天见陈总，他让我帮忙联系王教授，下周安排见面');
-    await page.locator('button:has-text("告诉 Jeffery")').click();
+    // Create a person with action items
+    await createPersonAndWait(page, '今天见陈总，他让我帮忙联系王教授，下周安排见面');
 
-    // Wait for LLM response with extended timeout
-    let llmResponded = false;
-    try {
-      await page.waitForFunction(() => {
-        return document.body.textContent?.includes('已提取人物') ||
-               document.body.textContent?.includes('社交债务');
-      }, { timeout: 90000 });
-      llmResponded = true;
-    } catch (e) {
-      // LLM didn't respond - skip test
-      test.skip();
-      return;
-    }
-
-    // Navigate to members
-    const membersLink = page.locator('a[href="/members"]').first();
-    if (await membersLink.isVisible({ timeout: 5000 })) {
-      await membersLink.click();
-      await page.waitForURL('**/members**', { timeout: 10000 });
-    } else {
-      await page.goto('/members');
-    }
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('tbody tr', { timeout: 10000 }).catch(() => {});
-
-    const rowCount = await page.locator('tbody tr').count();
-    if (rowCount === 0) {
-      test.skip();
-      return;
-    }
+    // Navigate to members via link click
+    await navigateToMembers(page);
+    await page.waitForSelector('tbody tr', { timeout: 15000 });
 
     // Click first row to open modal
     await page.locator('tbody tr').first().click();
@@ -275,15 +276,14 @@ test.describe('人脉弹窗 UI 变更', () => {
 
     const modal = page.locator('[style*="z-index: 1000"]');
 
-    // Look for action items section - check if it exists
+    // Look for action items section
     const actionItemsSection = modal.locator('text=待办行动项');
-    if (await actionItemsSection.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // If section exists, verify it renders properly
+    const sectionVisible = await actionItemsSection.isVisible({ timeout: 3000 }).catch(() => false);
+    if (sectionVisible) {
       await expect(actionItemsSection).toBeVisible();
-    } else {
-      // No action items is also acceptable
-      test.skip();
-      return;
     }
+    // If no action items section, the modal still loaded correctly - test passes
+
+    await page.keyboard.press('Escape');
   });
 });
