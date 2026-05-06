@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "check-mem": "npx tsx scripts/check-resources.ts",
-    "//": "⚠️ dev 已禁用！Turbopack 会瞬间产生十几个进程，极易导致内存爆满。仅使用生产模式。",
     "//": "如确需开发模式调试，请手动运行: npx tsx scripts/check-resources.ts && next dev -p 30081（但需自行注意内存）",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build",
     "typecheck": "tsc --noEmit",
@@ -43,6 +42,7 @@
     "@types/pg": "^8.20.0",
     "autoprefixer": "^10.4.27",
     "cross-env": "^10.1.0",
+    "docx": "^9.6.1",
     "node-notifier": "^10.0.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.0",
