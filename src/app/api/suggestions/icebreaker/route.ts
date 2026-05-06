@@ -5,22 +5,35 @@ import { auth } from "@/lib/auth";
 // 简单内存缓存：5分钟内重复查询直接返回缓存
 const cache = new Map<string, { data: unknown; expiry: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_MAX_SIZE = 200;
 
 function getCached(key: string): unknown | null {
   const entry = cache.get(key);
-  if (entry && Date.now() < entry.expiry) {
-    return entry.data;
-  }
+  if (!entry) return null;
+  if (Date.now() < entry.expiry) return entry.data;
   cache.delete(key);
   return null;
 }
 
 function setCache(key: string, data: unknown): void {
   // 清理过期条目
+  const now = Date.now();
   for (const [k, v] of cache) {
-    if (Date.now() >= v.expiry) cache.delete(k);
+    if (now >= v.expiry) cache.delete(k);
   }
-  cache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
+  // 若仍超限，淘汰最旧的条目（按 expiry 排序）
+  if (cache.size >= CACHE_MAX_SIZE) {
+    let oldestKey = "";
+    let oldestExpiry = Infinity;
+    for (const [k, v] of cache) {
+      if (v.expiry < oldestExpiry) {
+        oldestExpiry = v.expiry;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey) cache.delete(oldestKey);
+  }
+  cache.set(key, { data, expiry: now + CACHE_TTL_MS });
 }
 
 function getModel(): string {
@@ -290,7 +303,7 @@ export async function GET(request: NextRequest) {
     console.error("Error in GET /api/suggestions/icebreaker:", error);
     const err = error as { message?: string; code?: string };
     return Response.json(
-      { error: "Failed to generate icebreaker: " + (err.message || String(error)) },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

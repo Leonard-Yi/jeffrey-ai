@@ -520,7 +520,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error in analyze API:", error);
     return Response.json(
-      { error: "Failed to analyze input: " + (error as Error).message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

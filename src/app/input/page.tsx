@@ -169,6 +169,7 @@ const JeffreyInputPage = () => {
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [dialogueComplete, setDialogueComplete] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [processingSeconds, setProcessingSeconds] = useState(0);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   const [randomQuote] = useState(() => getRandomInputQuote());
@@ -200,6 +201,13 @@ const JeffreyInputPage = () => {
     recognitionRef.current.onend = () => { if (isRecording) setIsRecording(false); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 处理计时器
+  useEffect(() => {
+    if (!isProcessing) { setProcessingSeconds(0); return; }
+    const interval = setInterval(() => setProcessingSeconds(s => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isProcessing]);
 
   const handleRecordToggle = () => {
     if (!recognitionRef.current) { alert('语音识别不可用，请使用最新版 Chrome'); return; }
@@ -252,21 +260,35 @@ const JeffreyInputPage = () => {
     handleSubmitWithText(pendingText, false);
   };
 
+  const fetchWithRetry = async (url: string, options: RequestInit, retries = 2): Promise<Response> => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
+        return res;
+      } catch (err) {
+        if (i === retries) throw err;
+        await new Promise(r => setTimeout(r, 2000));
+        setErrorMessage(`请求失败，第 ${i + 1} 次重试中...`);
+      }
+    }
+    throw new Error('Max retries exceeded');
+  };
+
   const handleSubmitWithText = async (textToSubmit: string, isFollowUp = false) => {
     if (!textToSubmit.trim()) return;
     setIsProcessing(true);
+    setErrorMessage('');
     const userMsg: ChatMessage = { role: 'user', content: textToSubmit, timestamp: new Date().toLocaleString('zh-CN') };
     if (isFollowUp) setConversationHistory(p => [...p, userMsg]);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      const res = await fetch('/api/analyze', {
+      const res = await fetchWithRetry('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify({ text: textToSubmit }),
-        signal: controller.signal,
       });
-      clearTimeout(timeoutId);
       const data: ExtractionResponse = await res.json();
       if (!res.ok) {
         setErrorMessage('分析失败，请重试');
@@ -293,8 +315,18 @@ const JeffreyInputPage = () => {
         setConversationHistory(p => [...p, { role: 'jeffrey', content: data.followUpQuestion, timestamp: new Date().toLocaleString('zh-CN') }]);
         setDialogueComplete(false);
       }
-    } catch {
-      setErrorMessage('网络请求失败，请重试');
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setErrorMessage('请求超时（超过45秒），请检查网络后重试');
+        } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          setErrorMessage('网络连接失败，请检查网络后重试');
+        } else {
+          setErrorMessage(`请求出错：${err.message}`);
+        }
+      } else {
+        setErrorMessage('网络请求失败，请重试');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -352,6 +384,8 @@ const JeffreyInputPage = () => {
     return () => { if (icebreakerTimerRef.current) clearTimeout(icebreakerTimerRef.current); };
   }, [personIds, status]);
 
+  const hasResult = !!jeffreyComment || persons.length > 0 || actionItems.length > 0 || status !== null;
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -375,12 +409,22 @@ const JeffreyInputPage = () => {
           display: 'flex',
           gap: 16,
           padding: '16px 20px',
-          maxWidth: 1520,
+          maxWidth: hasResult ? 1520 : 700,
           margin: '0 auto',
+          flexDirection: hasResult ? 'row' : 'column',
+          alignItems: hasResult ? 'flex-start' : 'center',
+          transition: 'max-width 0.4s ease, flex-direction 0.4s ease',
         }}
       >
         {/* ── LEFT COLUMN ── */}
-        <div style={{ width: '42%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{
+          width: hasResult ? '42%' : '100%',
+          maxWidth: hasResult ? undefined : 600,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          transition: 'width 0.4s ease, max-width 0.4s ease',
+        }}>
 
           {/* Greeting */}
           <Card>
@@ -481,7 +525,7 @@ const JeffreyInputPage = () => {
               disabled={!inputText.trim() || isProcessing}
               style={{ flex: 3 }}
             >
-              {isProcessing ? 'Jeffrey 思考中...' : '告诉'}
+              {isProcessing ? `Jeffrey 思考中... (${processingSeconds}s)` : '告诉 Jeffery'}
             </Button>
           </div>
 
@@ -530,7 +574,15 @@ const JeffreyInputPage = () => {
         </div>
 
         {/* ── RIGHT COLUMN ── */}
-        <div style={{ width: '58%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{
+          width: hasResult ? '58%' : '0',
+          overflow: hasResult ? 'visible' : 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          transition: 'width 0.4s ease',
+          flexShrink: 0,
+        }}>
 
           {/* Jeffrey's Comment */}
           {jeffreyComment && (

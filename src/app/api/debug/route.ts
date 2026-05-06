@@ -49,10 +49,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching data:", error);
     return Response.json(
-      { error: (error as Error).message },
+      { error: "Internal server error" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

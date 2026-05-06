@@ -82,6 +82,13 @@ export default function JeffreyGraphPage() {
 
   useEffect(() => { fetchGraphData(); }, [fetchGraphData]);
 
+  // 当用户从其他页面切回图谱时，自动刷新数据（包括介绍人关系更新）
+  useEffect(() => {
+    const onFocus = () => { fetchGraphData(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [fetchGraphData]);
+
   // Update refs when data changes — 仅在 graphData 变化时重置节点位置
   // canvasSize 不在依赖数组中，避免尺寸更新时重新初始化节点
   const canvasSizeRef = useRef(canvasSize);

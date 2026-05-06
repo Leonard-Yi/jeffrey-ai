@@ -1,11 +1,15 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { generateEmbedding, buildPersonSearchText, type WeightedTag } from "@/lib/embedding";
 import { auth } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
 import { enqueueEmbeddingRefresh } from "@/lib/embeddingQueue";
 
-const K_DEFAULT = 10;
+const SearchRequestSchema = z.object({
+  q: z.string().optional().default(""),
+  k: z.number().int().min(1).max(50).optional().default(10),
+});
 
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
@@ -58,8 +62,15 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const q = ((body.q as string) || "").trim();
-    const k = Math.min(Math.max(parseInt(body.k as string, 10) || K_DEFAULT, 1), 50);
+    const parsed = SearchRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.errors[0].message },
+        { status: 400 }
+      );
+    }
+    const q = parsed.data.q.trim();
+    const k = parsed.data.k;
 
     if (!q) {
       return Response.json({ results: [] });
@@ -149,7 +160,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[Jeffrey.AI] Search error:", error);
     return Response.json(
-      { error: "Search failed: " + (error as Error).message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -158,7 +169,7 @@ export async function POST(request: Request) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
-  const k = parseInt(searchParams.get("k") ?? String(K_DEFAULT), 10);
+  const k = parseInt(searchParams.get("k") ?? "10", 10);
 
   return POST(
     new Request("http://localhost/api/search", {

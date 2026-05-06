@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**jeffrey-ai** is a TypeScript/Node.js relationship intelligence system. It uses an LLM (Alibaba Qwen via DashScope API) with function calling to extract structured social interaction data from unstructured Chinese-language conversational logs and stores it in a PostgreSQL knowledge graph.
+**jeffrey-ai** is a TypeScript/Node.js relationship intelligence system. It uses an LLM (MiniMax via Anthropic-compatible API) with tool calling to extract structured social interaction data from unstructured Chinese-language conversational logs and stores it in a PostgreSQL knowledge graph.
 
 ## Server Modes
 
@@ -96,8 +96,8 @@ npx prisma studio         # Open Prisma GUI
 ### Data Flow
 ```
 Unstructured Chinese text input
-  → llmExtractor.ts  (Qwen LLM + tool calling → structured ExtractionPayload)
-  → dbService.ts     (Prisma → PostgreSQL)
+  → POST /api/analyze        (MiniMax LLM + tool calling → structured ExtractionPayload)
+  → Prisma → PostgreSQL
 ```
 
 ### Core Models (`prisma/schema.prisma`)
@@ -106,13 +106,13 @@ Unstructured Chinese text input
 - **InteractionPerson** — join table for many-to-many Person↔Interaction
 - **PersonTag** — denormalized flat index mirroring Person tags for fast clustering queries; rebuilt on every upsert
 
-### LLM Extraction (`src/services/llmExtractor.ts`)
-- Model: `qwen3.5-plus` via Alibaba DashScope, accessed through the `openai` SDK pointed at `https://dashscope.aliyuncs.com/compatible-mode/v1`
-- Enforces schema via tool calling: the LLM must call `save_extraction` with a payload matching `ExtractionPayloadSchema`
-- Returns `status: "complete"` or `status: "pending"` with a `followUpQuestion`
-- Completeness is validated both by the LLM and by a deterministic rule (≥1 career, sentiment present, ≥1 actionItem)
+### LLM Extraction
+- **Primary**: MiniMax API via Anthropic-compatible endpoint (`https://api.minimaxi.com/anthropic/v1/messages`)
+  - Used in `/api/analyze`, `/api/suggestions/icebreaker`, `/api/persons/[id]/icebreaker`
+  - Enforces schema via tool calling: LLM calls `save_extraction` with payload matching `ExtractionPayloadSchema`
+- **Legacy (test scripts only)**: `src/services/llmExtractor.ts` (Qwen via DashScope) and `src/services/dbService.ts` — used by `src/test/testExtractor.ts` and `src/test/fullPipelineTest.ts`. Do not remove.
 
-### Tag Weight Merging (`src/services/dbService.ts`)
+### Tag Weight Merging (`src/lib/dbUtils.ts`)
 When a Person already exists, tags are merged (not overwritten) with a recency bias:
 ```
 new_weight = prev_weight * 0.7 + incoming_weight * 0.3
@@ -122,6 +122,16 @@ new_weight = prev_weight * 0.7 + incoming_weight * 0.3
 ### Zod Schemas (`src/schemas/core.ts`)
 All data shapes are defined as Zod schemas. These schemas are converted to JSON Schema via `zod-to-json-schema` and passed directly to the LLM as tool definitions — the single source of truth for both runtime validation and LLM prompting.
 
+### Component Architecture
+- **Design tokens**: All colors in `src/lib/design-tokens.ts` (`tokens` / `C`); components reference tokens, never raw hex values
+- **Component files**:
+  - `src/components/PersonModal.tsx` — Person detail modal (uses `MultiIntroducerSelector`, `FieldCard`)
+  - `src/components/MultiIntroducerSelector.tsx` — Multi-select introducer dropdown
+  - `src/components/FieldCard.tsx` — Inline-editable field card
+  - `src/components/GraphCanvas.tsx` — Canvas-based force graph
+- **UI library**: `src/components/ui/` — Reusable Button, Card, Input, Badge, Tag, Avatar, SectionLabel; **use these instead of inline styles in pages**
+- **Error boundaries**: `error.tsx` files in `input/`, `graph/`, `members/`, `suggestions/` routes
+
 ## Environment Variables (`.env`)
 ```
 DASHSCOPE_API_KEY=   # Alibaba DashScope API key
@@ -130,8 +140,9 @@ DATABASE_URL=        # PostgreSQL connection string
 
 ## Key Design Decisions
 - **Chinese-first** — system prompts, vibe tags, and test data are all in Mandarin
-- **Design tokens** — all colors in `src/lib/design-tokens.ts` (LIGHT_THEME/DARK_THEME); components reference tokens, never raw values
+- **Design tokens** — all colors in `src/lib/design-tokens.ts` (`tokens`/`C`); components reference tokens, never raw hex values
 - **Frontend design** — use `ecc:frontend-design` skill for UI/styling changes to ensure cohesive design
+- **Component library** — use `src/components/ui/` components (`Button`, `Card`, `Input`, `Badge`, etc.) instead of inline styles or duplicating markup
 - **Test isolation** — full pipeline tests prefix all records with `__test__` and clean up before/after to avoid polluting real data
 - `tsx` is used as the TypeScript runtime (no build step needed for development)
 
@@ -194,6 +205,38 @@ vercel --prod
 - Turbopack starts ~15 workers during build — requires ~22GB available memory
 - If build OOMs: close other programs (Docker Desktop, WSL, VSCode) first
 - Before any `npm run build`: kill residual node processes to avoid ENOENT errors
+
+### API Error Responses
+- **Rule**: API error responses must NEVER expose internal details (error messages, stack traces, file paths, DB schema).
+- **Correct pattern**: `Response.json({ error: "Internal server error" }, { status: 500 })` + `console.error(...)`
+- **Wrong pattern**: `Response.json({ error: String(err) })` or `error.message` in the response body
+- **All 22 API routes**: Already audited (2026-04-27 code review), all now use safe generic errors
+
+### API Input Validation
+- All API routes must validate input with Zod schema (not TypeScript `as` assertions).
+- Use `Schema.safeParse(body)` → if `!success`, return 400 with `error.errors[0].message`.
+- Pattern:
+  ```typescript
+  import { z } from "zod";
+  const MySchema = z.object({ field: z.string().min(1) });
+  const parsed = MySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+  }
+  ```
+
+### Database Connection Management
+- **Do NOT call `prisma.$disconnect()`** on the shared singleton from `src/lib/db.ts` — this destroys the connection pool for all subsequent requests.
+- The shared singleton is correct; individual route handlers should not manage connection lifecycle.
+
+### In-Memory Cache Limits
+- Any `Map`-based cache in API routes must have a size limit to prevent memory exhaustion.
+- Use LRU eviction: `if (cache.size >= MAX_SIZE) { /* remove oldest */ }`
+
+### Graph Canvas Event Cleanup
+- When adding named event listeners to DOM elements, always store the handler in a variable so `removeEventListener` removes the exact same reference.
+- **Wrong**: `canvas.addEventListener('mouseleave', () => onNodeHover(null))` + `removeEventListener(..., () => onNodeHover(null))` — different function references, cleanup fails.
+- **Correct**: `const onMouseLeave = () => onNodeHover(null); canvas.addEventListener('mouseleave', onMouseLeave); ... canvas.removeEventListener('mouseleave', onMouseLeave);`
 
 
 ## Version Control

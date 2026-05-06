@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         interactions: {
           include: {
             interaction: {
-              select: { actionItems: true },
+              select: { actionItems: true, coreMemories: true },
             },
           },
         },
@@ -82,6 +82,13 @@ export async function GET(request: NextRequest) {
         lastContactDate: renderRelativeDate(person.lastContactDate),
         introducedBy: person.introducedBy?.name || "—",
         actionItems: unresolvedCount,
+        coreMemories: (() => {
+          const interactionMems = person.interactions.flatMap((ip: any) =>
+            (ip.interaction.coreMemories ?? []) as string[]
+          );
+          const unique = [...new Set(interactionMems)].slice(-20);
+          return unique.length > 0 ? unique.join(" / ") : "—";
+        })(),
       };
     }).filter((row): row is NonNullable<typeof rows[number]> => row !== null);
 
@@ -92,7 +99,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error in table API:", error);
     return Response.json(
-      { error: "Failed to fetch table data: " + String((error as Error).message) },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

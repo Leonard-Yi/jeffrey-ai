@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import { tokens as C } from "@/lib/design-tokens";
 
 type Candidate = {
   id: string;
@@ -25,7 +26,6 @@ type Props = {
   resolutions: Resolution[];
   allPersons: PersonRow[];
   onConfirm: (resolvedNames: Map<string, string>) => void;
-  // resolvedNames: key = original name in text, value = matched existing name
   onSkip: () => void;
 };
 
@@ -34,12 +34,12 @@ function CareerTag({ name }: { name: string }) {
     <span
       style={{
         display: "inline-block",
-        fontSize: "11px",
+        fontSize: 11,
         padding: "1px 6px",
-        borderRadius: "4px",
-        backgroundColor: "#dbeafe",
-        color: "#1e40af",
-        marginRight: "4px",
+        borderRadius: C.radiusSm,
+        backgroundColor: C.infoBg,
+        color: C.info,
+        marginRight: 4,
       }}
     >
       {name}
@@ -57,31 +57,26 @@ function CheckIcon() {
 
 function SearchIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: "6px" }}>
-      <circle cx="6" cy="6" r="4.5" stroke="#9a8a7a" strokeWidth="1.5"/>
-      <path d="M9.5 9.5L13 13" stroke="#9a8a7a" strokeWidth="1.5" strokeLinecap="round"/>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: 6 }}>
+      <circle cx="6" cy="6" r="4.5" stroke={C.textMuted} strokeWidth="1.5"/>
+      <path d="M9.5 9.5L13 13" stroke={C.textMuted} strokeWidth="1.5" strokeLinecap="round"/>
     </svg>
   );
 }
 
 export default function NameResolutionPrompt({ resolutions, allPersons, onConfirm, onSkip }: Props) {
-  // Map: mentionedName -> selectedCandidateName (null = create new, undefined = not yet decided)
   const [selections, setSelections] = useState<Map<string, string | null | undefined>>(new Map());
-  // Search query per mentioned name
   const [searchQueries, setSearchQueries] = useState<Map<string, string>>(new Map());
-  // Expanded state per mentioned name (show search or not)
   const [searchExpanded, setSearchExpanded] = useState<Map<string, boolean>>(new Map());
 
   const handleSelect = (mentionedName: string, candidateName: string) => {
     const newMap = new Map(selections);
-    // Toggle: if already selected, deselect; otherwise select
     newMap.set(mentionedName, newMap.get(mentionedName) === candidateName ? undefined : candidateName);
     setSelections(newMap);
   };
 
   const handleCreateNew = (mentionedName: string) => {
     const newMap = new Map(selections);
-    // Toggle: if already "create new", deselect; otherwise set to null
     newMap.set(mentionedName, newMap.get(mentionedName) === null ? undefined : null);
     setSelections(newMap);
   };
@@ -95,17 +90,14 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
     setSearchQueries(new Map(searchQueries).set(mentionedName, ""));
   };
 
-  // Filter candidates based on search query for each mentioned name
   const getSearchResults = (mentionedName: string) => {
     const query = searchQueries.get(mentionedName) || "";
     if (!query.trim()) return [];
     const lowerQuery = query.toLowerCase();
     return allPersons
       .filter((p) => {
-        // Exclude already selected candidates for this mentioned name
         const currentSelection = selections.get(mentionedName);
         if (currentSelection === p.name) return false;
-        // Search by name
         return p.name.toLowerCase().includes(lowerQuery);
       })
       .slice(0, 5);
@@ -120,7 +112,6 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
   };
 
   const handleSubmit = () => {
-    // Build resolved names map (only include confirmed matches, not denied ones)
     const resolved = new Map<string, string>();
     for (const [mentionedName, selectedName] of selections) {
       if (selectedName !== undefined && selectedName !== null) {
@@ -135,14 +126,14 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
   return (
     <div
       style={{
-        backgroundColor: "#fffbf0",
-        border: "1px solid #f0d78c",
-        borderRadius: "12px",
+        backgroundColor: C.warningBg,
+        border: `1px solid ${C.borderAccent}`,
+        borderRadius: C.radiusLg,
         padding: "20px 24px",
-        marginTop: "16px",
+        marginTop: 16,
       }}
     >
-      <div style={{ fontSize: "14px", fontWeight: 600, color: "#92400e", marginBottom: "12px" }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: C.warning, marginBottom: 12 }}>
         🔍 检测到疑似已有联系人
       </div>
 
@@ -155,24 +146,59 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
         const isSearchOpen = searchExpanded.get(mentionedName);
 
         return (
-          <div key={mentionedName} style={{ marginBottom: "20px", borderBottom: "1px dashed #e5d9c3", paddingBottom: "16px" }}>
+          <div
+            key={mentionedName}
+            style={{
+              marginBottom: 20,
+              borderBottom: `1px dashed ${C.border}`,
+              paddingBottom: 16,
+            }}
+          >
             {/* Header row */}
-            <div style={{ fontSize: "14px", color: "#3a2a1a", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontWeight: 600, backgroundColor: "#fef3c7", padding: "2px 8px", borderRadius: "4px" }}>
+            <div
+              style={{
+                fontSize: 14,
+                color: C.text,
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span
+                style={{
+                  fontWeight: 600,
+                  backgroundColor: C.warningBg,
+                  padding: "2px 8px",
+                  borderRadius: C.radiusSm,
+                }}
+              >
                 {mentionedName}
               </span>
-              <span style={{ color: "#7a6a5a" }}>匹配到：</span>
+              <span style={{ color: C.textSecondary }}>匹配到：</span>
             </div>
 
-            {/* Candidates list with checkboxes */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "10px" }}>
+            {/* Candidates list */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                marginBottom: 10,
+              }}
+            >
               {resolution.candidates.map((candidate) => {
                 const isSelected = currentSelection === candidate.name;
-                const matchBadge = candidate.matchType === "exact" ? (
-                  <span style={{ fontSize: "11px", color: "#4caf50", fontWeight: 500 }}>姓名匹配</span>
-                ) : (
-                  <span style={{ fontSize: "11px", color: "#9a8a7a" }}>{(candidate.similarity * 100).toFixed(0)}% 相似</span>
-                );
+                const matchBadge =
+                  candidate.matchType === "exact" ? (
+                    <span style={{ fontSize: 11, color: C.success, fontWeight: 500 }}>
+                      姓名匹配
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 11, color: C.textMuted }}>
+                      {(candidate.similarity * 100).toFixed(0)}% 相似
+                    </span>
+                  );
 
                 return (
                   <label
@@ -180,27 +206,28 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
                     style={{
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: "10px",
+                      gap: 10,
                       padding: "10px 12px",
-                      borderRadius: "8px",
-                      border: `1px solid ${isSelected ? "#c8a96e" : "#e5d9c3"}`,
-                      backgroundColor: isSelected ? "#fef7ec" : "white",
+                      borderRadius: C.radiusMd,
+                      border: `1px solid ${isSelected ? C.primary : C.border}`,
+                      backgroundColor: isSelected ? C.warningBg : C.bgElevated,
                       cursor: "pointer",
                       transition: "all 0.15s",
                     }}
                   >
                     <div
                       style={{
-                        width: "18px",
-                        height: "18px",
-                        borderRadius: "4px",
-                        border: `2px solid ${isSelected ? "#c8a96e" : "#d1d5db"}`,
-                        backgroundColor: isSelected ? "#c8a96e" : "white",
+                        width: 18,
+                        height: 18,
+                        borderRadius: C.radiusSm,
+                        border: `2px solid ${isSelected ? C.primary : C.borderStrong}`,
+                        backgroundColor: isSelected ? C.primary : C.bgElevated,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         flexShrink: 0,
-                        marginTop: "2px",
+                        marginTop: 2,
+                        color: "white",
                       }}
                     >
                       {isSelected && <CheckIcon />}
@@ -212,11 +239,20 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
                       style={{ display: "none" }}
                     />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                        <span style={{ fontWeight: 600, color: "#3a2a1a" }}>{candidate.name}</span>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 4,
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, color: C.text }}>
+                          {candidate.name}
+                        </span>
                         {matchBadge}
                       </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                         {((candidate.careers as Array<{ name: string }>) || [])
                           .slice(0, 3)
                           .map((c) => (
@@ -229,22 +265,22 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
               })}
             </div>
 
-            {/* Search for other contacts */}
-            <div style={{ marginBottom: "10px" }}>
+            {/* Search */}
+            <div style={{ marginBottom: 10 }}>
               {!isSearchOpen ? (
                 <button
                   onClick={() => toggleSearch(mentionedName)}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "6px",
+                    gap: 6,
                     padding: "6px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
+                    borderRadius: C.radiusSm,
+                    fontSize: 13,
                     cursor: "pointer",
-                    backgroundColor: "white",
-                    border: "1px dashed #c8a96e",
-                    color: "#92400e",
+                    backgroundColor: C.bgElevated,
+                    border: `1px dashed ${C.primary}`,
+                    color: C.warning,
                     transition: "all 0.15s",
                   }}
                 >
@@ -262,15 +298,23 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
                     style={{
                       width: "100%",
                       padding: "8px 12px",
-                      paddingLeft: "36px",
-                      borderRadius: "6px",
-                      border: "1px solid #c8a96e",
-                      fontSize: "13px",
+                      paddingLeft: 36,
+                      borderRadius: C.radiusSm,
+                      border: `1px solid ${C.primary}`,
+                      fontSize: 13,
                       outline: "none",
                       boxSizing: "border-box",
+                      backgroundColor: C.bgElevated,
                     }}
                   />
-                  <div style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 10,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                    }}
+                  >
                     <SearchIcon />
                   </div>
                   {searchResults.length > 0 && (
@@ -280,14 +324,14 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
                         top: "100%",
                         left: 0,
                         right: 0,
-                        backgroundColor: "white",
-                        border: "1px solid #e5d9c3",
-                        borderRadius: "6px",
-                        marginTop: "4px",
-                        maxHeight: "200px",
+                        backgroundColor: C.bgElevated,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: C.radiusSm,
+                        marginTop: 4,
+                        maxHeight: 200,
                         overflowY: "auto",
                         zIndex: 10,
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        boxShadow: C.shadowMd,
                       }}
                     >
                       {searchResults.map((p) => (
@@ -299,15 +343,19 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
                             cursor: "pointer",
                             display: "flex",
                             alignItems: "center",
-                            gap: "8px",
-                            borderBottom: "1px solid #f0ebe3",
+                            gap: 8,
+                            borderBottom: `1px solid ${C.bgHover}`,
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fef7ec")}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                          onMouseEnter={(e) =>
+                            ((e as any).currentTarget.style.backgroundColor = C.bgHover)
+                          }
+                          onMouseLeave={(e) =>
+                            ((e as any).currentTarget.style.backgroundColor = "transparent")
+                          }
                         >
                           <span style={{ fontWeight: 500 }}>{p.name}</span>
                           {p.careers && p.careers.length > 0 && (
-                            <span style={{ fontSize: "12px", color: "#7a6a5a" }}>
+                            <span style={{ fontSize: 12, color: C.textSecondary }}>
                               {p.careers.slice(0, 2).map((c) => c.name).join(", ")}
                             </span>
                           )}
@@ -319,14 +367,14 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
                     onClick={() => toggleSearch(mentionedName)}
                     style={{
                       position: "absolute",
-                      right: "8px",
+                      right: 8,
                       top: "50%",
                       transform: "translateY(-50%)",
                       background: "none",
                       border: "none",
                       cursor: "pointer",
-                      fontSize: "12px",
-                      color: "#9a8a7a",
+                      fontSize: 12,
+                      color: C.textMuted,
                     }}
                   >
                     ✕
@@ -340,26 +388,27 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "10px",
+                gap: 10,
                 padding: "8px 12px",
-                borderRadius: "8px",
-                border: `1px solid ${isCreateNew ? "#e53935" : "#e5d9c3"}`,
-                backgroundColor: isCreateNew ? "#ffebee" : "white",
+                borderRadius: C.radiusMd,
+                border: `1px solid ${isCreateNew ? C.error : C.border}`,
+                backgroundColor: isCreateNew ? C.errorBg : C.bgElevated,
                 cursor: "pointer",
                 transition: "all 0.15s",
               }}
             >
               <div
                 style={{
-                  width: "18px",
-                  height: "18px",
-                  borderRadius: "4px",
-                  border: `2px solid ${isCreateNew ? "#e53935" : "#d1d5db"}`,
-                  backgroundColor: isCreateNew ? "#e53935" : "white",
+                  width: 18,
+                  height: 18,
+                  borderRadius: C.radiusSm,
+                  border: `2px solid ${isCreateNew ? C.error : C.borderStrong}`,
+                  backgroundColor: isCreateNew ? C.error : C.bgElevated,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
+                  color: "white",
                 }}
               >
                 {isCreateNew && <CheckIcon />}
@@ -370,7 +419,12 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
                 onChange={() => handleCreateNew(mentionedName)}
                 style={{ display: "none" }}
               />
-              <span style={{ fontWeight: 500, color: isCreateNew ? "#e53935" : "#4b5563" }}>
+              <span
+                style={{
+                  fontWeight: 500,
+                  color: isCreateNew ? C.error : C.textSecondary,
+                }}
+              >
                 不是以上任何人，创建新条目「{mentionedName}」
               </span>
             </label>
@@ -379,17 +433,24 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
       })}
 
       {/* Submit / Skip */}
-      <div style={{ display: "flex", gap: "8px", marginTop: "16px", justifyContent: "flex-end" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginTop: 16,
+          justifyContent: "flex-end",
+        }}
+      >
         <button
           onClick={onSkip}
           style={{
             padding: "8px 16px",
-            borderRadius: "6px",
-            fontSize: "13px",
+            borderRadius: C.radiusSm,
+            fontSize: 13,
             cursor: "pointer",
-            backgroundColor: "white",
-            border: "1px solid #d1d5db",
-            color: "#4b5563",
+            backgroundColor: C.bgElevated,
+            border: `1px solid ${C.borderStrong}`,
+            color: C.textSecondary,
           }}
         >
           跳过全部
@@ -399,12 +460,12 @@ export default function NameResolutionPrompt({ resolutions, allPersons, onConfir
           disabled={!allResolved}
           style={{
             padding: "8px 20px",
-            borderRadius: "6px",
-            fontSize: "13px",
+            borderRadius: C.radiusSm,
+            fontSize: 13,
             cursor: allResolved ? "pointer" : "not-allowed",
-            backgroundColor: allResolved ? "#c8a96e" : "#f5f3ef",
-            border: `1px solid ${allResolved ? "#c8a96e" : "#d1d5db"}`,
-            color: allResolved ? "white" : "#9a8a7a",
+            backgroundColor: allResolved ? C.primary : C.bg,
+            border: `1px solid ${allResolved ? C.primary : C.borderStrong}`,
+            color: allResolved ? C.textInverse : C.textMuted,
           }}
         >
           继续分析

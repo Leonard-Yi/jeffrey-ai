@@ -28,8 +28,8 @@ async function registerAndSignIn(page: Page, email: string, password: string, na
 
 async function submitInteraction(page: Page, text: string) {
   await page.locator('textarea').fill(text);
-  await page.locator('button:has-text("汇报")').click();
-  await page.locator('button:has-text("汇报")').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
+  await page.locator('button:has-text("告诉 Jeffery")').click();
+  await page.locator('button:has-text("告诉 Jeffery")').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
   const resolveVisible = await page.locator('text="检测到疑似已有联系人"').isVisible({ timeout: 3000 }).catch(() => false);
   if (resolveVisible) {
     await page.locator('button:has-text("跳过全部")').click().catch(() => {});

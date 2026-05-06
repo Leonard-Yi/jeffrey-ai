@@ -14,6 +14,8 @@ const EDITABLE_FIELDS = [
   "coreMemories",
   "introducedById",
   "introducedByIds",
+  "careers",
+  "interests",
 ] as const;
 
 type EditableField = typeof EDITABLE_FIELDS[number];
@@ -150,7 +152,9 @@ export async function PATCH(
       case "vibeTags":
       case "baseCities":
       case "favoritePlaces":
-      case "coreMemories": {
+      case "coreMemories":
+      case "careers":
+      case "interests": {
         if (typeof value !== "string") {
           return Response.json(
             { error: `${field} must be a comma-separated string` },
@@ -209,6 +213,22 @@ export async function PATCH(
       case "coreMemories":
         dbValue = parseArrayField(value as string);
         break;
+      case "careers":
+      case "interests": {
+        // 解析格式："投行(80%), 律师(60%)" → [{ name: "投行", weight: 0.8 }, ...]
+        dbValue = (value as string)
+          .split(",")
+          .map(s => s.trim())
+          .filter(s => s.length > 0)
+          .map(s => {
+            const match = s.match(/^(.+?)\((\d+)%?\)$/);
+            if (match) {
+              return { name: match[1].trim(), weight: parseFloat(match[2]) / 100 };
+            }
+            return { name: s, weight: 1.0 };
+          });
+        break;
+      }
       case "relationshipScore":
         dbValue = Number(value);
         break;
@@ -231,7 +251,7 @@ export async function PATCH(
     });
 
     // 若修改了影响 embedding 的字段，则重新生成向量
-    if (field === "name" || field === "vibeTags") {
+    if (field === "name" || field === "vibeTags" || field === "careers" || field === "interests") {
       const current = await prisma.person.findUnique({
         where: { id, userId: session.user.id },
         select: { name: true, careers: true, interests: true, vibeTags: true },
@@ -271,6 +291,6 @@ export async function PATCH(
       return Response.json({ error: "Person not found" }, { status: 404 });
     }
     console.error("Error in PATCH /api/members/[id]:", error);
-    return Response.json({ error: "Failed to update person: " + String((error as Error).message) }, { status: 500 });
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

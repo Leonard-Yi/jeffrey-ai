@@ -26,7 +26,7 @@ test('voice input - mic button and text submission', async ({ page }) => {
   await expect(textarea).toHaveValue(/张三/, { timeout: 3000 });
 
   // Submit button becomes active (text changes to "汇报给 Jeffrey")
-  const submitBtn = page.locator('button:has-text("汇报给 Jeffrey")');
+  const submitBtn = page.locator('button:has-text("告诉 Jeffery")');
   await expect(submitBtn).toBeVisible({ timeout: 3000 });
 
   // --- Trigger submission ---

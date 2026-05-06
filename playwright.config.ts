@@ -12,7 +12,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://localhost:30081',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     // WORKAROUND: Playwright 1.59.1 needs chromium_headless_shell-1217 but only
@@ -28,9 +28,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:30081',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    command: 'echo "Using existing server"',
+    url: 'http://localhost:3000',
+    reuseExistingServer: true,
+    timeout: 5000,
   },
 });

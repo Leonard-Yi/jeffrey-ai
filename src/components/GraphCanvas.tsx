@@ -125,14 +125,18 @@ export default function GraphCanvas({
       }
     };
 
+        const onMouseLeave = () => onNodeHover(null);
+
     canvas.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('mousemove', onMouseMove);
     canvas.addEventListener('mouseup', onMouseUp);
-    canvas.addEventListener('mouseleave', () => onNodeHover(null));
+    canvas.addEventListener('mouseleave', onMouseLeave);
 
     return () => {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
       canvas.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('mouseleave', () => onNodeHover(null));
     };

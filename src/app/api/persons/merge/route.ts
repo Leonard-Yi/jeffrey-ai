@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { buildPersonSearchText, generateEmbedding } from "@/lib/embedding";
 import { mergeTags } from "@/lib/dbUtils";
 import type { WeightedTag } from "@/lib/embedding";
 import { auth } from "@/lib/auth";
+
+const MergeRequestSchema = z.object({
+  survivorId: z.string().min(1),
+  victimIds: z.array(z.string().min(1)).min(1),
+});
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -12,10 +18,14 @@ export async function POST(request: NextRequest) {
   }
   try {
     const body = await request.json();
-    const { survivorId, victimIds } = body as {
-      survivorId: string;
-      victimIds: string[];
-    };
+    const parsed = MergeRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.errors[0].message },
+        { status: 400 }
+      );
+    }
+    const { survivorId, victimIds } = parsed.data;
 
     if (!survivorId || !victimIds?.length) {
       return NextResponse.json(
@@ -246,7 +256,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[Jeffrey.AI] Merge failed:", err);
     return NextResponse.json(
-      { error: "Merge failed", detail: String(err) },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

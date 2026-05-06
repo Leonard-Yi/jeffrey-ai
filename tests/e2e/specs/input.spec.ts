@@ -71,13 +71,12 @@ test.describe('录入页 (/input)', () => {
     await expect(inputPage.submitButton()).toBeVisible();
   });
 
-  test('INPUT-004: Feature 1 - 按钮文案为"告诉"且宽度比例正确', async ({ page }) => {
-    // 验证按钮文案为"告诉"（不是"汇报给 Jeffrey"）
-    const tellButton = page.locator('button:has-text("告诉")');
+  test('INPUT-004: Feature 1 - 按钮文案为"告诉 Jeffery"且宽度比例正确', async ({ page }) => {
+    // 验证按钮文案为"告诉 Jeffery"
+    const tellButton = page.locator('button:has-text("告诉 Jeffery")');
     await expect(tellButton).toBeVisible();
     const tellButtonText = await tellButton.textContent();
-    expect(tellButtonText).toContain('告诉');
-    expect(tellButtonText).not.toContain('汇报给 Jeffrey');
+    expect(tellButtonText).toContain('告诉 Jeffery');
 
     // 验证"清空"按钮存在
     const clearButton = page.locator('button:has-text("清空")');

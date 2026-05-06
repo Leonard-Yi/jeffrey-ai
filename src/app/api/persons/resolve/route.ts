@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { generateEmbedding } from "@/lib/embedding";
 import { auth } from "@/lib/auth";
+
+const ResolveRequestSchema = z.object({
+  text: z.string(),
+});
 
 /**
  * Extracts potential person names from Chinese text.
@@ -52,7 +57,15 @@ export async function POST(request: NextRequest) {
 
   try {
     console.log('[DEBUG] Resolve API called');
-    const { text } = await request.json() as { text: string };
+    const body = await request.json();
+    const parsed = ResolveRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.errors[0].message },
+        { status: 400 }
+      );
+    }
+    const { text } = parsed.data;
     console.log('[DEBUG] Received text:', text);
 
     if (!text?.trim()) {
@@ -170,6 +183,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ resolutions: filteredResolutions });
   } catch (err) {
     console.error("[Jeffrey.AI] Resolve failed:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

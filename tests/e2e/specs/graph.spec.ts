@@ -50,7 +50,7 @@ test.describe('图谱页 (/graph)', () => {
 
     const testText = '今天和老王喝咖啡，他让我帮忙看看BP，下周给他反馈';
     await page.locator('textarea').fill(testText);
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
 
     // 等待 AI 处理（可能出现名字解析弹窗）
     await page.waitForTimeout(5000);

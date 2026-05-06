@@ -55,7 +55,7 @@ test.describe('人脉表格页 (/members)', () => {
 
     // 录入数据并轮询等待
     await page.locator('textarea').fill('今天和老王喝咖啡');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
     const rowCount = await waitForMembersData(page, 1, 30000);
 
     if (rowCount === 0) {
@@ -77,7 +77,7 @@ test.describe('人脉表格页 (/members)', () => {
 
     // 录入数据并轮询等待
     await page.locator('textarea').fill('今天和老王喝咖啡');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
     const rowCount = await waitForMembersData(page, 1, 30000);
 
     if (rowCount === 0) {
@@ -108,11 +108,11 @@ test.describe('人脉表格页 (/members)', () => {
 
     // 录入两条数据，轮询等待至少 2 条
     await page.locator('textarea').fill('今天和老王喝咖啡');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
     await waitForMembersData(page, 1, 30000);
 
     await page.locator('textarea').fill('今天见了张总VC合伙人');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
     const rowCount = await waitForMembersData(page, 2, 30000);
 
     if (rowCount < 2) {

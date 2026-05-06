@@ -120,7 +120,7 @@ test.describe('完整用户旅程', () => {
     // Step 2: 录入第一个人 - 老王
     await page.waitForSelector('textarea', { timeout: 5000 });
     await page.locator('textarea').fill('今天和老王喝咖啡，他让我帮忙看看BP，下周给他反馈');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
 
     // 等待 Jeffrey 处理（可能出名字解析或回复）
     await page.waitForTimeout(5000);
@@ -137,9 +137,9 @@ test.describe('完整用户旅程', () => {
 
     // Step 3: 录入第二个人 - 张总
     await page.locator('textarea').fill('今天见了张总VC合伙人，聊了他们新基金的投资方向，他推荐我关注AI赛道');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
     // 等待按钮恢复（防止 API 慢导致按钮一直 disabled）
-    await page.locator('button:has-text("汇报")').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
+    await page.locator('button:has-text("告诉 Jeffery")').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
 
     const resolveVisible2 = await page.locator('text="检测到疑似已有联系人"').isVisible({ timeout: 3000 }).catch(() => false);
     if (resolveVisible2) {
@@ -152,9 +152,9 @@ test.describe('完整用户旅程', () => {
 
     // Step 4: 录入第三个人 - 李老师
     await page.locator('textarea').fill('今天在清华见了李老师教授，研究AI和知识图谱，给我讲了很多有意思的研究方向');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
     // 等待按钮恢复（API 可能挂，最多等 20 秒）
-    await page.locator('button:has-text("汇报")').waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+    await page.locator('button:has-text("告诉 Jeffery")').waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
 
     // Step 5: 进入人脉列表
     const membersLink = page.locator('a[href="/members"], nav a:has-text("人脉")').first();
@@ -227,7 +227,7 @@ test.describe('完整用户旅程', () => {
 
     // 录入一条包含行动项的记录
     await page.locator('textarea').fill('今天和老王喝咖啡，他让我帮忙看看BP，下周给他反馈');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
 
     // 轮询等待数据出现（最多 30 秒）
     const rowCount = await waitForMembersData(page, 1, 30000);
@@ -347,8 +347,8 @@ test.describe('完整用户旅程', () => {
 
     // 录入第一个人 - 老王
     await page.locator('textarea').fill('今天和老王喝咖啡，他让我帮忙看看BP，下周给他反馈');
-    await page.locator('button:has-text("汇报")').click();
-    await page.locator('button:has-text("汇报")').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
+    await page.locator('button:has-text("告诉 Jeffery")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
     const resolve1 = await page.locator('text="检测到疑似已有联系人"').isVisible({ timeout: 3000 }).catch(() => false);
     if (resolve1) {
       await page.locator('button:has-text("跳过全部")').click().catch(() => {});
@@ -356,8 +356,8 @@ test.describe('完整用户旅程', () => {
 
     // 录入第二个人 - 张总
     await page.locator('textarea').fill('今天见了张总VC合伙人，聊了他们新基金的投资方向');
-    await page.locator('button:has-text("汇报")').click();
-    await page.locator('button:has-text("汇报")').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
+    await page.locator('button:has-text("告诉 Jeffery")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
     const resolve2 = await page.locator('text="检测到疑似已有联系人"').isVisible({ timeout: 3000 }).catch(() => false);
     if (resolve2) {
       await page.locator('button:has-text("跳过全部")').click().catch(() => {});
@@ -407,7 +407,7 @@ test.describe('完整用户旅程', () => {
 
     // 录入一条记录
     await page.locator('textarea').fill('今天和赵律师见面，聊了聊法律科技领域的合作机会');
-    await page.locator('button:has-text("汇报")').click();
+    await page.locator('button:has-text("告诉 Jeffery")').click();
     await page.waitForTimeout(5000);
 
     const resolveVisible = await page.locator('text="检测到疑似已有联系人"').isVisible({ timeout: 3000 }).catch(() => false);
