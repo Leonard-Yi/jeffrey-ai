@@ -1,13 +1,49 @@
-import { test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 
-export const test = base.extend({
-  // Auto-login before each test
-});
+const BASE = 'http://localhost:3000';
 
-export async function signIn(page: any, email = 'test@test.com', password = 'testpassword') {
-  // Create user if not exists (ignore failure = already exists)
+export function makeEmail(prefix = 'e2e') {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}@test.com`;
+}
+
+/** Register via API (fast), then sign in via UI. Saves ~3s vs UI registration. */
+export async function registerAndSignIn(
+  page: Page,
+  email: string,
+  password: string,
+  name: string,
+) {
+  // Step 1: Register via API (avoids UI signup page round-trips)
+  const res = await fetch(`${BASE}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, name }),
+  });
+  if (!res.ok && res.status !== 409) {
+    throw new Error(`Registration failed: ${res.status}`);
+  }
+  // 409 = already exists, which is fine
+
+  // Step 2: Sign in via UI (NextAuth credentials flow requires form POST)
+  await page.goto('/auth/signin');
+  await page.waitForLoadState('networkidle');
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await Promise.all([
+    page.waitForURL('**/input**', { timeout: 15000 }),
+    page.locator('button:has-text("登录")').click(),
+  ]);
+}
+
+// Legacy alias for backward compatibility with existing tests
+export async function signIn(
+  page: Page,
+  email = 'test@test.com',
+  password = 'testpassword',
+) {
+  // Register via API (ignore if already exists)
   try {
-    await fetch('http://localhost:3000/api/auth/register', {
+    await fetch(`${BASE}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name: 'Test User' }),
@@ -16,38 +52,24 @@ export async function signIn(page: any, email = 'test@test.com', password = 'tes
 
   await page.goto('/auth/signin');
   await page.waitForLoadState('networkidle');
-
-  // Fill in credentials - use type selector since name is not set
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
-
-  // Submit the form
   await page.locator('button:has-text("登录")').click();
-
-  // Wait for redirect to input page
   await page.waitForURL('**/input**', { timeout: 15000 }).catch(() => {
     console.log('Warning: did not redirect to /input, current URL:', page.url());
   });
 }
 
-// Navigate to a page after login using link click to preserve session
-export async function navigateTo(page: any, path: string) {
-  // If already on the right page, don't navigate
-  if (page.url().includes(path)) {
-    return;
-  }
+/** Navigate via link click to preserve session cookies */
+export async function navigateTo(page: Page, path: string) {
+  if (page.url().includes(path)) return;
 
-  // Use link navigation to preserve session cookie
-  // Find a link that contains the path (without the leading slash)
-  const linkText = path.replace('/', '');
-  const link = page.locator(`a[href="${path}"], a:has-text("${linkText}")`).first();
-
+  const link = page.locator(`a[href="${path}"]`).first();
   if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
     await link.click();
     await page.waitForLoadState('networkidle');
   } else {
-    // Fallback: use evaluate to change location
-    await page.evaluate((p) => { window.location.href = p; }, `http://localhost:3000${path}`);
+    await page.evaluate((p) => { window.location.href = p; }, `${BASE}${path}`);
     await page.waitForLoadState('networkidle');
   }
 }

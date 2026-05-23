@@ -1,31 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
-
-// ─── Auth helpers ─────────────────────────────────────────────────────────────
+import { makeEmail, registerAndSignIn, navigateTo } from '../fixtures/auth';
 
 const TEST_PASSWORD = 'testpassword123';
 const TEST_NAME = '测试用户';
-
-function makeEmail() {
-  return `e2e_uichange_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}@test.com`;
-}
-
-async function registerAndSignIn(page: Page, email: string, password: string, name: string) {
-  await page.goto('/auth/signup');
-  await page.waitForLoadState('networkidle');
-  await page.getByLabel('姓名').fill(name);
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL('**/auth/signin**', { timeout: 10000 }).catch(() => {});
-  await page.waitForLoadState('networkidle');
-  // Now sign in
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await Promise.all([
-    page.waitForURL('**/input**', { timeout: 20000 }),
-    page.locator('button:has-text("登录")').click(),
-  ]);
-}
 
 // ─── Test 1: Input page — button text and two-column layout ─────────────────
 
@@ -129,18 +106,6 @@ async function createPersonAndWait(page: Page, text: string) {
   }
 }
 
-async function navigateToMembers(page: Page) {
-  const membersLink = page.locator('a[href="/members"]').first();
-  const linkVisible = await membersLink.isVisible({ timeout: 3000 }).catch(() => false);
-  if (linkVisible) {
-    await membersLink.click();
-    await page.waitForURL('**/members**', { timeout: 10000 });
-  } else {
-    await page.goto('/members');
-  }
-  await page.waitForLoadState('networkidle');
-}
-
 // ─── Test 2: Members page — 核心记忆 column ─────────────────────────────────
 
 test.describe('人脉表格页 UI 变更', () => {
@@ -153,7 +118,7 @@ test.describe('人脉表格页 UI 变更', () => {
     await createPersonAndWait(page, '今天和老王喝咖啡，他让我帮忙看看BP，下周给他反馈');
 
     // Navigate to members via link click (preserves session)
-    await navigateToMembers(page);
+    await navigateTo(page, '/members');
 
     // Wait for table to load
     await page.waitForSelector('tbody tr', { timeout: 15000 });
@@ -174,7 +139,7 @@ test.describe('人脉表格页 UI 变更', () => {
     await createPersonAndWait(page, '今天和老王喝咖啡讨论LLM');
     await createPersonAndWait(page, '今天见了张总VC合伙人，聊了投资方向');
 
-    await navigateToMembers(page);
+    await navigateTo(page, '/members');
     await page.waitForSelector('tbody tr', { timeout: 15000 });
 
     const table = page.locator('table');
@@ -199,7 +164,7 @@ test.describe('人脉弹窗 UI 变更', () => {
     await createPersonAndWait(page, '今天和王总VC合伙人见面，他在AI领域有丰富经验');
 
     // Navigate to members via link click
-    await navigateToMembers(page);
+    await navigateTo(page, '/members');
     await page.waitForSelector('tbody tr', { timeout: 15000 });
 
     // Click first row to open modal
@@ -231,7 +196,7 @@ test.describe('人脉弹窗 UI 变更', () => {
     await createPersonAndWait(page, '今天和王总VC合伙人见面，他在AI领域有丰富经验');
 
     // Navigate to members via link click
-    await navigateToMembers(page);
+    await navigateTo(page, '/members');
     await page.waitForSelector('tbody tr', { timeout: 15000 });
 
     // Click first row to open modal
@@ -264,7 +229,7 @@ test.describe('人脉弹窗 UI 变更', () => {
     await createPersonAndWait(page, '今天见陈总，他让我帮忙联系王教授，下周安排见面');
 
     // Navigate to members via link click
-    await navigateToMembers(page);
+    await navigateTo(page, '/members');
     await page.waitForSelector('tbody tr', { timeout: 15000 });
 
     // Click first row to open modal

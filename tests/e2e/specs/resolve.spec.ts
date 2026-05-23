@@ -1,30 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { InputPage } from '../pages/InputPage';
 import { NameResolvePrompt } from '../pages/components/NameResolvePrompt';
+import { makeEmail, registerAndSignIn } from '../fixtures/auth';
 
 const TEST_PASSWORD = 'testpassword123';
 const TEST_NAME = '测试用户';
-
-function makeEmail() {
-  return `e2e_resolve_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}@test.com`;
-}
-
-async function registerAndSignIn(page: any, email: string, password: string, name: string) {
-  await page.goto('/auth/signup');
-  await page.waitForLoadState('networkidle');
-  await page.getByLabel('姓名').fill(name);
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL('**/auth/signin**', { timeout: 10000 }).catch(() => {});
-  await page.waitForLoadState('networkidle');
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await Promise.all([
-    page.waitForURL('**/input**', { timeout: 20000 }),
-    page.locator('button:has-text("登录")').click(),
-  ]);
-}
 
 test.describe('姓名预检流程', () => {
   let inputPage: InputPage;

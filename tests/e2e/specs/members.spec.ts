@@ -1,30 +1,10 @@
 import { test, expect, Page } from '@playwright/test';
 import { MembersPage } from '../pages/MembersPage';
 import { PersonModal } from '../pages/components/PersonModal';
+import { makeEmail, registerAndSignIn } from '../fixtures/auth';
 
 const TEST_PASSWORD = 'testpassword123';
 const TEST_NAME = '测试用户';
-
-function makeEmail() {
-  return `e2e_mem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}@test.com`;
-}
-
-async function registerAndSignIn(page: Page, email: string, password: string, name: string) {
-  await page.goto('/auth/signup');
-  await page.waitForLoadState('networkidle');
-  await page.getByLabel('姓名').fill(name);
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL('**/auth/signin**', { timeout: 10000 }).catch(() => {});
-  await page.waitForLoadState('networkidle');
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await Promise.all([
-    page.waitForURL('**/input**', { timeout: 20000 }),
-    page.locator('button:has-text("登录")').click(),
-  ]);
-}
 
 // 轮询等待直到 members API 返回 >= minRows 条数据
 async function waitForMembersData(page: Page, minRows = 1, timeout = 30000): Promise<number> {
