@@ -37,12 +37,12 @@ function setCache(key: string, data: unknown): void {
 }
 
 function getModel(): string {
-  return process.env.MINIMAX_MODEL || "MiniMax-M2.7";
+  return process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 }
 
 function getApiKey(): string {
-  const apiKey = process.env.MINIMAX_API_KEY;
-  if (!apiKey) throw new Error("Missing env var: MINIMAX_API_KEY");
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) throw new Error("Missing env var: DEEPSEEK_API_KEY");
   return apiKey;
 }
 
@@ -240,13 +240,12 @@ export async function GET(request: NextRequest) {
 
     const systemPrompt = SYSTEM_PROMPTS[selectedStyle as keyof typeof SYSTEM_PROMPTS];
 
-    // 调用 LLM (Anthropic API 格式)
-    const apiResponse = await fetch("https://api.minimaxi.com/anthropic/v1/messages", {
+    // 调用 DeepSeek API (Anthropic 兼容格式)
+    const apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${getApiKey()}`,
-        "x-api-key": getApiKey(),
       },
       body: JSON.stringify({
         model: getModel(),
@@ -260,11 +259,11 @@ export async function GET(request: NextRequest) {
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
-      throw new Error(`MiniMax API error: ${apiResponse.status} - ${errorText}`);
+      throw new Error(`DeepSeek API error: ${apiResponse.status} - ${errorText}`);
     }
 
     const apiData = await apiResponse.json();
-    // MiniMax 返回的 content 是数组，包含不同类型的块
+    // 返回的 content 是数组，包含不同类型的块 (Anthropic 格式)
     const textBlock = apiData.content?.find((c: { type: string }) => c.type === "text");
     const content = textBlock?.text;
     if (!content) {

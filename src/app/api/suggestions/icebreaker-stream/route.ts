@@ -3,12 +3,12 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 function getModel(): string {
-  return process.env.MINIMAX_MODEL || "MiniMax-M2.7";
+  return process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 }
 
 function getApiKey(): string {
-  const apiKey = process.env.MINIMAX_API_KEY;
-  if (!apiKey) throw new Error("Missing env var: MINIMAX_API_KEY");
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) throw new Error("Missing env var: DEEPSEEK_API_KEY");
   return apiKey;
 }
 
@@ -145,13 +145,12 @@ export async function GET(request: NextRequest) {
 （无历史互动记录）`;
     }
 
-    // 调用 MiniMax API，使用流式响应
-    const apiResponse = await fetch("https://api.minimaxi.com/anthropic/v1/messages", {
+    // 调用 DeepSeek API，使用流式响应 (Anthropic 兼容格式)
+    const apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${getApiKey()}`,
-        "x-api-key": getApiKey(),
       },
       body: JSON.stringify({
         model: getModel(),
@@ -166,10 +165,10 @@ export async function GET(request: NextRequest) {
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
-      throw new Error(`MiniMax API error: ${apiResponse.status} - ${errorText}`);
+      throw new Error(`DeepSeek API error: ${apiResponse.status} - ${errorText}`);
     }
 
-    // 创建流式响应，解析 MiniMax SSE 格式并重新格式化
+    // 创建流式响应，解析 Anthropic SSE 格式并重新格式化
     const stream = new ReadableStream({
       async start(controller) {
         const reader = apiResponse.body?.getReader();
@@ -203,7 +202,7 @@ export async function GET(request: NextRequest) {
                 try {
                   const data = JSON.parse(dataStr);
 
-                  // MiniMax 流式事件
+                  // Anthropic 流式事件
                   if (data.type === "content_block_delta" && data.delta?.type === "text_delta") {
                     fullText += data.delta.text;
 

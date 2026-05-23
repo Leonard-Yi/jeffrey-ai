@@ -186,13 +186,13 @@ const SYSTEM_PROMPT = `
 `.trim();
 
 function getApiKey(): string {
-  const apiKey = process.env.MINIMAX_API_KEY;
-  if (!apiKey) throw new Error("Missing env var: MINIMAX_API_KEY");
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) throw new Error("Missing env var: DEEPSEEK_API_KEY");
   return apiKey;
 }
 
 function getModel(): string {
-  return process.env.MINIMAX_MODEL || "MiniMax-M2.7";
+  return process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 }
 
 // 预先计算 schema JSON，避免类型递归问题
@@ -307,17 +307,16 @@ export async function POST(request: Request) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
 
-    console.log("[Jeffrey.AI] Calling MiniMax API with model:", getModel());
-    console.log("[Jeffrey.AI] API endpoint: https://api.minimaxi.com/anthropic/v1/messages");
+    console.log("[Jeffrey.AI] Calling DeepSeek API with model:", getModel());
+    console.log("[Jeffrey.AI] API endpoint: https://api.deepseek.com/anthropic/v1/messages");
 
     let apiResponse;
     try {
-      apiResponse = await fetch("https://api.minimaxi.com/anthropic/v1/messages", {
+      apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${getApiKey()}`,
-          "x-api-key": getApiKey(),
         },
         body: JSON.stringify({
           model: getModel(),
@@ -334,7 +333,7 @@ export async function POST(request: Request) {
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
-        console.error("[Jeffrey.AI] MiniMax API timeout after 30 seconds");
+        console.error("[Jeffrey.AI] DeepSeek API timeout after 30 seconds");
         return Response.json(
           { error: "AI响应超时，请重试", status: "error" },
           { status: 504 }
@@ -344,11 +343,11 @@ export async function POST(request: Request) {
     }
 
     clearTimeout(timeoutId);
-    console.log("[Jeffrey.AI] MiniMax API response status:", apiResponse.status);
+    console.log("[Jeffrey.AI] DeepSeek API response status:", apiResponse.status);
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
-      console.error(`[Jeffrey.AI] MiniMax API error: ${apiResponse.status} - ${errorText.slice(0, 200)}`);
+      console.error(`[Jeffrey.AI] DeepSeek API error: ${apiResponse.status} - ${errorText.slice(0, 200)}`);
       return Response.json(
         { error: `AI服务暂时不可用 (${apiResponse.status})，请重试`, status: "error" },
         { status: 502 }
@@ -356,26 +355,23 @@ export async function POST(request: Request) {
     }
 
     const apiData = await apiResponse.json();
-    console.log("[Jeffrey.AI] MiniMax raw response:", JSON.stringify(apiData, null, 2).slice(0, 3000));
+    console.log("[Jeffrey.AI] DeepSeek raw response:", JSON.stringify(apiData, null, 2).slice(0, 3000));
 
-    // 从 content 数组中找到 tool_use 块
+    // Anthropic-compatible response: content array with tool_use/text blocks
     const toolUseBlock = apiData.content?.find((c: { type: string }) => c.type === "tool_use");
     const textBlock = apiData.content?.find((c: { type: string }) => c.type === "text");
 
     let rawJson: unknown;
 
     if (toolUseBlock) {
-      // 工具调用结果 - input 已经是对象
       rawJson = toolUseBlock.input || {};
     } else if (textBlock?.text) {
-      // 如果没有调用工具，尝试从文本中解析 JSON
       const textContent = textBlock.text;
       const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
                         textContent.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         rawJson = JSON.parse(jsonMatch[jsonMatch.length - 1]);
       } else {
-        // LLM didn't call tool and returned non-JSON text - this is a failure
         console.error("[Jeffrey.AI] LLM did not call tool and returned non-JSON text:", textContent.slice(0, 200));
         return Response.json(
           { error: "AI未能正确提取信息，请重试或简化输入", status: "error" },
