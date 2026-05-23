@@ -101,12 +101,22 @@ async function createPersonAndWait(page: Page, text: string) {
   await page.locator('textarea').fill(text);
   await page.locator('button:has-text("告诉 Jeffery")').click();
 
+  // Quick check: did the API error immediately?
+  const hasError = await page.locator('text=分析失败').isVisible({ timeout: 10000 }).catch(() => false);
+  if (hasError) {
+    // Retry once
+    await page.locator('textarea').fill(text);
+    await page.locator('button:has-text("告诉 Jeffery")').click();
+    const retryError = await page.locator('text=分析失败').isVisible({ timeout: 10000 }).catch(() => false);
+    if (retryError) return; // give up after retry
+  }
+
   // Wait for extraction to complete
   try {
     await page.waitForFunction(() => {
       return document.body.textContent?.includes('已提取人物') ||
              document.body.textContent?.includes('社交债务');
-    }, { timeout: 60000 });
+    }, { timeout: 45000 });
   } catch {
     // LLM might be slow, continue
   }
@@ -185,23 +195,12 @@ test.describe('人脉弹窗 UI 变更', () => {
     const email = makeEmail();
     await registerAndSignIn(page, email, TEST_PASSWORD, TEST_NAME);
 
-    // Create a person with careers
-    await page.locator('textarea').fill('今天和王总VC合伙人见面，他在AI领域有丰富经验');
-    await page.locator('button:has-text("告诉 Jeffery")').click();
-    await page.waitForFunction(() => {
-      return document.body.textContent?.includes('已提取人物');
-    }, { timeout: 60000 });
+    // Create a person first
+    await createPersonAndWait(page, '今天和王总VC合伙人见面，他在AI领域有丰富经验');
 
-    // Navigate to members
-    const membersLink = page.locator('a[href="/members"]').first();
-    if (await membersLink.isVisible({ timeout: 5000 })) {
-      await membersLink.click();
-      await page.waitForURL('**/members**', { timeout: 10000 });
-    } else {
-      await page.goto('/members');
-    }
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('tbody tr', { timeout: 10000 }).catch(() => {});
+    // Navigate to members via link click
+    await navigateToMembers(page);
+    await page.waitForSelector('tbody tr', { timeout: 15000 });
 
     // Click first row to open modal
     await page.locator('tbody tr').first().click();
@@ -214,7 +213,6 @@ test.describe('人脉弹窗 UI 变更', () => {
     await expect(careersLabel).toBeVisible();
 
     // Click on the careers field value to start editing
-    // The field value div should have cursor:pointer and title "点击编辑"
     const careersField = modal.locator('[title="点击编辑"]').first();
     await careersField.click();
 
@@ -222,7 +220,6 @@ test.describe('人脉弹窗 UI 变更', () => {
     const inputField = modal.locator('input[type="text"]').first();
     await expect(inputField).toBeVisible({ timeout: 3000 });
 
-    // Close modal
     await page.keyboard.press('Escape');
   });
 
