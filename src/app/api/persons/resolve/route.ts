@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { generateEmbedding } from "@/lib/embedding";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 
 const ResolveRequestSchema = z.object({
   text: z.string(),
@@ -14,7 +15,7 @@ const ResolveRequestSchema = z.object({
  */
 function extractNames(text: string): string[] {
   // Extract 2-char Chinese names after common triggers
-  const triggerPattern = /(?:和|与|同|跟|和 |、)([\u4e00-\u9fa5]{2})/g;
+  const triggerPattern = /(?:和|与|同|跟|和 |、)([一-龥]{2})/g;
   const matches: string[] = [];
 
   const triggerMatches = text.matchAll(triggerPattern);
@@ -24,7 +25,7 @@ function extractNames(text: string): string[] {
 
   // Also try to find 2-char Chinese substrings that look like names (no trigger word)
   // This is a fallback - only use names that are common person name patterns
-  const namePattern = /([\u4e00-\u9fa5]{2})/g;
+  const namePattern = /([一-龥]{2})/g;
   const seen = new Set(matches);
   for (const m of text.matchAll(namePattern)) {
     const name = m[1];
@@ -50,9 +51,22 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const store = createCryptoStore(prisma, keys.encKey);
+
+  // Check if key rotation is in progress (blocks writes)
+  const resolvingUser = await prisma.user.findUnique({
+    where: { id: keys.userId },
+    select: { keyRotationInProgress: true }
+  });
+  if (resolvingUser?.keyRotationInProgress) {
+    return NextResponse.json(
+      { error: "密钥更新中，请稍后再试" },
+      { status: 423 }
+    );
   }
 
   try {
@@ -66,23 +80,23 @@ export async function POST(request: NextRequest) {
       );
     }
     const { text } = parsed.data;
-    console.log('[DEBUG] Received text:', text);
+    console.log('[DEBUG] Received text length:', text?.length);
 
     if (!text?.trim()) {
       return NextResponse.json({ resolutions: [] });
     }
 
     const extracted = extractNames(text);
-    console.log('[DEBUG] Extracted names:', extracted);
+    console.log('[DEBUG] Extracted names count:', extracted.length);
 
     const mentionedNames = extractNames(text);
 
     if (mentionedNames.length === 0) {
       return NextResponse.json({ resolutions: [] });
     }
-    const persons = await prisma.person.findMany({
+    const persons = await store.person.findMany({
       where: {
-        userId: session.user.id,
+        userId: keys.userId,
         deletedAt: null,
         mergedIntoId: null,
         embedding: { not: null },

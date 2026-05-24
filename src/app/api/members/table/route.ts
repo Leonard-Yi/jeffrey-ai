@@ -1,17 +1,19 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { PERSON_COLUMNS, renderArray, renderRelativeDate } from "@/lib/schemaReader";
-import { auth } from "@/lib/auth";
+import { PERSON_COLUMNS, renderRelativeDate } from "@/lib/schemaReader";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 
 const SAFE_SORT_FIELDS = ["name", "relationshipScore", "lastContactDate"] as const;
 
 type SafeSortField = typeof SAFE_SORT_FIELDS[number];
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
 
   try {
     const { searchParams } = new URL(request.url);
@@ -26,21 +28,14 @@ export async function GET(request: NextRequest) {
       ? (sort as SafeSortField)
       : "lastContactDate";
 
-    // Build where conditions — JSONB partial match done in JS after fetch
-    // Exclude soft-deleted / merged persons
-    const where: Parameters<typeof prisma.person.findMany>[0]["where"] = {
-      userId: session.user.id,
-      deletedAt: null,
-      mergedIntoId: null,
-    };
-
-    if (filterCity) {
-      // PostgreSQL text array contains
-      where.baseCities = { has: filterCity };
-    }
-
-    const persons = await prisma.person.findMany({
-      where,
+    // Fetch all non-deleted, non-merged persons for this user
+    // No DB-level encrypted-field filtering — filter in JS after decrypt
+    const persons = await store.person.findMany({
+      where: {
+        userId: keys.userId,
+        deletedAt: null,
+        mergedIntoId: null,
+      },
       orderBy: { [safeSort]: order },
       include: {
         introducedBy: {
@@ -58,33 +53,34 @@ export async function GET(request: NextRequest) {
 
     const rows = persons.map((person) => {
       // Count unresolved action items across all interactions
-      const unresolvedCount = person.interactions.reduce((count, ip) => {
-        const items = ip.interaction.actionItems as Array<{ description?: string; resolved?: boolean }>;
+      const unresolvedCount = ((person.interactions as any[]) || []).reduce((count, ip) => {
+        const items = (ip.interaction?.actionItems ?? []) as Array<{ description?: string; resolved?: boolean }>;
         return count + (items?.filter((item) => item.resolved === false).length || 0);
       }, 0);
 
-      // JSONB partial-name filtering in JS (Prisma JSONB array_contains requires exact match)
+      // Data comes back decrypted from cryptoStore — use directly
       const careers = (person.careers ?? []) as Array<{ name: string; weight: number }>;
       const interests = (person.interests ?? []) as Array<{ name: string; weight: number }>;
 
       if (filterCareer && !careers.some(c => c.name.includes(filterCareer))) return null;
       if (filterInterest && !interests.some(i => i.name.includes(filterInterest))) return null;
+      if (filterCity && !(person.baseCities as string[] || []).includes(filterCity)) return null;
 
       return {
         id: person.id,
         name: person.name,
-        careers: renderArray(careers),
-        interests: renderArray(interests),
-        vibeTags: (person.vibeTags ?? []).join(", "),
-        baseCities: (person.baseCities ?? []).join(", "),
-        favoritePlaces: (person.favoritePlaces ?? []).join(", "),
+        careers: careers.map(c => `${c.name}(${Math.round(c.weight * 100)}%)`).join(", ") || "—",
+        interests: interests.map(i => `${i.name}(${Math.round(i.weight * 100)}%)`).join(", ") || "—",
+        vibeTags: ((person.vibeTags ?? []) as string[]).join(", ") || "—",
+        baseCities: ((person.baseCities ?? []) as string[]).join(", ") || "—",
+        favoritePlaces: ((person.favoritePlaces ?? []) as string[]).join(", ") || "—",
         relationshipScore: Math.round(person.relationshipScore),
         lastContactDate: renderRelativeDate(person.lastContactDate),
-        introducedBy: person.introducedBy?.name || "—",
+        introducedBy: (person.introducedBy as any)?.name || "—",
         actionItems: unresolvedCount,
         coreMemories: (() => {
-          const interactionMems = person.interactions.flatMap((ip: any) =>
-            (ip.interaction.coreMemories ?? []) as string[]
+          const interactionMems = ((person.interactions as any[]) || []).flatMap((ip: any) =>
+            (ip.interaction?.coreMemories ?? []) as string[]
           );
           const unique = [...new Set(interactionMems)].slice(-20);
           return unique.length > 0 ? unique.join(" / ") : "—";

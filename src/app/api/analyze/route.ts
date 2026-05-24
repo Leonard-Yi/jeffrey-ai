@@ -2,7 +2,11 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { saveExtractionToDb } from "./db";
 import { WeightedTagSchema, ActionItemSchema } from "@/schemas/core";
-import { auth } from "@/lib/auth";
+import { createCryptoStore } from "@/lib/cryptoStore";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { prisma } from "@/lib/db";
+import { createPseudonymizer } from "@/lib/pseudonymizer";
+import { safeLog } from "@/lib/safeLog";
 
 // 复用 schemas/core 的基础类型
 const ExtractedPersonSchema = z.object({
@@ -206,18 +210,34 @@ const extractionTool: { name: string; description: string; input_schema: object 
 };
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { encKey, pseudoKey, userId } = keys;
+  const store = createCryptoStore(prisma, encKey);
+
+  // Check if key rotation is in progress (blocks writes)
+  const analyzingUser = await store.raw.user.findUnique({
+    where: { id: userId },
+    select: { keyRotationInProgress: true }
+  });
+  if (analyzingUser?.keyRotationInProgress) {
+    return Response.json(
+      { error: "密钥更新中，请稍后再试" },
+      { status: 423 }
+    );
+  }
+
+  // Create pseudonymizer (loads pseudonym map into memory)
+  const pseudo = await createPseudonymizer(userId, encKey, pseudoKey, store);
 
   try {
     const rawBody = await request.text();
-    console.log("[Jeffrey.AI] Raw body:", rawBody);
+    safeLog("Request received", "(text pseudonymized, see next log line)");
 
     const { text } = JSON.parse(rawBody);
 
-    console.log("[Jeffrey.AI] Received text:", text);
     console.log("[Jeffrey.AI] Text type:", typeof text);
     console.log("[Jeffrey.AI] Text length:", text?.length);
 
@@ -301,7 +321,10 @@ export async function POST(request: Request) {
     }
 
     const normalizedText = normalizeRelativeDates(text);
-    console.log("[Jeffrey.AI] Normalized text:", normalizedText);
+
+    // Pseudonymize user input before sending to LLM
+    const { sanitizedText } = await pseudo.pseudonymize(normalizedText);
+    safeLog("Normalized text (pseudonymized)", sanitizedText);
 
     // 添加超时控制
     const controller = new AbortController();
@@ -322,7 +345,7 @@ export async function POST(request: Request) {
           model: getModel(),
           system: SYSTEM_PROMPT,
           messages: [
-            { role: "user", content: normalizedText },
+            { role: "user", content: sanitizedText },
           ],
           tools: [extractionTool],
           temperature: 0.3,
@@ -382,6 +405,17 @@ export async function POST(request: Request) {
       throw new Error("LLM returned empty response: " + JSON.stringify(apiData));
     }
 
+    // Depseudonymize LLM output
+    const rawJsonStr = JSON.stringify(rawJson);
+    const depseudonymizedStr = await pseudo.depseudonymize(rawJsonStr);
+    rawJson = JSON.parse(depseudonymizedStr);
+
+    // Check for leaks
+    const leaks = pseudo.checkLeaks(JSON.stringify(rawJson));
+    if (leaks.length > 0) {
+      console.warn("[Jeffrey.AI] ENTITY LEAK DETECTED:", leaks.length, "entities leaked in LLM output");
+    }
+
     // MiniMax may return null instead of undefined — normalize before Zod validation
     function nullToUndefined(obj: unknown): unknown {
       if (obj === null) return undefined;
@@ -430,7 +464,7 @@ export async function POST(request: Request) {
     if (data.status === "complete") {
       try {
         // @ts-ignore - Zod output type mismatch with manual interface
-        const saveResult = await saveExtractionToDb(data, true, session.user.id); // createInteraction=true，确保追问回复后能创建互动
+        const saveResult = await saveExtractionToDb(data, true, userId, store); // createInteraction=true，确保追问回复后能创建互动
         personIds = saveResult.personIds;
         console.log("[Jeffrey.AI] Successfully saved complete data to database");
       } catch (dbError) {
@@ -454,7 +488,7 @@ export async function POST(request: Request) {
           sentiment: undefined,
           actionItems: [],
           coreMemories: [],
-        } as any, true, session.user.id); // createInteraction=true，确保pending时也创建互动
+        } as any, true, userId, store); // createInteraction=true，确保pending时也创建互动
         personIds = saveResult.personIds;
         console.log("[Jeffrey.AI] Saved pending person data with interaction");
       } catch (dbError) {

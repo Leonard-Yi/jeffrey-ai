@@ -2,9 +2,10 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { generateEmbedding, buildPersonSearchText, type WeightedTag } from "@/lib/embedding";
-import { auth } from "@/lib/auth";
-import { Prisma } from "@prisma/client";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 import { enqueueEmbeddingRefresh } from "@/lib/embeddingQueue";
+import { encryptJson } from "@/lib/crypto";
 
 const SearchRequestSchema = z.object({
   q: z.string().optional().default(""),
@@ -32,7 +33,8 @@ function parseEmbedding(raw: unknown): number[] {
 }
 
 function refreshStaleEmbeddingIfNeeded(
-  person: { id: string; name: string; careers: unknown; interests: unknown; vibeTags: string[]; searchText: string }
+  person: { id: string; name: string; careers: unknown; interests: unknown; vibeTags: string[]; searchText: string },
+  encKey: Buffer,
 ) {
   const expectedSearchText = buildPersonSearchText({
     name: person.name,
@@ -42,23 +44,25 @@ function refreshStaleEmbeddingIfNeeded(
   });
 
   if (expectedSearchText !== person.searchText) {
-    console.warn(`[Jeffrey.AI] Stale embedding detected for "${person.name}"`);
+    console.warn(`[Jeffrey.AI] Stale embedding detected for person id="${person.id}"`);
     enqueueEmbeddingRefresh(person.id, person.name, async () => {
       const newEmbedding = await generateEmbedding(expectedSearchText);
+      // Write encrypted embedding through raw prisma (background task, no store available)
       await prisma.person.update({
         where: { id: person.id },
-        data: { searchText: expectedSearchText, embedding: newEmbedding },
+        data: { searchText: expectedSearchText, embedding: encryptJson(newEmbedding, encKey) },
       });
-      console.log(`[Jeffrey.AI] Refreshed embedding for "${person.name}" (${newEmbedding.length}D)`);
+      console.log(`[Jeffrey.AI] Refreshed embedding for person id="${person.id}" (${newEmbedding.length}D)`);
     });
   }
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
 
   try {
     const body = await request.json();
@@ -76,7 +80,7 @@ export async function POST(request: Request) {
       return Response.json({ results: [] });
     }
 
-    console.log(`[Jeffrey.AI] Hybrid search: "${q}", k=${k}`);
+    console.log(`[Jeffrey.AI] Hybrid search: k=${k}`);
 
     // 1. Try to generate query embedding (failure → fuzzy-only mode)
     let queryEmbedding: number[] = [];
@@ -86,23 +90,24 @@ export async function POST(request: Request) {
       console.warn(`[Jeffrey.AI] Embedding generation failed, falling back to fuzzy search:`, embError);
     }
 
-    // 2. Single query: ALL non-deleted persons, including embedding + searchText
-    const allPersons = await prisma.$queryRaw<
-      Array<{
-        id: string;
-        name: string;
-        careers: unknown;
-        interests: unknown;
-        vibeTags: string[];
-        relationshipScore: number;
-        lastContactDate: Date;
-        embedding: unknown;
-        searchText: string;
-      }>
-    >(Prisma.sql`SELECT id, name, careers, interests, "vibeTags", "relationshipScore", "lastContactDate", "embedding", "searchText"
-      FROM "Person"
-      WHERE "userId" = ${session.user.id}
-        AND "deletedAt" IS NULL`);
+    // 2. Fetch all non-deleted persons with decrypted fields
+    const allPersons = await store.person.findMany({
+      where: {
+        userId: keys.userId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        careers: true,
+        interests: true,
+        vibeTags: true,
+        relationshipScore: true,
+        lastContactDate: true,
+        embedding: true,
+        searchText: true,
+      },
+    });
 
     // 3. Compute semantic scores for persons that have an embedding
     const semanticMap = new Map<string, number>();
@@ -112,7 +117,7 @@ export async function POST(request: Request) {
         if (emb.length > 0) {
           semanticMap.set(p.id, cosineSimilarity(queryEmbedding, emb));
           // Detect and background-refresh stale embeddings
-          refreshStaleEmbeddingIfNeeded({ ...p, vibeTags: p.vibeTags ?? [] });
+          refreshStaleEmbeddingIfNeeded({ ...p, vibeTags: (p.vibeTags ?? []) as string[] }, keys.encKey);
         }
       }
     }
@@ -128,7 +133,7 @@ export async function POST(request: Request) {
       const interestMatch = ((p.interests as WeightedTag[]) ?? []).some(
         (i) => (i.name ?? "").toLowerCase().includes(q_lower)
       );
-      const vibeMatch = (p.vibeTags ?? []).some((t) => t.toLowerCase().includes(q_lower));
+      const vibeMatch = ((p.vibeTags ?? []) as string[]).some((t) => t.toLowerCase().includes(q_lower));
       if (nameMatch || careerMatch || interestMatch || vibeMatch) {
         fuzzySet.add(p.id);
       }
@@ -140,10 +145,10 @@ export async function POST(request: Request) {
         const semScore = semanticMap.get(p.id);
         const fuzzyHit = fuzzySet.has(p.id);
         if (semScore !== undefined) {
-          return { id: p.id, name: p.name, careers: p.careers, interests: p.interests, vibeTags: p.vibeTags ?? [], relationshipScore: p.relationshipScore, lastContactDate: p.lastContactDate, similarity: semScore };
+          return { id: p.id, name: p.name, careers: p.careers, interests: p.interests, vibeTags: (p.vibeTags ?? []) as string[], relationshipScore: p.relationshipScore, lastContactDate: p.lastContactDate, similarity: semScore };
         }
         if (fuzzyHit) {
-          return { id: p.id, name: p.name, careers: p.careers, interests: p.interests, vibeTags: p.vibeTags ?? [], relationshipScore: p.relationshipScore, lastContactDate: p.lastContactDate, similarity: 0.5 };
+          return { id: p.id, name: p.name, careers: p.careers, interests: p.interests, vibeTags: (p.vibeTags ?? []) as string[], relationshipScore: p.relationshipScore, lastContactDate: p.lastContactDate, similarity: 0.5 };
         }
         return null;
       })
@@ -152,8 +157,7 @@ export async function POST(request: Request) {
       .slice(0, k);
 
     console.log(
-      `[Jeffrey.AI] Search "${q}" → semantic:${semanticMap.size} fuzzy:${fuzzySet.size} → top:`,
-      scored.map((r) => `${r.name}(${r.similarity.toFixed(2)})`).join(", ")
+      `[Jeffrey.AI] Search → semantic:${semanticMap.size} fuzzy:${fuzzySet.size} → top: ${scored.length} results`
     );
 
     return Response.json({ results: scored });

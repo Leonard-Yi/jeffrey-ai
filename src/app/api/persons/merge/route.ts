@@ -4,7 +4,9 @@ import { prisma } from "@/lib/db";
 import { buildPersonSearchText, generateEmbedding } from "@/lib/embedding";
 import { mergeTags } from "@/lib/dbUtils";
 import type { WeightedTag } from "@/lib/embedding";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
+import type { PrismaClient } from "@prisma/client";
 
 const MergeRequestSchema = z.object({
   survivorId: z.string().min(1),
@@ -12,10 +14,24 @@ const MergeRequestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
+
+  // Check if key rotation is in progress (blocks writes)
+  const mergingUser = await store.raw.user.findUnique({
+    where: { id: keys.userId },
+    select: { keyRotationInProgress: true }
+  });
+  if (mergingUser?.keyRotationInProgress) {
+    return NextResponse.json(
+      { error: "密钥更新中，请稍后再试" },
+      { status: 423 }
+    );
+  }
+
   try {
     const body = await request.json();
     const parsed = MergeRequestSchema.safeParse(body);
@@ -43,8 +59,8 @@ export async function POST(request: NextRequest) {
 
     // Fetch all persons involved
     const allIds = [survivorId, ...victimIds];
-    const persons = await prisma.person.findMany({
-      where: { id: { in: allIds }, userId: session.user.id },
+    const persons = await store.person.findMany({
+      where: { id: { in: allIds }, userId: keys.userId },
     });
 
     if (persons.length !== allIds.length) {
@@ -54,22 +70,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const survivor = persons.find((p) => p.id === survivorId)!;
-    const victims = persons.filter((p) => victimIds.includes(p.id));
+    const survivor = persons.find((p: any) => p.id === survivorId)!;
+    const victims = persons.filter((p: any) => victimIds.includes(p.id));
 
-    // Fetch victims' interactions and tags
-    const victimInteractionData = await prisma.interactionPerson.findMany({
-      where: { personId: { in: victimIds }, userId: session.user.id },
+    // Fetch victims' interactions and tags (unencrypted tables)
+    const victimInteractionData = await store.raw.interactionPerson.findMany({
+      where: { personId: { in: victimIds }, userId: keys.userId },
     });
-    const victimTags = await prisma.personTag.findMany({
-      where: { personId: { in: victimIds }, userId: session.user.id },
+    const victimTags = await store.raw.personTag.findMany({
+      where: { personId: { in: victimIds }, userId: keys.userId },
     });
-    const survivorTags = await prisma.personTag.findMany({
-      where: { personId: survivorId, userId: session.user.id },
+    const survivorTags = await store.raw.personTag.findMany({
+      where: { personId: survivorId, userId: keys.userId },
     });
 
     // === MERGE IN TRANSACTION ===
     const merged = await prisma.$transaction(async (tx) => {
+      // Wrap tx in cryptoStore for encrypted Person operations
+      const txStore = createCryptoStore(tx as unknown as PrismaClient, keys.encKey);
+
       // 1. Merge aliases: victims' names + their existing aliases → survivor's aliases
       const allAliases = new Set<string>(survivor.aliases as string[]);
       for (const victim of victims) {
@@ -82,42 +101,42 @@ export async function POST(request: NextRequest) {
       // 2. Merge careers and interests using mergeTags
       const mergedCareers = mergeTags(
         survivor.careers as WeightedTag[],
-        victims.flatMap((v) => (v.careers as WeightedTag[]) || [])
+        victims.flatMap((v: any) => (v.careers as WeightedTag[]) || [])
       );
       const mergedInterests = mergeTags(
         survivor.interests as WeightedTag[],
-        victims.flatMap((v) => (v.interests as WeightedTag[]) || [])
+        victims.flatMap((v: any) => (v.interests as WeightedTag[]) || [])
       );
 
       // 3. Merge array fields (union)
       const mergedVibeTags = Array.from(
-        new Set([...(survivor.vibeTags || []), ...victims.flatMap((v) => v.vibeTags || [])])
+        new Set([...(survivor.vibeTags || []), ...victims.flatMap((v: any) => v.vibeTags || [])])
       );
       const mergedBaseCities = Array.from(
-        new Set([...(survivor.baseCities || []), ...victims.flatMap((v) => v.baseCities || [])])
+        new Set([...(survivor.baseCities || []), ...victims.flatMap((v: any) => v.baseCities || [])])
       );
       const mergedFavoritePlaces = Array.from(
-        new Set([...(survivor.favoritePlaces || []), ...victims.flatMap((v) => v.favoritePlaces || [])])
+        new Set([...(survivor.favoritePlaces || []), ...victims.flatMap((v: any) => v.favoritePlaces || [])])
       );
       const mergedIntroducedByIds = Array.from(
-        new Set([...(survivor.introducedByIds || []), ...victims.flatMap((v) => v.introducedByIds || [])])
+        new Set([...(survivor.introducedByIds || []), ...victims.flatMap((v: any) => v.introducedByIds || [])])
       );
 
       // 4. Merge relationshipScore (max) and lastContactDate (most recent)
       const mergedScore = Math.max(
         survivor.relationshipScore,
-        ...victims.map((v) => v.relationshipScore)
+        ...victims.map((v: any) => v.relationshipScore)
       );
       const mergedLastContact = new Date(
         Math.max(
           survivor.lastContactDate.getTime(),
-          ...victims.map((v) => v.lastContactDate.getTime())
+          ...victims.map((v: any) => v.lastContactDate.getTime())
         )
       );
 
-      // 5. Soft-delete all victims: set deletedAt and mergedIntoId
+      // 5. Soft-delete all victims: set deletedAt and mergedIntoId (unencrypted fields)
       await tx.person.updateMany({
-        where: { id: { in: victimIds }, userId: session.user.id },
+        where: { id: { in: victimIds }, userId: keys.userId },
         data: {
           deletedAt: new Date(),
           mergedIntoId: survivorId,
@@ -125,49 +144,42 @@ export async function POST(request: NextRequest) {
       });
 
       // 6. Reassign InteractionPerson records from victims to survivor
-      // First, find which interactions the survivor already has
       const survivorInteractionIds = new Set(
         (
           await tx.interactionPerson.findMany({
-            where: { personId: survivorId, userId: session.user.id },
+            where: { personId: survivorId, userId: keys.userId },
             select: { interactionId: true },
           })
         ).map((r) => r.interactionId)
       );
 
-      // Filter victims' interactions that aren't already linked to survivor
       const toMigrate = victimInteractionData.filter(
         (v) => !survivorInteractionIds.has(v.interactionId)
       );
 
       if (toMigrate.length > 0) {
-        // Delete victim's records (they will be recreated under survivor)
         await tx.interactionPerson.deleteMany({
           where: {
             personId: { in: victimIds },
-            userId: session.user.id,
+            userId: keys.userId,
             interactionId: { in: toMigrate.map((v) => v.interactionId) },
           },
         });
-        // Recreate under survivor
         await tx.interactionPerson.createMany({
           data: toMigrate.map((v) => ({
             personId: survivorId,
             interactionId: v.interactionId,
-            userId: session.user.id,
+            userId: keys.userId,
           })),
           skipDuplicates: true,
         });
       }
 
-      // 7. Migrate PersonTag records
-      // Delete existing survivor tags, then recreate merged
-      await tx.personTag.deleteMany({ where: { personId: survivorId, userId: session.user.id } });
+      // 7. Migrate PersonTag records (unencrypted)
+      await tx.personTag.deleteMany({ where: { personId: survivorId, userId: keys.userId } });
 
-      // Build merged tags map: start with survivor tags, then merge victim tags (recency bias)
       const tagMap = new Map<string, { category: string; name: string; weight: number }>();
 
-      // Add survivor's existing tags first
       for (const tag of survivorTags) {
         tagMap.set(`${tag.category}:${tag.name}`, {
           category: tag.category,
@@ -176,7 +188,6 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Merge victim tags with recency bias
       for (const tag of victimTags) {
         const key = `${tag.category}:${tag.name}`;
         const existing = tagMap.get(key);
@@ -191,10 +202,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create new merged tags
       const mergedTagRecords = Array.from(tagMap.values()).map((t) => ({
         personId: survivorId,
-        userId: session.user.id,
+        userId: keys.userId,
         category: t.category,
         name: t.name,
         weight: t.weight,
@@ -204,9 +214,9 @@ export async function POST(request: NextRequest) {
         await tx.personTag.createMany({ data: mergedTagRecords });
       }
 
-      // 8. Update survivor with merged data
-      const updated = await tx.person.update({
-        where: { id: survivorId, userId: session.user.id },
+      // 8. Update survivor with merged data (encrypted fields via txStore)
+      const updated = await txStore.person.update({
+        where: { id: survivorId, userId: keys.userId },
         data: {
           aliases: Array.from(allAliases),
           careers: mergedCareers,
@@ -242,8 +252,8 @@ export async function POST(request: NextRequest) {
       console.error("[Jeffrey.AI] Failed to generate embedding during merge:", embErr);
     }
 
-    const finalPerson = await prisma.person.update({
-      where: { id: survivorId, userId: session.user.id },
+    const finalPerson = await store.person.update({
+      where: { id: survivorId, userId: keys.userId },
       data: { searchText, embedding },
     });
 

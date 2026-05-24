@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
+import { createPseudonymizer } from "@/lib/pseudonymizer";
 
 function getModel(): string {
   return process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
@@ -114,10 +116,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { encKey, pseudoKey, userId } = keys;
+  const store = createCryptoStore(prisma, encKey);
+  const pseudo = await createPseudonymizer(userId, encKey, pseudoKey, store);
 
   try {
     const { id } = await params;
@@ -132,9 +137,9 @@ export async function POST(
     const selectedStyle = validStyles.includes(style) ? style : "日常";
     const systemPrompt = SYSTEM_PROMPTS[selectedStyle as keyof typeof SYSTEM_PROMPTS];
 
-    // 获取人物信息
-    const person = await prisma.person.findUnique({
-      where: { id, userId: session.user.id },
+    // 获取人物信息（store auto-decrypts）
+    const person = await store.person.findUnique({
+      where: { id, userId },
       include: {
         introducedBy: { select: { name: true } },
       },
@@ -145,9 +150,9 @@ export async function POST(
     }
 
     // 获取最近一次互动
-    const lastInteraction = await prisma.interaction.findFirst({
+    const lastInteraction = await store.interaction.findFirst({
       where: {
-        userId: session.user.id,
+        userId,
         persons: { some: { personId: id } },
       },
       orderBy: { date: "desc" },
@@ -181,6 +186,10 @@ export async function POST(
 【记忆】${recentCoreMemories.join("、") || "无"}
 【上次互动】${lastInteraction ? `${formatDate(new Date(lastInteraction.date))} | ${lastInteraction.sentiment || "无情绪记录"} | 承诺：${((lastInteraction.actionItems as Array<{description:string}>) || []).map((a) => a.description).join("、") || "无"}` : "无历史记录"}`;
 
+    // 伪名化 combined prompt 后发送给 DeepSeek
+    const combinedPrompt = systemPrompt + "\n\n---\n\n" + userContext;
+    const { sanitizedText } = await pseudo.pseudonymize(combinedPrompt);
+
     // 调用 DeepSeek API (Anthropic 兼容格式)
     const apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
       method: "POST",
@@ -191,7 +200,7 @@ export async function POST(
       body: JSON.stringify({
         model: getModel(),
         messages: [
-          { role: "user", content: systemPrompt + "\n\n---\n\n" + userContext },
+          { role: "user", content: sanitizedText },
         ],
         temperature: 0.6,
         max_tokens: 1500,
@@ -210,26 +219,33 @@ export async function POST(
       throw new Error("LLM returned empty response");
     }
 
+    // 去伪名化 LLM 响应
+    const depseudonymized = await pseudo.depseudonymize(content);
+
+    // 检查实体泄漏
+    const leaks = pseudo.checkLeaks(depseudonymized);
+    if (leaks.length > 0) console.warn("[Jeffrey.AI] ENTITY LEAK in persons/[id]/icebreaker:", leaks.length, "entities leaked");
+
     // 解析 JSON 响应
     let parsed;
     try {
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
-                        content.match(/\{[\s\S]*\}/);
+      const jsonMatch = depseudonymized.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
+                        depseudonymized.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsed = JSON.parse(jsonMatch[jsonMatch.length - 1]);
       } else {
-        parsed = JSON.parse(content);
+        parsed = JSON.parse(depseudonymized);
       }
     } catch {
       parsed = {
-        openingLines: [content],
+        openingLines: [depseudonymized],
         suggestedTopics: ["询问近况"],
         recentContext: "无历史记忆可参考",
         jeffreyComment: "先生，建议直接联系对方。",
       };
     }
 
-    // 存入数据库
+    // 存入数据库（store auto-encrypts icebreakerData）
     const result = {
       openingLines: parsed.openingLines || [],
       suggestedTopics: parsed.suggestedTopics || [],
@@ -237,8 +253,8 @@ export async function POST(
       jeffreyComment: parsed.jeffreyComment || "",
     };
 
-    await prisma.person.update({
-      where: { id, userId: session.user.id },
+    await store.person.update({
+      where: { id, userId },
       data: {
         icebreakerData: result,
         icebreakerGeneratedAt: new Date(),
@@ -248,9 +264,8 @@ export async function POST(
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error("Error generating icebreaker:", error);
-    const err = error as { message?: string };
     return NextResponse.json(
-      { error: "Failed to generate icebreaker: " + (err.message || String(error)) },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -261,16 +276,20 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { encKey, pseudoKey, userId } = keys;
+  const store = createCryptoStore(prisma, encKey);
+  // No pseudonymizer needed for GET (no LLM call), but created for consistency
+  await createPseudonymizer(userId, encKey, pseudoKey, store);
 
   try {
     const { id } = await params;
 
-    const person = await prisma.person.findUnique({
-      where: { id, userId: session.user.id },
+    const person = await store.person.findUnique({
+      where: { id, userId },
       select: {
         name: true,
         icebreakerData: true,
@@ -282,7 +301,7 @@ export async function GET(
       return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
 
-    // 如果有缓存，直接返回
+    // 如果有缓存，直接返回（store auto-decrypted）
     if (person.icebreakerData) {
       return NextResponse.json({
         personName: person.name,
@@ -300,7 +319,7 @@ export async function GET(
   } catch (error) {
     console.error("Error getting icebreaker:", error);
     return NextResponse.json(
-      { error: "Failed to get icebreaker" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

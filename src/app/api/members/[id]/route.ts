@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 import { buildPersonSearchText, generateEmbedding, type WeightedTag } from "@/lib/embedding";
 
 const EDITABLE_FIELDS = [
@@ -31,17 +32,18 @@ export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
 
   try {
     const { id } = await context.params;
 
     // Fetch person with only needed fields, excluding massive embedding arrays
-    const person = await prisma.person.findUnique({
-      where: { id, userId: session.user.id },
+    const person = await store.person.findUnique({
+      where: { id, userId: keys.userId },
       select: {
         id: true,
         name: true,
@@ -110,9 +112,22 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const store = createCryptoStore(prisma, keys.encKey);
+
+  // Check if key rotation is in progress (blocks writes)
+  const patchingUser = await store.raw.user.findUnique({
+    where: { id: keys.userId },
+    select: { keyRotationInProgress: true }
+  });
+  if (patchingUser?.keyRotationInProgress) {
+    return Response.json(
+      { error: "密钥更新中，请稍后再试" },
+      { status: 423 }
+    );
   }
 
   try {
@@ -178,7 +193,7 @@ export async function PATCH(
           return Response.json({ error: "introducedById must be a string or null" }, { status: 400 });
         }
         if (value !== null) {
-          const target = await prisma.person.findUnique({ where: { id: value as string, userId: session.user.id } });
+          const target = await store.person.findUnique({ where: { id: value as string, userId: keys.userId } });
           if (!target) {
             return Response.json({ error: "Target person not found" }, { status: 400 });
           }
@@ -194,7 +209,7 @@ export async function PATCH(
         }
         if (value !== null) {
           for (const id of value as string[]) {
-            const target = await prisma.person.findUnique({ where: { id, userId: session.user.id } });
+            const target = await store.person.findUnique({ where: { id, userId: keys.userId } });
             if (!target) {
               return Response.json({ error: `Person with id '${id}' not found` }, { status: 400 });
             }
@@ -245,15 +260,15 @@ export async function PATCH(
         dbValue = value;
     }
 
-    await prisma.person.update({
-      where: { id, userId: session.user.id },
+    await store.person.update({
+      where: { id, userId: keys.userId },
       data: { [field]: dbValue },
     });
 
     // 若修改了影响 embedding 的字段，则重新生成向量
     if (field === "name" || field === "vibeTags" || field === "careers" || field === "interests") {
-      const current = await prisma.person.findUnique({
-        where: { id, userId: session.user.id },
+      const current = await store.person.findUnique({
+        where: { id, userId: keys.userId },
         select: { name: true, careers: true, interests: true, vibeTags: true },
       });
       if (current) {
@@ -265,8 +280,8 @@ export async function PATCH(
         });
         try {
           const embedding = await generateEmbedding(searchText);
-          await prisma.person.update({
-            where: { id, userId: session.user.id },
+          await store.person.update({
+            where: { id, userId: keys.userId },
             data: { searchText, embedding },
           });
         } catch (embErr) {
@@ -276,8 +291,8 @@ export async function PATCH(
     }
 
     // 取最新完整数据返回（含新 embedding），避免返回旧向量
-    const latest = await prisma.person.findUnique({
-      where: { id, userId: session.user.id },
+    const latest = await store.person.findUnique({
+      where: { id, userId: keys.userId },
       select: {
         id: true, name: true, careers: true, interests: true, vibeTags: true,
         baseCities: true, favoritePlaces: true, relationshipScore: true,

@@ -1,0 +1,8 @@
+fix(logging): remove plaintext user data from all server logs
+
+Replaced 11 unsafe console.log/warn calls across 7 API route files:
+- analyze/db.ts: removed person names from upsert/lookup/create logging; removed user content (actionItems, coreMemories, location) from interaction log
+- analyze/route.ts: entity leak warning now logs count instead of actual leaked names
+- search/route.ts: removed person names from stale embedding warnings and search result summaries; removed search query from hybrid search log
+- persons/resolve/route.ts: removed raw user text and extracted names from debug logging
+- persons/[id]/icebreaker, suggestions/icebreaker, icebreaker-stream: entity leak warnings now log count instead of leaked text

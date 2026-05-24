@@ -1,15 +1,18 @@
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
+
   try {
-    const count = await prisma.person.count({
+    const count = await store.raw.person.count({
       where: {
-        userId: session.user.id,
+        userId: keys.userId,
         deletedAt: null,
         mergedIntoId: null,
       },

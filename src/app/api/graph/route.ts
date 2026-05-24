@@ -1,12 +1,16 @@
 import { NextRequest } from "next/server";
 import { getGraphData, GraphData } from "@/lib/graphService";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
+import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
+
   try {
     const { searchParams } = new URL(request.url);
     const group = searchParams.get("group") || undefined;
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
       minStrength
     };
 
-    const graphData: GraphData = await getGraphData(filter, session.user.id);
+    const graphData: GraphData = await getGraphData(filter, keys.userId, store);
 
     return Response.json(graphData);
   } catch (error) {

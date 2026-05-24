@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
+import { createPseudonymizer } from "@/lib/pseudonymizer";
 
 function getModel(): string {
   return process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
@@ -59,10 +61,13 @@ const SYSTEM_PROMPT = `你是 Jeffrey.AI 的破冰助手。你的任务是为一
 }`;
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { encKey, pseudoKey, userId } = keys;
+  const store = createCryptoStore(prisma, encKey);
+  const pseudo = await createPseudonymizer(userId, encKey, pseudoKey, store);
 
   try {
     const { searchParams } = new URL(request.url);
@@ -75,9 +80,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 获取人物信息
-    const person = await prisma.person.findUnique({
-      where: { id: personId, userId: session.user.id },
+    // 获取人物信息（store auto-decrypts）
+    const person = await store.person.findUnique({
+      where: { id: personId, userId },
       include: {
         introducedBy: { select: { name: true } },
       },
@@ -88,9 +93,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取最近一次互动
-    const lastInteraction = await prisma.interaction.findFirst({
+    const lastInteraction = await store.interaction.findFirst({
       where: {
-        userId: session.user.id,
+        userId,
         persons: { some: { personId } },
       },
       orderBy: { date: "desc" },
@@ -145,6 +150,10 @@ export async function GET(request: NextRequest) {
 （无历史互动记录）`;
     }
 
+    // 伪名化 combined prompt 后发送给 DeepSeek
+    const combinedPrompt = SYSTEM_PROMPT + "\n\n---\n\n" + userContext;
+    const { sanitizedText } = await pseudo.pseudonymize(combinedPrompt);
+
     // 调用 DeepSeek API，使用流式响应 (Anthropic 兼容格式)
     const apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
       method: "POST",
@@ -155,7 +164,7 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify({
         model: getModel(),
         messages: [
-          { role: "user", content: SYSTEM_PROMPT + "\n\n---\n\n" + userContext },
+          { role: "user", content: sanitizedText },
         ],
         temperature: 0.7,
         max_tokens: 2000,
@@ -212,10 +221,16 @@ export async function GET(request: NextRequest) {
                       text: fullText
                     })}\n\n`));
                   } else if (data.type === "message_delta") {
-                    // 消息完成，发送最终 JSON
+                    // 消息完成 — 去伪名化后发送最终 JSON
+                    const depseudonymized = await pseudo.depseudonymize(fullText);
+
+                    // 检查实体泄漏
+                    const leaks = pseudo.checkLeaks(depseudonymized);
+                    if (leaks.length > 0) console.warn("[Jeffrey.AI] ENTITY LEAK in icebreaker-stream:", leaks.length, "entities leaked");
+
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                       type: "done",
-                      text: fullText
+                      text: depseudonymized
                     })}\n\n`));
                   }
                 } catch {
@@ -241,9 +256,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in GET /api/suggestions/icebreaker-stream:", error);
-    const err = error as { message?: string; code?: string };
     return Response.json(
-      { error: "Failed to generate icebreaker: " + (err.message || String(error)) },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
