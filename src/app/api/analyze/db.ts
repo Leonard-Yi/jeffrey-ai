@@ -30,12 +30,11 @@ async function upsertPerson(
   userId: string,
   store: CryptoStore
 ): Promise<string> {
-  console.log("[Jeffrey.AI] upsertPerson called:", { name: extracted.name, userId, interactionDate });
   const name = extracted.name || "未知";
   const existing = await store.person.findFirst({
     where: { name, userId },
   });
-  console.log("[Jeffrey.AI] Existing person lookup:", { name, userId, found: !!existing });
+  console.log("[Jeffrey.AI] Existing person lookup:", { userId, found: !!existing });
 
   if (existing) {
     const mergedCareers = mergeTags(existing.careers as WeightedTag[], extracted.careers || []);
@@ -88,7 +87,7 @@ async function upsertPerson(
     console.error("[Jeffrey.AI] Failed to generate embedding:", embErr);
   }
 
-  console.log("[Jeffrey.AI] Creating person:", { name, userId, embeddingLength: embedding.length });
+  console.log("[Jeffrey.AI] Creating person:", { userId, embeddingLength: embedding.length });
   const person = await store.person.create({
     data: {
       name,
@@ -160,12 +159,11 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
 
   console.log("[Jeffrey.AI] Creating interaction with:", {
     date: interactionDate.toISOString(),
-    location: data.location,
     contextType: data.contextType,
     sentiment: data.sentiment,
-    actionItems: data.actionItems,
-    coreMemories: data.coreMemories,
-    personIds,
+    actionItemsCount: data.actionItems?.length,
+    coreMemoriesCount: data.coreMemories?.length,
+    personCount: personIds.length,
   });
 
   console.log("[Jeffrey.AI] About to create interaction for userId:", userId);

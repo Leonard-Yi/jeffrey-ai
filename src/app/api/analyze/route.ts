@@ -401,7 +401,7 @@ export async function POST(request: Request) {
     // Check for leaks
     const leaks = pseudo.checkLeaks(JSON.stringify(rawJson));
     if (leaks.length > 0) {
-      console.warn("[Jeffrey.AI] ENTITY LEAK DETECTED:", leaks.join(", "), "in LLM output");
+      console.warn("[Jeffrey.AI] ENTITY LEAK DETECTED:", leaks.length, "entities leaked in LLM output");
     }
 
     // MiniMax may return null instead of undefined — normalize before Zod validation

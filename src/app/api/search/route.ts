@@ -44,7 +44,7 @@ function refreshStaleEmbeddingIfNeeded(
   });
 
   if (expectedSearchText !== person.searchText) {
-    console.warn(`[Jeffrey.AI] Stale embedding detected for "${person.name}"`);
+    console.warn(`[Jeffrey.AI] Stale embedding detected for person id="${person.id}"`);
     enqueueEmbeddingRefresh(person.id, person.name, async () => {
       const newEmbedding = await generateEmbedding(expectedSearchText);
       // Write encrypted embedding through raw prisma (background task, no store available)
@@ -52,7 +52,7 @@ function refreshStaleEmbeddingIfNeeded(
         where: { id: person.id },
         data: { searchText: expectedSearchText, embedding: encryptJson(newEmbedding, encKey) },
       });
-      console.log(`[Jeffrey.AI] Refreshed embedding for "${person.name}" (${newEmbedding.length}D)`);
+      console.log(`[Jeffrey.AI] Refreshed embedding for person id="${person.id}" (${newEmbedding.length}D)`);
     });
   }
 }
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       return Response.json({ results: [] });
     }
 
-    console.log(`[Jeffrey.AI] Hybrid search: "${q}", k=${k}`);
+    console.log(`[Jeffrey.AI] Hybrid search: k=${k}`);
 
     // 1. Try to generate query embedding (failure → fuzzy-only mode)
     let queryEmbedding: number[] = [];
@@ -157,8 +157,7 @@ export async function POST(request: Request) {
       .slice(0, k);
 
     console.log(
-      `[Jeffrey.AI] Search "${q}" → semantic:${semanticMap.size} fuzzy:${fuzzySet.size} → top:`,
-      scored.map((r) => `${r.name}(${r.similarity.toFixed(2)})`).join(", ")
+      `[Jeffrey.AI] Search → semantic:${semanticMap.size} fuzzy:${fuzzySet.size} → top: ${scored.length} results`
     );
 
     return Response.json({ results: scored });

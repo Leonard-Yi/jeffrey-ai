@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
 
                     // 检查实体泄漏
                     const leaks = pseudo.checkLeaks(depseudonymized);
-                    if (leaks.length > 0) console.warn("[Jeffrey.AI] ENTITY LEAK in icebreaker-stream:", leaks.join(", "));
+                    if (leaks.length > 0) console.warn("[Jeffrey.AI] ENTITY LEAK in icebreaker-stream:", leaks.length, "entities leaked");
 
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                       type: "done",

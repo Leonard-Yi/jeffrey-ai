@@ -68,14 +68,14 @@ export async function POST(request: NextRequest) {
       );
     }
     const { text } = parsed.data;
-    console.log('[DEBUG] Received text:', text);
+    console.log('[DEBUG] Received text length:', text?.length);
 
     if (!text?.trim()) {
       return NextResponse.json({ resolutions: [] });
     }
 
     const extracted = extractNames(text);
-    console.log('[DEBUG] Extracted names:', extracted);
+    console.log('[DEBUG] Extracted names count:', extracted.length);
 
     const mentionedNames = extractNames(text);
 

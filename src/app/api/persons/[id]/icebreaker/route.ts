@@ -224,7 +224,7 @@ export async function POST(
 
     // 检查实体泄漏
     const leaks = pseudo.checkLeaks(depseudonymized);
-    if (leaks.length > 0) console.warn("[Jeffrey.AI] ENTITY LEAK in persons/[id]/icebreaker:", leaks.join(", "));
+    if (leaks.length > 0) console.warn("[Jeffrey.AI] ENTITY LEAK in persons/[id]/icebreaker:", leaks.length, "entities leaked");
 
     // 解析 JSON 响应
     let parsed;
