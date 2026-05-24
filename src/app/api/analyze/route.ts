@@ -1,6 +1,6 @@
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
-import { saveExtractionToDb } from "./db";
+import { saveExtractionToDb, backfillLegacyNames } from "./db";
 import { WeightedTagSchema, ActionItemSchema } from "@/schemas/core";
 import { createCryptoStore } from "@/lib/cryptoStore";
 import { getEncryptionKeys } from "@/lib/getKeys";
@@ -219,6 +219,11 @@ export async function POST(request: Request) {
   }
   const { encKey, pseudoKey, userId } = keys;
   const store = createCryptoStore(prisma, encKey);
+
+  // Backfill legacy plaintext names (one-time, idempotent)
+  backfillLegacyNames(userId, store, encKey, pseudoKey).then((n) => {
+    if (n > 0) console.log(`[Jeffrey.AI] Backfilled ${n} legacy person names`);
+  });
 
   // Check if key rotation is in progress (blocks writes)
   const analyzingUser = await store.raw.user.findUnique({

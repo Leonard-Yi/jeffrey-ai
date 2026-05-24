@@ -3,7 +3,7 @@
 
 import { buildPersonSearchText, generateEmbedding, type WeightedTag } from "@/lib/embedding";
 import { mergeTags } from "@/lib/dbUtils";
-import { computeNameHash } from "@/lib/crypto";
+import { computeNameHash, encrypt } from "@/lib/crypto";
 import type { CryptoStore } from "@/lib/cryptoStore";
 
 interface ExtractionData {
@@ -38,6 +38,34 @@ function calculateScoreBoost(data: {
   if ((data.actionItems?.length ?? 0) > 0) boost += 2;
   if (data.contextType) boost += 1;
   return boost; // Range: 1–7
+}
+
+/**
+ * One-time backfill: encrypt plaintext names and compute nameHash
+ * for legacy records created before blind-index encryption was added.
+ * Safe to call repeatedly — only touches records with nameHash = null.
+ */
+export async function backfillLegacyNames(
+  userId: string,
+  store: CryptoStore,
+  encKey: Buffer,
+  pseudoKey: Buffer,
+): Promise<number> {
+  const rawPersons = await store.raw.person.findMany({
+    where: { userId, nameHash: null },
+    select: { id: true, name: true },
+  });
+  if (rawPersons.length === 0) return 0;
+
+  for (const p of rawPersons) {
+    const nameHash = computeNameHash(p.name, pseudoKey);
+    const encryptedName = encrypt(p.name, encKey);
+    await store.raw.person.update({
+      where: { id: p.id },
+      data: { name: encryptedName, nameHash },
+    });
+  }
+  return rawPersons.length;
 }
 
 async function upsertPerson(
