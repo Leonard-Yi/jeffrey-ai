@@ -38,6 +38,7 @@ export default function SignInForm() {
         email,
         password,
         redirect: false,
+        callbackUrl,
       });
 
       if (result?.ok) {
