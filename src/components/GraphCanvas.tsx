@@ -1,40 +1,21 @@
 // src/components/GraphCanvas.tsx
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useState } from "react";
 import * as PIXI from "pixi.js";
 import { tokens as C } from "@/lib/design-tokens";
 import type { SimNode } from "@/hooks/useForceSimulation";
 import type { GraphLink } from "@/lib/graphService";
 
-// ─── Color maps ─────────────────────────────────────────────────
+// ─── Obsidian-style constants ──────────────────────────────────
 
-const LINK_COLORS: Record<string, number> = {
-  interaction: 0x60a5fa,
-  introducedBy: 0xf59e0b,
-  sharedCareer: 0x10b981,
-  sharedCity: 0x8b5cf6,
-  sharedInterest: 0xf97316,
-  sharedPlace: 0xec4899,
-  sharedVibe: 0x6366f1,
-};
-
-const NODE_COLORS: Record<string, number> = {
-  default: 0x3b82f6,
-  "投行": 0x10b981,
-  "律师": 0xf59e0b,
-  "医生": 0xef4444,
-  "教授": 0x8b5cf6,
-  "创业者": 0xf97316,
-  AI: 0x6366f1,
-};
-
-function getNodeColor(group: string): number {
-  for (const [key, color] of Object.entries(NODE_COLORS)) {
-    if (group.includes(key)) return color;
-  }
-  return NODE_COLORS.default;
-}
+// Obsidian uses ~0.2 for dimmed/unconnected nodes (ie constant in graph.js)
+const DIM_ALPHA = 0.2;
+const NODE_FILL = 0x9CA3AF;   // gray-400
+const NODE_STROKE = 0xE5E7EB; // gray-200
+const LINK_COLOR = 0x9CA3AF;  // gray-400
+const LINK_HIGHLIGHT = 0x6B7280; // gray-500 (slightly darker when highlighted)
+const HIGHLIGHT_RING = 0x6B7280; // gray-500
 
 // ─── lerp ───────────────────────────────────────────────────────
 
@@ -70,28 +51,24 @@ class GraphNodeGfx {
     this.text.eventMode = "none";
   }
 
+  // Obsidian formula: sqrt(weight + 1) × 3, clamped 8–30
   getSize(): number {
-    return Math.max(8, Math.min(Math.sqrt(this.val * 100 + 1) * 3, 30));
-  }
-
-  getColor(): number {
-    return getNodeColor(this.group);
+    return Math.max(8, Math.min(Math.sqrt(this.val + 1) * 3, 30));
   }
 
   drawCircle(highlighted: boolean, dimmed: boolean) {
     const g = this.circle;
     const size = this.getSize();
-    const color = this.getColor();
     g.clear();
 
-    if (highlighted) {
-      g.lineStyle(2.5, 0xffffff, 0.95);
-    } else {
-      g.lineStyle(1.5, 0xffffff, 0.7);
-    }
-    g.beginFill(color, dimmed ? 0.3 : 0.9);
-    g.drawCircle(0, 0, size);
-    g.endFill();
+    // Obsidian style: all nodes same fill color, dimmed when not connected to hover
+    g.circle(0, 0, size);
+    g.fill({ color: NODE_FILL, alpha: dimmed ? DIM_ALPHA : 0.85 });
+    g.stroke({
+      color: highlighted ? HIGHLIGHT_RING : NODE_STROKE,
+      alpha: highlighted ? 0.9 : 0.5,
+      width: highlighted ? 2 : 1,
+    });
   }
 }
 
@@ -112,13 +89,16 @@ class GraphLinkGfx {
     this.gfx = new PIXI.Graphics();
   }
 
-  drawLine(x1: number, y1: number, x2: number, y2: number, alpha: number) {
+  drawLine(x1: number, y1: number, x2: number, y2: number, highlighted: boolean) {
     const g = this.gfx;
-    const color = LINK_COLORS[this.type] ?? 0x999999;
     g.clear();
-    g.lineStyle(1.5, color, 0.5 * alpha);
     g.moveTo(x1, y1);
     g.lineTo(x2, y2);
+    g.stroke({
+      color: highlighted ? LINK_HIGHLIGHT : LINK_COLOR,
+      alpha: highlighted ? 0.6 : 0.25,
+      width: highlighted ? 2 : 1,
+    });
   }
 }
 
@@ -137,6 +117,7 @@ export interface GraphCanvasProps {
   onDragMove: (x: number, y: number) => void;
   onDragEnd: (id: string) => void;
   onTick: () => void;
+  dataVersion: number; // increments when data changes, triggers graphics sync
 }
 
 // ─── Component ──────────────────────────────────────────────────
@@ -154,98 +135,65 @@ export default function GraphCanvas({
   onDragMove,
   onDragEnd,
   onTick,
+  dataVersion,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [appReady, setAppReady] = useState(false);
   const appRef = useRef<PIXI.Application | null>(null);
   const hangerRef = useRef<PIXI.Container | null>(null);
   const nodeGfxRef = useRef<Map<string, GraphNodeGfx>>(new Map());
   const linkGfxRef = useRef<GraphLinkGfx[]>([]);
   const animFrameRef = useRef<number>(0);
   const dragRef = useRef<{ id: string } | null>(null);
-  const scaleRef = useRef({ current: 0.5, target: 0.5 });
+  const scaleRef = useRef({ current: 1, target: 1 });
   const panRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
 
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
 
-  // ── PixiJS 初始化 (once) ──────────────────────────────────
+  // ── PixiJS 初始化 (当 dimensions 就绪时) ──────────────────
 
   useEffect(() => {
     if (!containerRef.current) return;
     if (width === 0 || height === 0) return;
-    if (appRef.current) return; // already initialized
+    if (appRef.current) return;
 
     const app = new PIXI.Application();
-    const init = async () => {
-      await app.init({
-        width,
-        height,
-        backgroundAlpha: 0,
-        antialias: true,
-        resolution: window.devicePixelRatio || 1,
-        autoDensity: true,
-      });
-
-      containerRef.current!.appendChild(app.canvas);
-
-      const hanger = new PIXI.Container();
-      app.stage.addChild(hanger);
-      hangerRef.current = hanger;
-
-      scaleRef.current.current = 0.5;
-      scaleRef.current.target = 0.5;
-      panRef.current.x = width / 2;
-      panRef.current.y = height / 2;
-      panRef.current.targetX = panRef.current.x;
-      panRef.current.targetY = panRef.current.y;
-      hanger.x = panRef.current.x;
-      hanger.y = panRef.current.y;
-      hanger.scale.set(0.5);
-
-      appRef.current = app;
-    };
-    init();
-
-    return () => {
-      // cleanup handled by key change
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── 当 width/height 从 0 变为有值时，初始化 ────────────────
-
-  useEffect(() => {
-    if (!appRef.current && width > 0 && height > 0 && containerRef.current) {
-      const app = new PIXI.Application();
-      const initApp = async () => {
+    const initApp = async () => {
+      try {
         await app.init({
           width,
           height,
           backgroundAlpha: 0,
           antialias: true,
+          autoStart: false, // we control rendering via rAF
           resolution: window.devicePixelRatio || 1,
           autoDensity: true,
         });
+
         containerRef.current!.appendChild(app.canvas);
 
         const hanger = new PIXI.Container();
         app.stage.addChild(hanger);
         hangerRef.current = hanger;
 
-        scaleRef.current.current = 0.5;
-        scaleRef.current.target = 0.5;
-        panRef.current.x = width / 2;
-        panRef.current.y = height / 2;
-        panRef.current.targetX = panRef.current.x;
-        panRef.current.targetY = panRef.current.y;
-        hanger.x = panRef.current.x;
-        hanger.y = panRef.current.y;
-        hanger.scale.set(0.5);
+        scaleRef.current.current = 1;
+        scaleRef.current.target = 1;
+        panRef.current.x = 0;
+        panRef.current.y = 0;
+        panRef.current.targetX = 0;
+        panRef.current.targetY = 0;
+        hanger.x = 0;
+        hanger.y = 0;
+        hanger.scale.set(1);
 
         appRef.current = app;
-      };
-      initApp();
-    }
+        setAppReady(true);
+      } catch (e) {
+        console.error("[GraphCanvas] PIXI init FAILED:", e);
+      }
+    };
+    initApp();
   }, [width, height]);
 
   // ── Cleanup on unmount ────────────────────────────────────
@@ -266,6 +214,7 @@ export default function GraphCanvas({
   // ── 事件绑定 ───────────────────────────────────────────────
 
   useEffect(() => {
+    if (!appReady) return;
     const app = appRef.current;
     const hanger = hangerRef.current;
     if (!app || !hanger) return;
@@ -372,11 +321,12 @@ export default function GraphCanvas({
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointerleave", onPointerUp);
     };
-  }, [width, height, nodesRef, onNodeHover, onDragStart, onDragMove, onDragEnd]);
+  }, [appReady, width, height, nodesRef, onNodeHover, onDragStart, onDragMove, onDragEnd]);
 
   // ── 数据同步：创建/删除 nodeGfx 和 linkGfx ──────────────────
 
   useEffect(() => {
+    if (!appReady) return;
     const app = appRef.current;
     const hanger = hangerRef.current;
     if (!app || !hanger) return;
@@ -426,7 +376,7 @@ export default function GraphCanvas({
       gfx.circle.off("pointertap");
       gfx.circle.on("pointertap", () => onNodeClick(id));
     }
-  }, [nodesRef, linksRef, onNodeClick]);
+  }, [appReady, dataVersion, onNodeClick]);
 
   // ── 渲染循环 ───────────────────────────────────────────────
 
@@ -436,6 +386,7 @@ export default function GraphCanvas({
   selectedRef.current = selectedNodeId;
 
   useEffect(() => {
+    if (!appReady) return;
     const app = appRef.current;
     const hanger = hangerRef.current;
     if (!app || !hanger) return;
@@ -445,15 +396,16 @@ export default function GraphCanvas({
     const loop = () => {
       if (!running) return;
 
+      // Continuous physics — tick every frame for organic movement
       onTickRef.current();
 
       const s = scaleRef.current;
       const p = panRef.current;
 
-      // lerp zoom + pan
-      s.current = lerp(s.current, s.target, 0.15);
-      p.x = lerp(p.x, p.targetX, 0.15);
-      p.y = lerp(p.y, p.targetY, 0.15);
+      // Fast lerp (Obsidian uses 0.85 for zoom/pan)
+      s.current = lerp(s.current, s.target, 0.85);
+      p.x = lerp(p.x, p.targetX, 0.85);
+      p.y = lerp(p.y, p.targetY, 0.85);
 
       hanger.x = p.x;
       hanger.y = p.y;
@@ -461,40 +413,66 @@ export default function GraphCanvas({
 
       const hovered = hoveredRef.current;
       const selected = selectedRef.current;
+      const highlightId = hovered || selected;
 
-      // 绘制节点
       const nodeGfxMap = nodeGfxRef.current;
       const nodes = nodesRef.current;
+
+      // Build connected set for Obsidian-style highlight
+      const connectedIds = new Set<string>();
+      if (highlightId) {
+        connectedIds.add(highlightId);
+        for (const l of linkGfxRef.current) {
+          if (l.sourceId === highlightId) connectedIds.add(l.targetId);
+          if (l.targetId === highlightId) connectedIds.add(l.sourceId);
+        }
+      }
+
+      // Draw nodes
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
         const gfx = nodeGfxMap.get(node.id);
         if (!gfx) continue;
 
-        const highlighted = node.id === hovered || node.id === selected;
-        gfx.drawCircle(highlighted, false);
+        // Lerp towards target position for smooth movement
+        const tx = (node as any)._tx;
+        const ty = (node as any)._ty;
+        if (tx != null && ty != null) {
+          node.x = lerp(node.x, tx, 0.6);
+          node.y = lerp(node.y, ty, 0.6);
+        }
+
+        const isFocused = node.id === highlightId;
+        const isConnected = highlightId && connectedIds.has(node.id);
+        const shouldDim = highlightId ? (!isFocused && !isConnected) : false;
+
+        gfx.drawCircle(isFocused, shouldDim);
 
         gfx.circle.x = node.x;
         gfx.circle.y = node.y;
 
-        const fontSize = highlighted ? 14 : 12;
-        gfx.text.style.fontSize = fontSize;
-        gfx.text.style.fill = highlighted ? C.primary : C.text;
+        gfx.text.style.fontSize = isFocused ? 14 : 12;
+        gfx.text.style.fill = isFocused ? C.text : C.textMuted;
         gfx.text.x = node.x;
         gfx.text.y = node.y + gfx.getSize() + 6;
         gfx.text.alpha = Math.min(1, Math.max(0, (s.current - 0.25) * 2));
+        if (shouldDim) gfx.text.alpha *= 0.3;
       }
 
-      // 绘制边
+      // Draw links
       const links = linkGfxRef.current;
       for (let i = 0; i < links.length; i++) {
         const l = links[i];
         const srcGfx = nodeGfxMap.get(l.sourceId);
         const tgtGfx = nodeGfxMap.get(l.targetId);
         if (!srcGfx || !tgtGfx) continue;
+        const isHighlighted = highlightId
+          ? (l.sourceId === highlightId || l.targetId === highlightId)
+          : false;
         l.drawLine(
           srcGfx.circle.x, srcGfx.circle.y,
           tgtGfx.circle.x, tgtGfx.circle.y,
-          1,
+          isHighlighted,
         );
       }
 
@@ -508,7 +486,7 @@ export default function GraphCanvas({
       running = false;
       cancelAnimationFrame(animFrameRef.current);
     };
-  }, [nodesRef, linksRef]);
+  }, [appReady]);
 
   return (
     <div

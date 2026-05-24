@@ -4,7 +4,7 @@ import type { CryptoStore } from "@/lib/cryptoStore";
 export interface GraphNode {
   id: string;
   label: string;
-  val: number; // relationshipScore normalized to 0-1 range
+  val: number; // number of connections (links) for this node, determines node size
   group: string; // primary career tag
   city: string;
   lastContact: string;
@@ -87,7 +87,7 @@ export async function getGraphData(filter?: GraphFilter, userId?: string, store?
     return {
       id: person.id,
       label: person.name,
-      val: person.relationshipScore / 100, // normalize to 0-1 for node size
+      val: 1, // placeholder — computed from link count after links are built
       group: firstCareer,
       city: firstCity, // use first base city if available
       lastContact: person.lastContactDate.toISOString(),
@@ -378,6 +378,18 @@ export async function getGraphData(filter?: GraphFilter, userId?: string, store?
 
   if (filter?.minStrength !== undefined) {
     filteredLinks = filteredLinks.filter(link => link.strength >= filter.minStrength!);
+  }
+
+  // Compute each node's connection count (Obsidian-style: size from link count)
+  const connectionCounts = new Map<string, number>();
+  for (const link of filteredLinks) {
+    const src = typeof link.source === "string" ? link.source : (link.source as any)?.id;
+    const tgt = typeof link.target === "string" ? link.target : (link.target as any)?.id;
+    if (src) connectionCounts.set(src, (connectionCounts.get(src) || 0) + 1);
+    if (tgt) connectionCounts.set(tgt, (connectionCounts.get(tgt) || 0) + 1);
+  }
+  for (const node of nodes) {
+    node.val = connectionCounts.get(node.id) || 0;
   }
 
   return {
