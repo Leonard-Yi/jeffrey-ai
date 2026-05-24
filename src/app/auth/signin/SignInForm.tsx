@@ -10,7 +10,16 @@ import { C } from "@/lib/design-tokens";
 export default function SignInForm() {
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl") || "/input";
-  const callbackUrl = rawCallbackUrl.startsWith("/") ? rawCallbackUrl : "/";
+  const isValidCallbackUrl = (url: string): string => {
+    if (url.startsWith("/")) return url;
+    try {
+      const u = new URL(url);
+      // Only allow same-origin callback URLs (prevent open redirect)
+      if (u.origin === window.location.origin) return u.pathname;
+    } catch {}
+    return "/";
+  };
+  const callbackUrl = isValidCallbackUrl(rawCallbackUrl);
   const error = searchParams.get("error");
   const reason = searchParams.get("reason");
 
@@ -24,16 +33,27 @@ export default function SignInForm() {
     setLoading(true);
     setLocalError("");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (result?.ok) {
-      window.location.href = callbackUrl;
-    } else {
-      setLocalError("邮箱或密码错误");
+      if (result?.ok) {
+        const targetUrl = result.url || callbackUrl;
+        window.location.href = targetUrl;
+      } else {
+        const isCredentialsError = result?.error === "CredentialsSignin";
+        setLocalError(
+          isCredentialsError
+            ? "邮箱或密码错误"
+            : result?.error || "登录失败，请重试",
+        );
+        setLoading(false);
+      }
+    } catch {
+      setLocalError("网络错误，请检查网络连接后重试");
       setLoading(false);
     }
   }

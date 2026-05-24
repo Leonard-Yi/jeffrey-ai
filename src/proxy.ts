@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/db"
+import { NextResponse } from "next/server"
 
 const PUBLIC_PATHS = [
   "/",
@@ -14,51 +13,28 @@ const PUBLIC_PATHS = [
   "/auth/error",
 ]
 
-export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+export default auth((req) => {
+  const { pathname } = req.nextUrl
 
-  // Allow static resources and API routes
+  // Allow public paths without auth check
   if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth") ||
-    pathname === "/favicon.ico" ||
-    pathname.includes(".")
+    PUBLIC_PATHS.includes(pathname) ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/api/")
   ) {
     return NextResponse.next()
   }
 
-  // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith("/auth/"))) {
-    return NextResponse.next()
-  }
-
-  // Feature pages require authentication
-  const session = await auth()
-
-  if (!session) {
-    const signinUrl = new URL("/auth/signin", request.url)
+  // Protected pages
+  if (!req.auth) {
+    const signinUrl = new URL("/auth/signin", req.nextUrl.origin)
+    signinUrl.searchParams.set("callbackUrl", req.nextUrl.href)
     signinUrl.searchParams.set("reason", "unauthenticated")
     return NextResponse.redirect(signinUrl)
   }
-
-  // Check email verification
-  if (!session.user?.id) {
-    const signinUrl = new URL("/auth/signin", request.url)
-    signinUrl.searchParams.set("reason", "unauthenticated")
-    return NextResponse.redirect(signinUrl)
-  }
-
-  // 邮箱验证已暂时禁用
-  // const user = await prisma.user.findUnique({
-  //   where: { id: session.user.id },
-  //   select: { emailVerified: true },
-  // })
-  // if (!user?.emailVerified) {
-  //   return NextResponse.redirect(new URL("/auth/verify-request", request.url))
-  // }
 
   return NextResponse.next()
-}
+})
 
 export const config = {
   matcher: [
@@ -66,6 +42,6 @@ export const config = {
     "/graph",
     "/suggestions",
     "/members",
-    "/((?!auth|api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/members/:path*",
   ],
 }

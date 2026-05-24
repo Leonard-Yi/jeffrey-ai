@@ -60,9 +60,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       // On sign in, derive encryption keys from password and store in JWT
       if (trigger === "signIn" && (user as any)?.password && (user as any)?.keySalt) {
-        const keys = deriveKeys((user as any).password as string, (user as any).keySalt as string);
-        token.encKey = keys.encKey.toString("base64");
-        token.pseudoKey = keys.pseudoKey.toString("base64");
+        try {
+          const keys = deriveKeys((user as any).password as string, (user as any).keySalt as string);
+          token.encKey = keys.encKey.toString("base64");
+          token.pseudoKey = keys.pseudoKey.toString("base64");
+        } catch (e) {
+          console.error("Failed to derive encryption keys during sign-in, continuing without encryption:", e);
+        }
       }
       return token
     },
