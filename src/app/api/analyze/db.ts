@@ -1,10 +1,9 @@
 // 用于 Next.js API 的数据库存储函数
 // 使用共享的 Prisma 单例
 
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { buildPersonSearchText, generateEmbedding, type WeightedTag } from "@/lib/embedding";
 import { mergeTags } from "@/lib/dbUtils";
+import type { CryptoStore } from "@/lib/cryptoStore";
 
 interface ExtractionData {
   persons: Array<{
@@ -28,11 +27,12 @@ interface ExtractionData {
 async function upsertPerson(
   extracted: { name?: string; careers?: WeightedTag[]; interests?: WeightedTag[]; vibeTags?: string[] },
   interactionDate: Date,
-  userId: string
+  userId: string,
+  store: CryptoStore
 ): Promise<string> {
   console.log("[Jeffrey.AI] upsertPerson called:", { name: extracted.name, userId, interactionDate });
   const name = extracted.name || "未知";
-  const existing = await prisma.person.findFirst({
+  const existing = await store.person.findFirst({
     where: { name, userId },
   });
   console.log("[Jeffrey.AI] Existing person lookup:", { name, userId, found: !!existing });
@@ -43,7 +43,7 @@ async function upsertPerson(
     const mergedVibes = Array.from(new Set([...existing.vibeTags, ...(extracted.vibeTags || [])]));
     const newScore = Math.min(100, existing.relationshipScore + 2);
 
-    await prisma.person.update({
+    await store.person.update({
       where: { id: existing.id },
       data: {
         careers: mergedCareers,
@@ -67,7 +67,7 @@ async function upsertPerson(
     } catch (embErr) {
       console.error("[Jeffrey.AI] Failed to generate embedding:", embErr);
     }
-    await prisma.person.update({
+    await store.person.update({
       where: { id: existing.id },
       data: { searchText, embedding },
     });
@@ -89,7 +89,7 @@ async function upsertPerson(
   }
 
   console.log("[Jeffrey.AI] Creating person:", { name, userId, embeddingLength: embedding.length });
-  const person = await prisma.person.create({
+  const person = await store.person.create({
     data: {
       name,
       userId,
@@ -107,7 +107,7 @@ async function upsertPerson(
   return person.id;
 }
 
-export async function saveExtractionToDb(data: ExtractionData, createInteraction = false, userId?: string): Promise<{
+export async function saveExtractionToDb(data: ExtractionData, createInteraction = false, userId?: string, store?: CryptoStore): Promise<{
   interactionId: string;
   personIds: string[];
 }> {
@@ -145,7 +145,8 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
           vibeTags: p.vibeTags || [],
         },
         interactionDate,
-        userId!
+        userId!,
+        store!
       )
     )
   );
@@ -168,7 +169,7 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
   });
 
   console.log("[Jeffrey.AI] About to create interaction for userId:", userId);
-  const interaction = await prisma.interaction.create({
+  const interaction = await store.interaction.create({
     data: {
       userId: userId!,
       date: interactionDate,
