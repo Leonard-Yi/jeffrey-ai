@@ -100,7 +100,9 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   }
 
   if (msg.run && sim) {
-    sim.alpha(Math.max(sim.alpha(), msg.alpha ?? 0.3));
+    // Only force alpha if explicitly provided (drag re-heat).
+    // Otherwise let it decay naturally — stops nodes from spinning forever.
+    if (msg.alpha !== undefined) sim.alpha(Math.max(sim.alpha(), msg.alpha));
     sim.tick(10);
 
     const posBuffer = new Float32Array(simNodes.length * 2);

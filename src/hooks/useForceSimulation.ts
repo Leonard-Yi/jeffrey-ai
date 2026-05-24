@@ -111,7 +111,8 @@ export function useForceSimulation(
   const tick = useCallback(() => {
     const worker = workerRef.current;
     if (!worker || !readyRef.current) return;
-    worker.postMessage({ alpha: 0.3, run: true });
+    // No alpha — let simulation cool down naturally. Only drag re-heats.
+    worker.postMessage({ run: true });
   }, []);
 
   const fixNode = useCallback(
@@ -124,6 +125,8 @@ export function useForceSimulation(
         node.y = y;
         workerRef.current?.postMessage({
           forceNode: { id: nodeId, x, y },
+          alpha: 0.3, // re-heat simulation on drag
+          run: true,
         });
       }
     },
