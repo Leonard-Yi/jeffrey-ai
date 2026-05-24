@@ -58,6 +58,9 @@ export function encrypt(value: string, key: Buffer): string {
 export function decrypt(encoded: string | null | undefined, key: Buffer): string {
   if (!encoded || encoded === "—") return encoded; // passthrough null/empty markers
 
+  // Must start with version prefix; plaintext with colons (e.g. "姓名: 老王") is not encrypted
+  if (!encoded.startsWith("v1:")) return encoded;
+
   const parts = encoded.split(":");
   if (parts.length !== 3) return encoded; // not encrypted
 

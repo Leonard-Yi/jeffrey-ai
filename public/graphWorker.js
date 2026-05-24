@@ -877,7 +877,7 @@
     sim = simulation_default(nodes).force("center", center_default(centerX, centerY).strength(0.01)).force("charge", manyBody_default().strength(-REPEL_FORCE)).force("collision", collide_default().radius((d) => Math.sqrt(d.val) * 10 + 20)).force(
       "link",
       link_default(resolvedLinks).distance(LINK_DISTANCE).strength(LINK_FORCE)
-    ).velocityDecay(0.99).alphaDecay(0.5).stop();
+    ).velocityDecay(0.6).alphaDecay(0.05).stop();
   }
   self.onmessage = (event) => {
     const msg = event.data;

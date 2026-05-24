@@ -52,16 +52,17 @@ export function useForceSimulation(
         return;
       }
 
-      // 位置更新
+      // 位置更新 — store target positions, render loop will lerp
       const { ids, positions } = data;
       if (!ids || !positions) return;
 
       const posArray = new Float32Array(positions);
       for (let i = 0; i < ids.length; i++) {
         const node = nodesRef.current.find(n => n.id === ids[i]);
-        if (node) {
-          node.x = posArray[i * 2];
-          node.y = posArray[i * 2 + 1];
+        if (node && node.fx == null) {
+          // Store as target for lerp in render loop
+          (node as any)._tx = posArray[i * 2];
+          (node as any)._ty = posArray[i * 2 + 1];
         }
       }
     };
@@ -84,13 +85,11 @@ export function useForceSimulation(
     if (!worker || !nodesRef.current.length) return;
     if (canvasSize.width === 0 || canvasSize.height === 0) return;
 
-    // 构建 nodes map → { id: [x, y] }
     const nodeMap: Record<string, [number, number]> = {};
     for (const n of nodesRef.current) {
       nodeMap[n.id] = [n.x, n.y];
     }
 
-    // 构建 links → [sourceId, targetId]
     const linkPairs: [string, string][] = [];
     const nodeIds = new Set(nodesRef.current.map(n => n.id));
     for (const link of linksRef.current) {
@@ -121,6 +120,8 @@ export function useForceSimulation(
       if (node) {
         node.fx = x;
         node.fy = y;
+        node.x = x; // render position follows drag
+        node.y = y;
         workerRef.current?.postMessage({
           forceNode: { id: nodeId, x, y },
         });

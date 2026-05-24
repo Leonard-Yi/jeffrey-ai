@@ -62,8 +62,8 @@ function initSimulation(
       .distance(LINK_DISTANCE)
       .strength(LINK_FORCE),
     )
-    .velocityDecay(0.99)
-    .alphaDecay(0.5)
+    .velocityDecay(0.6)   // softer damping for organic drift
+    .alphaDecay(0.05)    // slow decay, simulation stays alive longer
     .stop();
 }
 

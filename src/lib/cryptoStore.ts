@@ -60,9 +60,15 @@ function decryptField(fieldName: string, value: unknown, key: Buffer): unknown {
   const meta = FIELD_META[fieldName];
   if (!meta) return value;
   switch (meta.type) {
-    case "string":   return decrypt(value as string, key);
-    case "json":     return decryptJson(value as string, key);
-    case "string[]": return decryptStringArray(value as string[], key);
+    case "string":
+      if (typeof value !== "string") return value; // legacy plaintext
+      return decrypt(value, key);
+    case "json":
+      if (typeof value !== "string") return value; // already parsed JSONB (legacy plaintext)
+      return decryptJson(value, key);
+    case "string[]":
+      if (!Array.isArray(value)) return value; // legacy plaintext
+      return decryptStringArray(value as string[], key);
     default: return value;
   }
 }

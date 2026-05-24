@@ -637,3 +637,31 @@ const sim = forceSimulationGPU(nodes)
 2. ✅ 实时物理模拟 — 拖拽时相邻节点跟随
 3. ✅ 适当阻尼 (damping) — 平滑自然落位
 4. ✅ 变长边渲染 — Canvas/WebGL 支持曲线边
+
+---
+
+## 调试经验记录 (2026-05-24) — 加密系统部署后的数据兼容性问题
+
+### 背景
+
+加密系统实现计划的 Phase 1-2 被部署到 master 分支后，所有 14 个 API route 改为使用 `getEncryptionKeys()` + `cryptoStore`。旧用户（加密部署前注册的）没有 `keySalt`，导致登录后 session 中没有加密密钥，所有 API 返回 401。
+
+### 发现的三层 bug
+
+| 层 | 症状 | 根因 | 修复 |
+|---|---|---|---|
+| **认证层** | 前端显示 0 联系人，API 返回 401 | 旧用户无 `keySalt`，`getEncryptionKeys()` 返回 null | 给旧用户通过脚本补 `keySalt`（`crypto.randomBytes(16).toString("base64")`） |
+| **数据格式层** | `TypeError: t.split is not a function` | `decryptField` 对 JSONB 字段（careers/interests 等）调用 `decryptJson(value as string)`，但 Prisma 已将其解析为数组/对象，非字符串 | `decryptField` 对 json/string[] 类型加 `typeof` / `Array.isArray` 检查，非预期类型直接透传 |
+| **内容误判层** | `Invalid authentication tag length: 2` | 搜索文本 "姓名: 老王; 性格: 靠谱" 恰好含 2 个冒号，被 `decrypt` 误判为加密格式 (`v1:nonce:ciphertext`)，尝试提取 auth tag 失败 | `decrypt` 开头加 `encoded.startsWith("v1:")` 检查，不匹配加密前缀的直接透传 |
+
+### 教训
+
+1. **加密迁移必须考虑「旧数据是明文」这一事实**。`decrypt` 函数的"透传"逻辑依赖于「明文数据不会碰巧长得像加密数据」的假设，但这个假设不可靠——`searchText` 中的中文冒号格式（"姓名: 张三"）恰好 2 个冒号，被误判为 `v1:nonce:data`。
+
+2. **版本前缀校验是必须的，不是可选的**。加密格式 `v1:base64:base64` 中的 `v1` 前缀不仅标识版本，更是区分「明文碰巧有冒号」和「真加密数据」的唯一可靠标记。`decrypt` 在没有验证版本前缀的情况下仅凭冒号数量判断是「过度自信」的。
+
+3. **Prisma 的 JSONB 解析行为需要特殊处理**。`Json?` 类型字段（careers, interests, actionItems, icebreakerData, embedding）在写入时是字符串（`encryptJson` → `string`），但读取时 Prisma 自动解析为 JS 对象。加密系统中 `decryptField` 必须意识到同一个字段在写入路径和读取路径的类型不对称。
+
+4. **加密系统部署前应该跑「明文数据兼容性检查」**——遍历所有现有数据，对每个加密字段调用 `decryptField`，确保不会抛异常。这种 smoke test 可以在 1 分钟内发现上述所有问题，而不需要等到用户报告 "0 个联系人"。
+
+5. **Git worktree 隔离不完美**。加密实现虽在独立 worktree，但合并到 master 后影响了所有 API route。对破坏性变更（所有读路径都变），合并前必须确认旧数据兼容性。

@@ -20,6 +20,7 @@ export default function JeffreyGraphPage() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [filter, setFilter] = useState({ group: '', linkType: '', minStrength: 0 });
+  const [dataVersion, setDataVersion] = useState(0); // triggers GraphCanvas sync on data change
 
   // Canvas dimensions — 初始为 0，等 ResizeObserver 给出真实尺寸后再渲染画布
   const containerRef = useRef<HTMLDivElement>(null);
@@ -133,6 +134,7 @@ export default function JeffreyGraphPage() {
 
     // Start physics simulation
     initSimulation();
+    setDataVersion(v => v + 1); // trigger GraphCanvas graphics sync
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graphData]); // 故意不依赖 canvasSize，避免尺寸变化时重置节点位置
 
@@ -149,14 +151,11 @@ export default function JeffreyGraphPage() {
   }, [fixNode]);
 
   const handleDragMove = useCallback((x: number, y: number) => {
-    if (nodesRef.current.length > 0) {
-      const dragged = nodesRef.current.find(n => n.fx != null);
-      if (dragged) {
-        dragged.fx = x;
-        dragged.fy = y;
-      }
+    const dragged = nodesRef.current.find(n => n.fx != null);
+    if (dragged) {
+      fixNode(dragged.id, x, y); // updates main thread + tells Worker
     }
-  }, []);
+  }, [fixNode]);
 
   const handleDragEnd = useCallback((id: string) => {
     releaseNode(id);
@@ -228,6 +227,7 @@ export default function JeffreyGraphPage() {
           onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
           onTick={tick}
+          dataVersion={dataVersion}
         />
         {loading && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,243,239,0.7)' }}>
