@@ -79,10 +79,10 @@ export async function backfillLegacyEncryption(
       }
     }
 
-    // JSON fields (plaintext = actual object, encrypted = string starting with v1:)
+    // JSON fields — plaintext is any object (array or plain), encrypted is a v1: string
     for (const f of ["careers", "interests", "icebreakerData"] as const) {
       const v = p[f];
-      if (v && typeof v === "object" && !Array.isArray(v)) {
+      if (v != null && typeof v === "object") {
         data[f] = encryptJson(v, encKey);
       }
     }
@@ -101,7 +101,16 @@ export async function backfillLegacyEncryption(
     }
   }
 
-  // Interactions: detect plaintext by checking coreMemories first element
+  // Interactions: quick check — if first record is already encrypted, skip all
+  const sampleInteraction = await store.raw.interaction.findFirst({
+    where: { userId },
+    select: { coreMemories: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!sampleInteraction || (Array.isArray(sampleInteraction.coreMemories) && sampleInteraction.coreMemories.length > 0 && typeof sampleInteraction.coreMemories[0] === "string" && sampleInteraction.coreMemories[0].startsWith("v1:"))) {
+    return count; // already backfilled — nothing to do for interactions
+  }
+
   const rawInteractions = await store.raw.interaction.findMany({
     where: { userId },
     select: {
@@ -120,8 +129,8 @@ export async function backfillLegacyEncryption(
       }
     }
 
-    // actionItems: JSON field
-    if (ix.actionItems && typeof ix.actionItems === "object" && !Array.isArray(ix.actionItems)) {
+    // actionItems: JSON field — plaintext is array/object, encrypted is v1: string
+    if (ix.actionItems != null && typeof ix.actionItems === "object") {
       data.actionItems = encryptJson(ix.actionItems, encKey);
     }
 
