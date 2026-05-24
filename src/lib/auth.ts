@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcrypt"
 import { prisma } from "@/lib/db"
+import { deriveKeys } from "@/lib/crypto"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -30,7 +31,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (!isValid) return null
 
-          return { id: user.id, email: user.email, name: user.name }
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            // Pass through for JWT callback to derive keys
+            password: credentials.password as string,
+            keySalt: user.keySalt,
+          } as any
         } catch (err) {
           console.error("Auth error:", err)
           return null
@@ -46,12 +54,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     newUser: "/auth/signup",
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.id = String(user.id)
+    async jwt({ token, user, trigger }) {
+      if (user) {
+        token.id = String(user.id);
+      }
+      // On sign in, derive encryption keys from password and store in JWT
+      if (trigger === "signIn" && (user as any)?.password && (user as any)?.keySalt) {
+        const keys = deriveKeys((user as any).password as string, (user as any).keySalt as string);
+        token.encKey = keys.encKey.toString("base64");
+        token.pseudoKey = keys.pseudoKey.toString("base64");
+      }
       return token
     },
     async session({ session, token }) {
-      if (session.user && token.id) session.user.id = token.id as string
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
+        session.user.encKey = token.encKey as string;
+        session.user.pseudoKey = token.pseudoKey as string;
+      }
       return session
     }
   }
