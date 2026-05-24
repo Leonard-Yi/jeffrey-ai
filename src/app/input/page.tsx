@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import AmbiguousPrompt from '@/components/AmbiguousPrompt';
 import NameResolutionPrompt from '@/components/NameResolutionPrompt';
@@ -53,7 +54,11 @@ interface RecentEntry {
   timestamp: string;
   status: 'complete' | 'pending';
   relativeTime: string;
+  /** Unix ms — used to prune entries older than 7 days */
+  createdAt: number;
 }
+
+const RECENT_DAYS = 7;
 
 interface ChatMessage {
   role: 'user' | 'jeffrey';
@@ -172,18 +177,34 @@ const JeffreyInputPage = () => {
   const [processingSeconds, setProcessingSeconds] = useState(0);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
+  const { data: session } = useSession();
   const [randomQuote] = useState(() => getRandomInputQuote());
 
+  const getStorageKey = () => {
+    const uid = session?.user?.id || session?.user?.email || 'anonymous';
+    return `jeffrey_recent_entries_${uid}`;
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem('jeffrey_recent_entries');
+    if (!session?.user) return;
+    const cutoff = Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000;
+    const saved = localStorage.getItem(getStorageKey());
     if (saved) {
-      try { setRecentEntries(JSON.parse(saved)); } catch (_) {}
+      try {
+        const entries: RecentEntry[] = JSON.parse(saved);
+        // Prune entries older than RECENT_DAYS
+        const fresh = entries.filter(e => e.createdAt >= cutoff);
+        setRecentEntries(fresh);
+        if (fresh.length !== entries.length) {
+          localStorage.setItem(getStorageKey(), JSON.stringify(fresh));
+        }
+      } catch (_) {}
     }
     fetch('/api/members/table')
       .then(r => r.json())
       .then(d => setExistingPersons(d.rows || []))
       .catch(() => {});
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -243,10 +264,10 @@ const JeffreyInputPage = () => {
       setStatus(data.status);
       setAmbiguousPersons(data.ambiguousPersons || []);
       if (data.status === 'complete') {
-        const entry: RecentEntry = { id: Date.now().toString(), text: resolvedText.slice(0, 60) + (resolvedText.length > 60 ? '...' : ''), timestamp: new Date().toLocaleString(), status: data.status, relativeTime: '刚刚' };
+        const entry: RecentEntry = { id: Date.now().toString(), text: resolvedText.slice(0, 60) + (resolvedText.length > 60 ? '...' : ''), timestamp: new Date().toLocaleString(), status: data.status, relativeTime: '刚刚', createdAt: Date.now() };
         const updated = [entry, ...recentEntries.slice(0, 4)];
         setRecentEntries(updated);
-        localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updated));
+        localStorage.setItem(getStorageKey(), JSON.stringify(updated));
         setDialogueComplete(true);
       } else if (data.status === 'pending' && data.followUpQuestion) {
         setConversationHistory([{ role: 'jeffrey', content: data.followUpQuestion, timestamp: new Date().toLocaleString('zh-CN') }]);
@@ -305,10 +326,10 @@ const JeffreyInputPage = () => {
         const jeffreyMsg: ChatMessage = { role: 'jeffrey', content: data.jeffreyComment || '信息已保存。', timestamp: new Date().toLocaleString('zh-CN') };
         setConversationHistory(p => [...p, jeffreyMsg]);
         if (!isFollowUp) {
-          const entry: RecentEntry = { id: Date.now().toString(), text: textToSubmit.slice(0, 60) + (textToSubmit.length > 60 ? '...' : ''), timestamp: new Date().toLocaleString(), status: data.status, relativeTime: '刚刚' };
+          const entry: RecentEntry = { id: Date.now().toString(), text: textToSubmit.slice(0, 60) + (textToSubmit.length > 60 ? '...' : ''), timestamp: new Date().toLocaleString(), status: data.status, relativeTime: '刚刚', createdAt: Date.now() };
           const updated = [entry, ...recentEntries.slice(0, 4)];
           setRecentEntries(updated);
-          localStorage.setItem('jeffrey_recent_entries', JSON.stringify(updated));
+          localStorage.setItem(getStorageKey(), JSON.stringify(updated));
           setDialogueComplete(true);
         } else { setDialogueComplete(true); }
       } else if (data.status === 'pending' && data.followUpQuestion) {
