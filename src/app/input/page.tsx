@@ -381,7 +381,11 @@ const JeffreyInputPage = () => {
       console.log('[DEBUG] Calling analyze API...');
       await handleSubmitWithText(textToSubmit, !!followUpReply);
       if (followUpReply) { setFollowUpReply(''); setInputText(''); }
-    } catch {} finally { if (!showResolutionPrompt) setIsProcessing(false); }
+    } catch {
+      setErrorMessage('分析失败，请重试');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleClear = () => {
