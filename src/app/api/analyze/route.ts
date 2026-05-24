@@ -5,6 +5,8 @@ import { WeightedTagSchema, ActionItemSchema } from "@/schemas/core";
 import { createCryptoStore } from "@/lib/cryptoStore";
 import { getEncryptionKeys } from "@/lib/getKeys";
 import { prisma } from "@/lib/db";
+import { createPseudonymizer } from "@/lib/pseudonymizer";
+import { safeLog } from "@/lib/safeLog";
 
 // 复用 schemas/core 的基础类型
 const ExtractedPersonSchema = z.object({
@@ -212,16 +214,18 @@ export async function POST(request: Request) {
   if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { encKey, pseudoKey: _pseudoKey, userId } = keys;
+  const { encKey, pseudoKey, userId } = keys;
   const store = createCryptoStore(prisma, encKey);
+
+  // Create pseudonymizer (loads pseudonym map into memory)
+  const pseudo = await createPseudonymizer(userId, encKey, pseudoKey, store);
 
   try {
     const rawBody = await request.text();
-    console.log("[Jeffrey.AI] Raw body:", rawBody);
+    safeLog("Request received", "(text pseudonymized, see next log line)");
 
     const { text } = JSON.parse(rawBody);
 
-    console.log("[Jeffrey.AI] Received text:", text);
     console.log("[Jeffrey.AI] Text type:", typeof text);
     console.log("[Jeffrey.AI] Text length:", text?.length);
 
@@ -305,7 +309,10 @@ export async function POST(request: Request) {
     }
 
     const normalizedText = normalizeRelativeDates(text);
-    console.log("[Jeffrey.AI] Normalized text:", normalizedText);
+
+    // Pseudonymize user input before sending to LLM
+    const { sanitizedText } = await pseudo.pseudonymize(normalizedText);
+    safeLog("Normalized text (pseudonymized)", sanitizedText);
 
     // 添加超时控制
     const controller = new AbortController();
@@ -326,7 +333,7 @@ export async function POST(request: Request) {
           model: getModel(),
           system: SYSTEM_PROMPT,
           messages: [
-            { role: "user", content: normalizedText },
+            { role: "user", content: sanitizedText },
           ],
           tools: [extractionTool],
           temperature: 0.3,
@@ -384,6 +391,17 @@ export async function POST(request: Request) {
       }
     } else {
       throw new Error("LLM returned empty response: " + JSON.stringify(apiData));
+    }
+
+    // Depseudonymize LLM output
+    const rawJsonStr = JSON.stringify(rawJson);
+    const depseudonymizedStr = await pseudo.depseudonymize(rawJsonStr);
+    rawJson = JSON.parse(depseudonymizedStr);
+
+    // Check for leaks
+    const leaks = pseudo.checkLeaks(JSON.stringify(rawJson));
+    if (leaks.length > 0) {
+      console.warn("[Jeffrey.AI] ENTITY LEAK DETECTED:", leaks.join(", "), "in LLM output");
     }
 
     // MiniMax may return null instead of undefined — normalize before Zod validation
