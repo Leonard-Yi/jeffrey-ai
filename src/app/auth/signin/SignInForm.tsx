@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AuthCard } from "../_components/AuthCard";
 import { C } from "@/lib/design-tokens";
 
 export default function SignInForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl") || "/input";
   const callbackUrl = rawCallbackUrl.startsWith("/") ? rawCallbackUrl : "/";
@@ -32,7 +31,7 @@ export default function SignInForm() {
     });
 
     if (result?.ok) {
-      router.push(callbackUrl);
+      window.location.href = callbackUrl;
     } else {
       setLocalError("邮箱或密码错误");
       setLoading(false);
