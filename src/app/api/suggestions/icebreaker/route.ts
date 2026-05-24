@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
+import { createPseudonymizer } from "@/lib/pseudonymizer";
+import { encrypt, decrypt } from "@/lib/crypto";
 
-// 简单内存缓存：5分钟内重复查询直接返回缓存
+// 简单内存缓存：1分钟内重复查询直接返回缓存
 const cache = new Map<string, { data: unknown; expiry: number }>();
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 1000;
 const CACHE_MAX_SIZE = 200;
 
 function getCached(key: string): unknown | null {
@@ -144,10 +147,13 @@ const SYSTEM_PROMPTS = {
 };
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { encKey, pseudoKey, userId } = keys;
+  const store = createCryptoStore(prisma, encKey);
+  const pseudo = await createPseudonymizer(userId, encKey, pseudoKey, store);
 
   try {
     const { searchParams } = new URL(request.url);
@@ -167,31 +173,13 @@ export async function GET(request: NextRequest) {
     const cacheKey = `icebreaker:${personId}:${selectedStyle}`;
     const memoryCached = getCached(cacheKey);
     if (memoryCached) {
-      return Response.json(memoryCached);
+      const decrypted = decrypt(memoryCached as string, encKey);
+      return Response.json(JSON.parse(decrypted));
     }
 
-    // 检查数据库缓存
-    const personWithCache = await prisma.person.findUnique({
-      where: { id: personId, userId: session.user.id },
-      select: {
-        name: true,
-        icebreakerData: true,
-        icebreakerGeneratedAt: true,
-      },
-    });
-
-    if (personWithCache?.icebreakerData) {
-      const cachedData = {
-        personName: personWithCache.name,
-        ...(personWithCache.icebreakerData as object),
-      };
-      setCache(cacheKey, cachedData);
-      return Response.json(cachedData);
-    }
-
-    // 获取人物完整信息用于生成
-    const person = await prisma.person.findUnique({
-      where: { id: personId, userId: session.user.id },
+    // 获取人物完整信息（store auto-decrypts）
+    const person = await store.person.findUnique({
+      where: { id: personId, userId },
       include: {
         introducedBy: { select: { name: true } },
       },
@@ -201,10 +189,21 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: "Person not found" }, { status: 404 });
     }
 
+    // 如果 DB 中有缓存，直接返回
+    if (person.icebreakerData) {
+      const cachedData = {
+        personName: person.name,
+        ...(person.icebreakerData as object),
+      };
+      const encryptedResult = encrypt(JSON.stringify(cachedData), encKey);
+      setCache(cacheKey, encryptedResult);
+      return Response.json(cachedData);
+    }
+
     // 获取最近一次互动
-    const lastInteraction = await prisma.interaction.findFirst({
+    const lastInteraction = await store.interaction.findFirst({
       where: {
-        userId: session.user.id,
+        userId,
         persons: { some: { personId } },
       },
       orderBy: { date: "desc" },
@@ -240,6 +239,10 @@ export async function GET(request: NextRequest) {
 
     const systemPrompt = SYSTEM_PROMPTS[selectedStyle as keyof typeof SYSTEM_PROMPTS];
 
+    // 伪名化 combined prompt 后发送给 DeepSeek
+    const combinedPrompt = systemPrompt + "\n\n---\n\n" + userContext;
+    const { sanitizedText } = await pseudo.pseudonymize(combinedPrompt);
+
     // 调用 DeepSeek API (Anthropic 兼容格式)
     const apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
       method: "POST",
@@ -250,7 +253,7 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify({
         model: getModel(),
         messages: [
-          { role: "user", content: systemPrompt + "\n\n---\n\n" + userContext },
+          { role: "user", content: sanitizedText },
         ],
         temperature: 0.6,
         max_tokens: 1500,
@@ -270,19 +273,26 @@ export async function GET(request: NextRequest) {
       throw new Error("LLM returned empty response");
     }
 
+    // 去伪名化 LLM 响应
+    const depseudonymized = await pseudo.depseudonymize(content);
+
+    // 检查实体泄漏
+    const leaks = pseudo.checkLeaks(depseudonymized);
+    if (leaks.length > 0) console.warn("[Jeffrey.AI] ENTITY LEAK in icebreaker:", leaks.join(", "));
+
     // 解析 JSON 响应
     let parsed;
     try {
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
-                        content.match(/\{[\s\S]*\}/);
+      const jsonMatch = depseudonymized.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
+                        depseudonymized.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsed = JSON.parse(jsonMatch[jsonMatch.length - 1]);
       } else {
-        parsed = JSON.parse(content);
+        parsed = JSON.parse(depseudonymized);
       }
     } catch {
       parsed = {
-        openingLines: [content],
+        openingLines: [depseudonymized],
         suggestedTopics: ["询问近况"],
         recentContext: "无历史记忆可参考",
         jeffreyComment: "先生，建议直接联系对方。",
@@ -296,11 +306,11 @@ export async function GET(request: NextRequest) {
       recentContext: parsed.recentContext || "无历史记忆",
       jeffreyComment: parsed.jeffreyComment || "",
     };
-    setCache(cacheKey, result);
+    const encryptedResult = encrypt(JSON.stringify(result), encKey);
+    setCache(cacheKey, encryptedResult);
     return Response.json(result);
   } catch (error) {
     console.error("Error in GET /api/suggestions/icebreaker:", error);
-    const err = error as { message?: string; code?: string };
     return Response.json(
       { error: "Internal server error" },
       { status: 500 }
