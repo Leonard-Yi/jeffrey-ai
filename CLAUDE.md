@@ -43,7 +43,7 @@ curl http://localhost:3000/api/health
 改代码 → npm run build && npm start 测试 → 确认没问题 → npm run typecheck（类型检查）
 不用 server 时 → 关掉 terminal 或 taskkill //F //IM node.exe
 出现bug → 使用/systematic-debugging技能
-遇到 graph/图谱 相关问题时 → 查阅 `docs/knowledge-graph-visualization-research.md` 第22行"调试经验记录"章节
+遇到 graph/图谱 相关问题时 → 查阅 `docs/knowledge-graph-visualization-research.md`，包含：Obsidian 图谱技术方案、PixiJS v8 渲染 bug 记录、加密迁移兼容性教训
 处理 Vercel/部署 相关问题时 → 查阅 `docs/vercel-deployment.md`，尤其是在commit之后要用vercel CLI手动部署并再次检查版本是否最新
 完成工作后 → 调用 ecc:e2e 技能跑一个测试
 ```
@@ -131,7 +131,7 @@ All data shapes are defined as Zod schemas. These schemas are converted to JSON 
   - `src/components/PersonModal.tsx` — Person detail modal (uses `MultiIntroducerSelector`, `FieldCard`)
   - `src/components/MultiIntroducerSelector.tsx` — Multi-select introducer dropdown
   - `src/components/FieldCard.tsx` — Inline-editable field card
-  - `src/components/GraphCanvas.tsx` — Canvas-based force graph
+  - `src/components/GraphCanvas.tsx` — PixiJS WebGL 力导向图谱（参考 Obsidian 实现）
 - **UI library**: `src/components/ui/` — Reusable Button, Card, Input, Badge, Tag, Avatar, SectionLabel; **use these instead of inline styles in pages**
 - **Error boundaries**: `error.tsx` files in `input/`, `graph/`, `members/`, `suggestions/` routes
 
