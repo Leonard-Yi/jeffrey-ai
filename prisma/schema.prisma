@@ -45,6 +45,7 @@ model Person {
   icebreakerData    Json?               @default("null")
   /// When icebreakerData was last generated
   icebreakerGeneratedAt DateTime?
+  encryptionVersion Int                 @default(1)
   interactions      InteractionPerson[]
   introducedBy      Person?             @relation("Introduction", fields: [introducedById], references: [id])
   introductions     Person[]            @relation("Introduction")
@@ -60,11 +61,12 @@ model Person {
 }
 
 model Interaction {
-  id           String              @id @default(uuid())
-  date         DateTime
-  location     String?
-  contextType  String
-  sentiment    String
+  id                String              @id @default(uuid())
+  date              DateTime
+  location          String?
+  contextType       String
+  sentiment         String
+  encryptionVersion Int                 @default(1)
   /// ActionItem[] stored as JSONB: [{ description, ownedBy, resolved }]
   actionItems  Json                @default("[]")
   /// string[] stored as native text array
@@ -105,20 +107,23 @@ model PersonTag {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  passwordHash  String
-  name          String?
-  emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  passwordHash          String
+  name                  String?
+  emailVerified         DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  keySalt               String?
+  keyRotationInProgress Boolean   @default(false)
 
-  accounts      Account[]
-  sessions      Session[]
-  persons       Person[]
-  interactions  Interaction[]
-  interactionPersons InteractionPerson[]
-  personTags    PersonTag[]
+  accounts              Account[]
+  sessions              Session[]
+  persons               Person[]
+  interactions          Interaction[]
+  interactionPersons    InteractionPerson[]
+  personTags            PersonTag[]
+  pseudonymMaps         PseudonymMap[]
 }
 
 model Account {
@@ -151,4 +156,20 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model PseudonymMap {
+  id              String   @id @default(uuid())
+  userId          String
+  encryptedEntity String
+  entityType      String
+  pseudonym       String
+  entityHash      String
+  disambigFactor  String
+  usageCount      Int      @default(1)
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entityHash])
+  @@index([userId])
 }
