@@ -285,59 +285,83 @@ export default async function LandingPage() {
               accent: C.accent,
               bg: C.accentLight,
             },
-          ].map((feature, i) => (
-            <div
-              key={i}
-              className="animate-fade-in-up"
-              style={{
-                background: C.bgCard,
-                border: `1px solid ${C.border}`,
-                borderRadius: "14px",
-                padding: "28px",
-                boxShadow: C.shadowMd,
-                transition: `all ${C.transitionBase}`,
-                animationDelay: `${0.1 + i * 0.05}s`,
-              }}
-            >
+            {
+              icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              ),
+              title: "隐私优先",
+              desc: "你的数据用你的密码加密存储。连我们也看不到你的任何个人信息。",
+              accent: C.accent,
+              bg: C.accentLight,
+              link: "/security",
+            },
+          ].map((feature, i) => {
+            const cardContent = (
               <div
+                className="animate-fade-in-up"
                 style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "10px",
-                  background: feature.bg,
-                  color: feature.accent,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "18px",
-                  border: `1px solid ${feature.bg.replace("0.08", "0.15}")}`,
+                  background: C.bgCard,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: "14px",
+                  padding: "28px",
+                  boxShadow: C.shadowMd,
+                  transition: `all ${C.transitionBase}`,
+                  animationDelay: `${0.1 + i * 0.05}s`,
+                  cursor: (feature as any).link ? "pointer" : "default",
+                  height: "100%",
                 }}
               >
-                {feature.icon}
+                <div
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "10px",
+                    background: feature.bg,
+                    color: feature.accent,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "18px",
+                    border: `1px solid ${feature.bg.replace("0.08", "0.15}")}`,
+                  }}
+                >
+                  {feature.icon}
+                </div>
+                <h3
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: "20px",
+                    fontWeight: 400,
+                    color: C.text,
+                    marginBottom: "10px",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {feature.title}
+                </h3>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: C.textSecondary,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {feature.desc}
+                </p>
               </div>
-              <h3
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: "20px",
-                  fontWeight: 400,
-                  color: C.text,
-                  marginBottom: "10px",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {feature.title}
-              </h3>
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: C.textSecondary,
-                  lineHeight: 1.7,
-                }}
-              >
-                {feature.desc}
-              </p>
-            </div>
-          ))}
+            );
+
+            if ((feature as any).link) {
+              return (
+                <Link key={i} href={(feature as any).link} style={{ textDecoration: "none" }}>
+                  {cardContent}
+                </Link>
+              );
+            }
+            return <div key={i}>{cardContent}</div>;
+          })}
         </div>
 
         {/* Quote */}
@@ -390,7 +414,16 @@ export default async function LandingPage() {
           borderTop: `1px solid ${C.border}`,
         }}
       >
-        © 2026 Jeffrey.AI
+        © 2026 Jeffrey.AI ·{" "}
+        <Link
+          href="/security"
+          style={{
+            color: C.textMuted,
+            textDecoration: "none",
+          }}
+        >
+          隐私与安全
+        </Link>
       </footer>
     </div>
   );
