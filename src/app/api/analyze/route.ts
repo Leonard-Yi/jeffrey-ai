@@ -212,7 +212,10 @@ const extractionTool: { name: string; description: string; input_schema: object 
 export async function POST(request: Request) {
   const keys = await getEncryptionKeys();
   if (!keys) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json(
+      { error: "加密密钥未就绪，请退出登录后重新登录" },
+      { status: 401 }
+    );
   }
   const { encKey, pseudoKey, userId } = keys;
   const store = createCryptoStore(prisma, encKey);

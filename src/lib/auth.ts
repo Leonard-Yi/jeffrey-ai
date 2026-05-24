@@ -3,7 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcrypt"
 import { prisma } from "@/lib/db"
-import { deriveKeys } from "@/lib/crypto"
+import { deriveKeys, generateKeySalt } from "@/lib/crypto"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -31,13 +31,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (!isValid) return null
 
+          // Auto-generate keySalt for users created before encryption was added
+          let keySalt = user.keySalt;
+          if (!keySalt) {
+            keySalt = generateKeySalt();
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { keySalt },
+            });
+          }
+
           return {
             id: user.id,
             email: user.email,
             name: user.name,
-            // Pass through for JWT callback to derive keys
             password: credentials.password as string,
-            keySalt: user.keySalt,
+            keySalt,
           } as any
         } catch (err) {
           console.error("Auth error:", err)
