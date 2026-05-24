@@ -7,7 +7,7 @@ import type { Buffer } from "node:buffer";
 
 /** Fields on Person model that should be encrypted */
 const PERSON_ENCRYPTED_FIELDS = [
-  "aliases", "careers", "interests", "vibeTags",
+  "name", "aliases", "careers", "interests", "vibeTags",
   "baseCities", "favoritePlaces", "searchText", "icebreakerData", "embedding",
 ] as const;
 
@@ -24,6 +24,7 @@ interface FieldMeta {
 }
 
 const FIELD_META: Record<string, FieldMeta> = {
+  name: { model: "Person", type: "string" },
   aliases: { model: "Person", type: "string[]" },
   careers: { model: "Person", type: "json" },
   interests: { model: "Person", type: "json" },

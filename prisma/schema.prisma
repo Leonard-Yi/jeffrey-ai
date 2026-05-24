@@ -9,6 +9,9 @@ datasource db {
 model Person {
   id                String              @id @default(uuid())
   name              String
+  /// HMAC-SHA256(name, pseudoKey) — deterministic blind index for exact-name lookup
+  /// without storing the name in plaintext. Same name + same key = same hash.
+  nameHash          String?
   /// WeightedTag[] stored as JSONB: [{ name, weight }]
   careers           Json                @default("[]")
   /// WeightedTag[] stored as JSONB: [{ name, weight }]
@@ -54,7 +57,7 @@ model Person {
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([name])
+  @@index([nameHash, userId])
   @@index([userId])
   @@index([introducedById])
   @@index([mergedIntoId])

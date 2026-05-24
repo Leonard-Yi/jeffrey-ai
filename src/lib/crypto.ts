@@ -35,6 +35,20 @@ export function generateKeySalt(): string {
   return crypto.randomBytes(16).toString("base64");
 }
 
+// ─── Deterministic name hash for blind lookup ────────────────────
+
+/**
+ * Compute a deterministic HMAC-SHA256 hash of a person name.
+ * Same name + same pseudoKey always produces the same hash,
+ * enabling exact-match lookup without storing the name in plaintext.
+ * The hash is one-way — you cannot recover the name from it.
+ */
+export function computeNameHash(name: string, pseudoKey: Buffer): string {
+  const hmac = crypto.createHmac("sha256", pseudoKey);
+  hmac.update(name, "utf8");
+  return hmac.digest("base64");
+}
+
 // ─── AES-256-GCM encrypt/decrypt ───────────────────────────────
 
 /**

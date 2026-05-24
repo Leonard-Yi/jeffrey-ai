@@ -3,6 +3,7 @@
 
 import { buildPersonSearchText, generateEmbedding, type WeightedTag } from "@/lib/embedding";
 import { mergeTags } from "@/lib/dbUtils";
+import { computeNameHash } from "@/lib/crypto";
 import type { CryptoStore } from "@/lib/cryptoStore";
 
 interface ExtractionData {
@@ -43,12 +44,32 @@ async function upsertPerson(
   extracted: { name?: string; careers?: WeightedTag[]; interests?: WeightedTag[]; vibeTags?: string[] },
   interactionDate: Date,
   userId: string,
-  store: CryptoStore
+  store: CryptoStore,
+  pseudoKey: Buffer,
 ): Promise<string> {
   const name = extracted.name || "未知";
-  const existing = await store.person.findFirst({
-    where: { name, userId },
+  const nameHash = computeNameHash(name, pseudoKey);
+
+  // Primary lookup: nameHash (deterministic, works with encrypted name storage)
+  let existing = await store.person.findFirst({
+    where: { nameHash, userId },
   });
+
+  // Fallback: plaintext name lookup for legacy records created before nameHash
+  if (!existing) {
+    const rawPerson = await store.raw.person.findFirst({
+      where: { name, userId },
+    });
+    if (rawPerson) {
+      // Backfill nameHash so next lookup uses the fast path
+      await store.raw.person.update({
+        where: { id: rawPerson.id },
+        data: { nameHash },
+      });
+      existing = await store.person.findUnique({ where: { id: rawPerson.id } });
+    }
+  }
+
   console.log("[Jeffrey.AI] Existing person lookup:", { userId, found: !!existing });
 
   if (existing) {
@@ -105,6 +126,7 @@ async function upsertPerson(
   const person = await store.person.create({
     data: {
       name,
+      nameHash,
       userId,
       careers: extracted.careers || [],
       interests: extracted.interests || [],
@@ -120,7 +142,13 @@ async function upsertPerson(
   return person.id;
 }
 
-export async function saveExtractionToDb(data: ExtractionData, createInteraction = false, userId?: string, store?: CryptoStore): Promise<{
+export async function saveExtractionToDb(
+  data: ExtractionData,
+  createInteraction = false,
+  userId?: string,
+  store?: CryptoStore,
+  pseudoKey?: Buffer,
+): Promise<{
   interactionId: string;
   personIds: string[];
 }> {
@@ -159,7 +187,8 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
         },
         interactionDate,
         userId!,
-        store!
+        store!,
+        pseudoKey!,
       )
     )
   );
