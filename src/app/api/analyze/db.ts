@@ -144,6 +144,7 @@ async function upsertPerson(
   userId: string,
   store: CryptoStore,
   pseudoKey: Buffer,
+  encKey: Buffer,
 ): Promise<string> {
   const name = extracted.name || "未知";
   const nameHash = computeNameHash(name, pseudoKey);
@@ -159,10 +160,10 @@ async function upsertPerson(
       where: { name, userId },
     });
     if (rawPerson) {
-      // Backfill nameHash so next lookup uses the fast path
+      // Backfill: encrypt name + compute nameHash so next lookup uses the fast path
       await store.raw.person.update({
         where: { id: rawPerson.id },
-        data: { nameHash },
+        data: { name: encrypt(name, encKey), nameHash },
       });
       existing = await store.person.findUnique({ where: { id: rawPerson.id } });
     }
@@ -246,6 +247,7 @@ export async function saveExtractionToDb(
   userId?: string,
   store?: CryptoStore,
   pseudoKey?: Buffer,
+  encKey?: Buffer,
 ): Promise<{
   interactionId: string;
   personIds: string[];
@@ -287,6 +289,7 @@ export async function saveExtractionToDb(
         userId!,
         store!,
         pseudoKey!,
+        encKey!,
       )
     )
   );

@@ -14,6 +14,7 @@ import {
   decryptJson,
   encryptStringArray,
   decryptStringArray,
+  computeNameHash,
 } from "./crypto";
 import type { PrismaClient } from "@prisma/client";
 
@@ -170,6 +171,11 @@ export async function rotateKeys(
             newKeys.encKey,
           );
         }
+      }
+      // Recompute nameHash with new pseudoKey (name plaintext available after decrypt)
+      if (p.name != null && p.nameHash != null) {
+        const plainName = decrypt(p.name, oldKeys.encKey);
+        updateData.nameHash = computeNameHash(plainName, newKeys.pseudoKey);
       }
       await (prisma as any).person.update({
         where: { id: p.id },

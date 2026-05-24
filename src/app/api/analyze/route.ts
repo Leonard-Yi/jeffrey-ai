@@ -472,7 +472,7 @@ export async function POST(request: Request) {
     if (data.status === "complete") {
       try {
         // @ts-ignore - Zod output type mismatch with manual interface
-        const saveResult = await saveExtractionToDb(data, true, userId, store, pseudoKey); // createInteraction=true，确保追问回复后能创建互动
+        const saveResult = await saveExtractionToDb(data, true, userId, store, pseudoKey, encKey); // createInteraction=true，确保追问回复后能创建互动
         personIds = saveResult.personIds;
         console.log("[Jeffrey.AI] Successfully saved complete data to database");
       } catch (dbError) {
@@ -496,7 +496,7 @@ export async function POST(request: Request) {
           sentiment: undefined,
           actionItems: [],
           coreMemories: [],
-        } as any, true, userId, store, pseudoKey); // createInteraction=true，确保pending时也创建互动
+        } as any, true, userId, store, pseudoKey, encKey); // createInteraction=true，确保pending时也创建互动
         personIds = saveResult.personIds;
         console.log("[Jeffrey.AI] Saved pending person data with interaction");
       } catch (dbError) {
