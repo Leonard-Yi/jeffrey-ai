@@ -61,33 +61,26 @@ export async function backfillLegacyEncryption(
     },
   });
 
-  let count = 0;
+  const personUpdates: Promise<unknown>[] = [];
   for (const p of rawPersons) {
     const data: Record<string, unknown> = {};
 
-    // Name: compute hash + encrypt (skip if already encrypted)
     if (!p.name.startsWith("v1:")) {
       data.nameHash = computeNameHash(p.name, pseudoKey);
       data.name = encrypt(p.name, encKey);
     }
-
-    // String fields
     for (const f of ["searchText"] as const) {
       const v = p[f];
       if (typeof v === "string" && v && !v.startsWith("v1:")) {
         data[f] = encrypt(v, encKey);
       }
     }
-
-    // JSON fields — plaintext is any object (array or plain), encrypted is a v1: string
     for (const f of ["careers", "interests", "icebreakerData"] as const) {
       const v = p[f];
       if (v != null && typeof v === "object") {
         data[f] = encryptJson(v, encKey);
       }
     }
-
-    // String array fields (plaintext elements don't start with v1:)
     for (const f of ["vibeTags", "aliases", "baseCities", "favoritePlaces"] as const) {
       const v = p[f];
       if (Array.isArray(v) && v.length > 0 && typeof v[0] === "string" && !v[0].startsWith("v1:")) {
@@ -96,10 +89,11 @@ export async function backfillLegacyEncryption(
     }
 
     if (Object.keys(data).length > 0) {
-      await store.raw.person.update({ where: { id: p.id }, data });
-      count++;
+      personUpdates.push(store.raw.person.update({ where: { id: p.id }, data }));
     }
   }
+  await Promise.all(personUpdates);
+  const count = personUpdates.length;
 
   // Interactions: quick check — if first record is already encrypted, skip all
   const sampleInteraction = await store.raw.interaction.findFirst({
@@ -119,6 +113,7 @@ export async function backfillLegacyEncryption(
     },
   });
 
+  const interactionUpdates: Promise<unknown>[] = [];
   for (const ix of rawInteractions) {
     const data: Record<string, unknown> = {};
 
@@ -128,21 +123,18 @@ export async function backfillLegacyEncryption(
         data[f] = encrypt(v, encKey);
       }
     }
-
-    // actionItems: JSON field — plaintext is array/object, encrypted is v1: string
     if (ix.actionItems != null && typeof ix.actionItems === "object") {
       data.actionItems = encryptJson(ix.actionItems, encKey);
     }
-
-    // coreMemories: string array
     if (Array.isArray(ix.coreMemories) && ix.coreMemories.length > 0 && typeof ix.coreMemories[0] === "string" && !ix.coreMemories[0].startsWith("v1:")) {
       data.coreMemories = encryptStringArray(ix.coreMemories as string[], encKey);
     }
 
     if (Object.keys(data).length > 0) {
-      await store.raw.interaction.update({ where: { id: ix.id }, data });
+      interactionUpdates.push(store.raw.interaction.update({ where: { id: ix.id }, data }));
     }
   }
+  await Promise.all(interactionUpdates);
 
   return count;
 }
