@@ -7,8 +7,11 @@ let jiebaInstance: any = null;
 
 function getJieba() {
   if (!jiebaInstance) {
-    const nodejieba = require("nodejieba");
-    jiebaInstance = nodejieba;
+    const { Jieba } = require("@node-rs/jieba");
+    const { dict } = require("@node-rs/jieba/dict");
+    const jieba = new Jieba();
+    jieba.loadDict(dict);
+    jiebaInstance = jieba;
   }
   return jiebaInstance;
 }
