@@ -55,7 +55,7 @@ export function encrypt(value: string, key: Buffer): string {
  * Decrypt a value produced by encrypt().
  * Supports versioned format. Throws on authentication failure.
  */
-export function decrypt(encoded: string, key: Buffer): string {
+export function decrypt(encoded: string | null | undefined, key: Buffer): string {
   if (!encoded || encoded === "—") return encoded; // passthrough null/empty markers
 
   const parts = encoded.split(":");
@@ -98,6 +98,6 @@ export function encryptStringArray(arr: string[], key: Buffer): string[] {
 /**
  * Decrypt each string in a string array.
  */
-export function decryptStringArray(arr: string[], key: Buffer): string[] {
+export function decryptStringArray(arr: (string | null | undefined)[], key: Buffer): string[] {
   return arr.map(s => decrypt(s, key));
 }
