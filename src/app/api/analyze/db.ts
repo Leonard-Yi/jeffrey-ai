@@ -58,6 +58,13 @@ export async function backfillLegacyNames(
   if (rawPersons.length === 0) return 0;
 
   for (const p of rawPersons) {
+    // Safety: skip if already encrypted (defense against double-encryption)
+    if (p.name.startsWith("v1:")) {
+      // Already encrypted — just backfill the missing nameHash
+      // Can't compute hash from ciphertext, so leave nameHash null
+      console.warn(`[Jeffrey.AI] Record ${p.id} has encrypted name but null nameHash — skipping`);
+      continue;
+    }
     const nameHash = computeNameHash(p.name, pseudoKey);
     const encryptedName = encrypt(p.name, encKey);
     await store.raw.person.update({
