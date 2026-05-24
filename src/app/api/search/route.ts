@@ -57,6 +57,17 @@ function refreshStaleEmbeddingIfNeeded(
   }
 }
 
+/** Safe cast: ensure we always get an array, even if cryptoStore returned raw text. */
+function safeTagArray(raw: unknown): Array<{ name: string }> {
+  if (Array.isArray(raw)) return raw.filter((t): t is { name: string } => t && typeof t.name === 'string');
+  return [];
+}
+
+function safeStringArray(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((s): s is string => typeof s === 'string');
+  return [];
+}
+
 export async function POST(request: Request) {
   const keys = await getEncryptionKeys();
   if (!keys) {
@@ -125,17 +136,19 @@ export async function POST(request: Request) {
     // 4. Fuzzy match: name / careers / interests / vibeTags substring
     const q_lower = q.toLowerCase();
     const fuzzySet = new Set<string>();
+    const fuzzyScores = new Map<string, number>();
     for (const p of allPersons) {
-      const nameMatch = p.name.toLowerCase().includes(q_lower);
-      const careerMatch = ((p.careers as WeightedTag[]) ?? []).some(
-        (c) => (c.name ?? "").toLowerCase().includes(q_lower)
-      );
-      const interestMatch = ((p.interests as WeightedTag[]) ?? []).some(
-        (i) => (i.name ?? "").toLowerCase().includes(q_lower)
-      );
-      const vibeMatch = ((p.vibeTags ?? []) as string[]).some((t) => t.toLowerCase().includes(q_lower));
-      if (nameMatch || careerMatch || interestMatch || vibeMatch) {
+      let bestScore = 0;
+      if (p.name.toLowerCase().includes(q_lower)) bestScore = Math.max(bestScore, 0.8);
+      const careers = safeTagArray(p.careers);
+      const interests = safeTagArray(p.interests);
+      const vibeTags = safeStringArray(p.vibeTags);
+      if (careers.some(c => (c.name ?? "").toLowerCase().includes(q_lower))) bestScore = Math.max(bestScore, 0.7);
+      if (interests.some(i => (i.name ?? "").toLowerCase().includes(q_lower))) bestScore = Math.max(bestScore, 0.6);
+      if (vibeTags.some(t => t.toLowerCase().includes(q_lower))) bestScore = Math.max(bestScore, 0.5);
+      if (bestScore > 0) {
         fuzzySet.add(p.id);
+        fuzzyScores.set(p.id, bestScore);
       }
     }
 
@@ -148,7 +161,7 @@ export async function POST(request: Request) {
           return { id: p.id, name: p.name, careers: p.careers, interests: p.interests, vibeTags: (p.vibeTags ?? []) as string[], relationshipScore: p.relationshipScore, lastContactDate: p.lastContactDate, similarity: semScore };
         }
         if (fuzzyHit) {
-          return { id: p.id, name: p.name, careers: p.careers, interests: p.interests, vibeTags: (p.vibeTags ?? []) as string[], relationshipScore: p.relationshipScore, lastContactDate: p.lastContactDate, similarity: 0.5 };
+          return { id: p.id, name: p.name, careers: p.careers, interests: p.interests, vibeTags: safeStringArray(p.vibeTags), relationshipScore: p.relationshipScore, lastContactDate: p.lastContactDate, similarity: fuzzyScores.get(p.id) ?? 0.5 };
         }
         return null;
       })
