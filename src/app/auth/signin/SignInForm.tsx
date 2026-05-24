@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AuthCard } from "../_components/AuthCard";
@@ -11,7 +10,6 @@ export default function SignInForm() {
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl") || "/input";
   const isValidCallbackUrl = (url: string): string => {
-    // Relative paths: prepend origin — NextAuth requires absolute URLs
     if (url.startsWith("/")) return window.location.origin + url;
     try {
       const u = new URL(url);
@@ -25,38 +23,27 @@ export default function SignInForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    // Fetch CSRF token on page load — NextAuth requires it for POST
+    fetch("/api/auth/csrf")
+      .then((r) => r.json())
+      .then((d) => setCsrfToken(d.csrfToken || ""))
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setLocalError("");
 
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-        callbackUrl,
-      });
-
-      if (result?.ok) {
-        const targetUrl = result.url || callbackUrl;
-        window.location.href = targetUrl;
-      } else {
-        const isCredentialsError = result?.error === "CredentialsSignin";
-        setLocalError(
-          isCredentialsError
-            ? "邮箱或密码错误"
-            : result?.error || "登录失败，请重试",
-        );
-        setLoading(false);
-      }
-    } catch {
-      setLocalError("网络错误，请检查网络连接后重试");
-      setLoading(false);
-    }
+    // Use traditional form POST — browser handles cookie + redirect natively,
+    // avoiding fetch(Set-Cookie) timing issues present in next-auth/react signIn().
+    formRef.current?.submit();
   }
 
   return (
@@ -97,7 +84,15 @@ export default function SignInForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form
+        ref={formRef}
+        method="POST"
+        action="/api/auth/callback/credentials"
+        onSubmit={handleSubmit}
+      >
+        <input type="hidden" name="csrfToken" value={csrfToken} />
+        <input type="hidden" name="callbackUrl" value={callbackUrl} />
+
         <div style={{ marginBottom: "16px" }}>
           <label
             htmlFor="email"
@@ -113,6 +108,7 @@ export default function SignInForm() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -157,6 +153,7 @@ export default function SignInForm() {
           </label>
           <input
             id="password"
+            name="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -188,7 +185,7 @@ export default function SignInForm() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !csrfToken}
           style={{
             width: "100%",
             padding: "11px 20px",
@@ -199,8 +196,8 @@ export default function SignInForm() {
             background: C.primary,
             border: "none",
             borderRadius: "8px",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.6 : 1,
+            cursor: loading || !csrfToken ? "not-allowed" : "pointer",
+            opacity: loading || !csrfToken ? 0.6 : 1,
             transition: `all ${C.transitionBase}`,
             display: "flex",
             alignItems: "center",
@@ -208,7 +205,7 @@ export default function SignInForm() {
             gap: "8px",
           }}
           onMouseEnter={(e) => {
-            if (!loading) {
+            if (!loading && csrfToken) {
               e.currentTarget.style.background = C.primaryHover;
               e.currentTarget.style.boxShadow = C.shadowGlow;
             }
