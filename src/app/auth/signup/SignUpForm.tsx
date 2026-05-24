@@ -194,6 +194,36 @@ export default function SignUpForm() {
               e.currentTarget.style.boxShadow = "none";
             }}
           />
+          <div
+            style={{
+              marginTop: "10px",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              background: C.warningBg,
+              border: `1px solid ${C.prompt.border}`,
+              fontSize: "12.5px",
+              color: C.prompt.textMuted,
+              lineHeight: 1.6,
+            }}
+          >
+            <strong style={{ color: C.prompt.accent }}>务必保存你的密码。</strong>
+            你的密码是数据加密的唯一凭证。如果丢失，我们将无法恢复你的数据——
+            即便重置密码也无法恢复旧数据。
+            <br />
+            <a
+              href="/security"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: C.primary,
+                fontWeight: 500,
+                textDecoration: "underline",
+                textUnderlineOffset: "2px",
+              }}
+            >
+              了解我们的安全策略 →
+            </a>
+          </div>
         </div>
 
         <button

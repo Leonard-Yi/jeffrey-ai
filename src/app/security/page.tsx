@@ -343,47 +343,49 @@ export default function SecurityPage() {
             }}
           >
             {[
-              { label: "明文输入", desc: "你输入的文字包含真实人名「老王」", color: C.primary, bg: C.warningBg },
-              { label: "NER 假名化", desc: "本地识别「老王」→ 替换为 Person_a1b2c3", color: C.info, bg: C.infoBg },
-              { label: "AI 分析", desc: "假名化文本发给 AI → AI 分析 Person_a1b2c3", color: C.textMuted, bg: C.bgHover },
-              { label: "假名还原", desc: "AI 结果中 Person_a1b2c3 → 「老王」", color: C.info, bg: C.infoBg },
-              { label: "AES 加密存储", desc: "「老王」← AES-256-GCM 加密 → 密文存入 PostgreSQL", color: C.accent, bg: C.accentLight },
-            ].map((step, i, arr) => (
+              { label: "明文输入", desc: "你输入的文字包含真实人名「老王」" },
+              { label: "NER 假名化", desc: "本地识别「老王」→ 替换为 Person_a1b2c3" },
+              { label: "AI 分析", desc: "仅假名化文本发送给 AI 服务商 —— 服务商只看到 Person_a1b2c3，不知「老王」是谁" },
+              { label: "假名还原", desc: "本地将 AI 服务商返回的 Person_a1b2c3 还原为「老王」" },
+              { label: "AES 加密存储", desc: "「老王」← AES-256-GCM 加密 → 密文存入 PostgreSQL", isDest: true },
+            ].map((step, i, arr) => {
+              const accent = (step as any).isDest ? C.accent : C.textSecondary;
+              const bg = (step as any).isDest ? C.accentLight : C.bgHover;
+              return (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
-                {/* Step number + line */}
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
                   <div
                     style={{
                       width: "32px",
                       height: "32px",
                       borderRadius: "50%",
-                      background: step.bg,
-                      color: step.color,
+                      background: bg,
+                      color: accent,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: C.textSm,
-                      fontWeight: 600,
-                      border: `1.5px solid ${step.color}`,
+                      fontWeight: 500,
+                      border: `1.5px solid ${(step as any).isDest ? C.accent : C.borderStrong}`,
                     }}
                   >
                     {i + 1}
                   </div>
                   {i < arr.length - 1 && (
-                    <div style={{ width: "1.5px", height: "28px", background: C.border, margin: "4px 0" }} />
+                    <div style={{ width: "1px", height: "28px", background: C.border, margin: "4px 0" }} />
                   )}
                 </div>
-                {/* Content */}
                 <div style={{ paddingBottom: i < arr.length - 1 ? "20px" : "0" }}>
-                  <div style={{ fontSize: C.textSm, fontWeight: 600, color: step.color, marginBottom: "2px" }}>
+                  <div style={{ fontSize: C.textSm, fontWeight: 600, color: accent, marginBottom: "2px" }}>
                     {step.label}
                   </div>
                   <div style={{ fontSize: C.textSm, color: C.textSecondary, lineHeight: C.leadingNormal }}>
                     {step.desc}
                   </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
