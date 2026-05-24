@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcrypt"
+import { generateKeySalt } from "@/lib/crypto"
 
 const RegisterSchema = z.object({
   email: z.string().email("无效的邮箱格式"),
@@ -37,12 +38,16 @@ export async function POST(request: NextRequest) {
     // 密码加密
     const passwordHash = await bcrypt.hash(password, 12)
 
+    // Generate key derivation salt for encryption
+    const keySalt = generateKeySalt();
+
     // 创建用户
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         name: name,
+        keySalt,
       }
     })
 

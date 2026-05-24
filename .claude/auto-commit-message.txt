@@ -1,0 +1,3 @@
+feat(crypto): add Argon2id key derivation and AES-256-GCM encrypt/decrypt
+
+Create src/lib/crypto.ts with deriveKeys (Argon2id, 64-byte output split into encKey+pseudoKey), generateKeySalt, encrypt/decrypt (AES-256-GCM with "v1:nonce:data" format), encryptJson/decryptJson, and encryptStringArray/decryptStringArray helpers.
