@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { prisma } from "@/lib/db";
+import type { CryptoStore } from "@/lib/cryptoStore";
 
 export interface GraphNode {
   id: string;
@@ -49,21 +49,23 @@ function canonicalSource(a: string, b: string): string {
 }
 
 /**
- * Fetches all persons and their interactions from the database,
+ * Fetches all persons and their interactions from the database via CryptoStore,
  * transforms them into a graph format suitable for react-force-graph.
  * @param filter - Graph filter options
  * @param userId - Required: filters all data to the authenticated user only
+ * @param store - CryptoStore for encrypted data access
  */
-export async function getGraphData(filter?: GraphFilter, userId?: string): Promise<GraphData> {
+export async function getGraphData(filter?: GraphFilter, userId?: string, store?: CryptoStore): Promise<GraphData> {
   if (!userId) throw new Error("userId is required for getGraphData");
+  if (!store) throw new Error("store is required for getGraphData");
 
-  // First get all persons for this user
-  const allPersons = await prisma.person.findMany({
+  // First get all persons for this user (decrypted via store)
+  const allPersons = await store.person.findMany({
     where: { userId, deletedAt: null, mergedIntoId: null },
   });
 
-  // Then get all interactions for this user with their participants
-  const allInteractions = await prisma.interaction.findMany({
+  // Then get all interactions for this user with their participants (decrypted via store)
+  const allInteractions = await store.interaction.findMany({
     where: { userId },
     include: {
       persons: {
@@ -76,10 +78,10 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
 
   // Build nodes with initial filtering
   let nodes: GraphNode[] = allPersons.map((person) => {
-    const careersArray = person.careers as { name: string; weight: number }[];
+    const careersArray = (person.careers ?? []) as { name: string; weight: number }[];
     const firstCareer = careersArray.length > 0 ? careersArray[0].name : "unknown";
 
-    const baseCitiesArray = person.baseCities as string[];
+    const baseCitiesArray = (person.baseCities ?? []) as string[];
     const firstCity = baseCitiesArray && baseCitiesArray.length > 0 ? baseCitiesArray[0] : "";
 
     return {
@@ -136,8 +138,8 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
       }
 
       // sharedCareer links
-      const careersA = personA.careers as { name: string; weight: number }[] || [];
-      const careersB = personB.careers as { name: string; weight: number }[] || [];
+      const careersA = (personA.careers ?? []) as { name: string; weight: number }[];
+      const careersB = (personB.careers ?? []) as { name: string; weight: number }[];
       const careerNamesA = new Set(careersA.map(c => c.name));
       const sharedCareers = careersB.filter(c => careerNamesA.has(c.name));
       if (sharedCareers.length > 0) {
@@ -155,8 +157,8 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
       }
 
       // sharedCity links
-      const citiesA = personA.baseCities as string[] || [];
-      const citiesB = personB.baseCities as string[] || [];
+      const citiesA = (personA.baseCities ?? []) as string[];
+      const citiesB = (personB.baseCities ?? []) as string[];
       const sharedCities = citiesA.filter(city => citiesB.includes(city));
       if (sharedCities.length > 0) {
         links.push({
@@ -168,8 +170,8 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
       }
 
       // sharedInterest links
-      const interestsA = personA.interests as { name: string; weight: number }[] || [];
-      const interestsB = personB.interests as { name: string; weight: number }[] || [];
+      const interestsA = (personA.interests ?? []) as { name: string; weight: number }[];
+      const interestsB = (personB.interests ?? []) as { name: string; weight: number }[];
       const interestNamesA = new Set(interestsA.map(i => i.name));
       const sharedInterests = interestsB.filter(i => interestNamesA.has(i.name));
       if (sharedInterests.length > 0) {
@@ -182,8 +184,8 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
       }
 
       // sharedPlace links
-      const placesA = personA.favoritePlaces as string[] || [];
-      const placesB = personB.favoritePlaces as string[] || [];
+      const placesA = (personA.favoritePlaces ?? []) as string[];
+      const placesB = (personB.favoritePlaces ?? []) as string[];
       const sharedPlaces = placesA.filter(place => placesB.includes(place));
       if (sharedPlaces.length > 0) {
         links.push({
@@ -195,8 +197,8 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
       }
 
       // sharedVibe links
-      const vibesA = personA.vibeTags as string[] || [];
-      const vibesB = personB.vibeTags as string[] || [];
+      const vibesA = (personA.vibeTags ?? []) as string[];
+      const vibesB = (personB.vibeTags ?? []) as string[];
       const sharedVibes = vibesA.filter(vibe => vibesB.includes(vibe));
       if (sharedVibes.length > 0) {
         links.push({
@@ -223,7 +225,7 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
   const cityMap = new Map<string, string[]>();
   for (const person of allPersons) {
     if (!nodeIds.has(person.id)) continue;
-    const cities = person.baseCities as string[] || [];
+    const cities = (person.baseCities ?? []) as string[];
     for (const city of cities) {
       if (!cityMap.has(city)) cityMap.set(city, []);
       cityMap.get(city)!.push(person.id);
@@ -245,7 +247,7 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
   const careerMap = new Map<string, string[]>();
   for (const person of allPersons) {
     if (!nodeIds.has(person.id)) continue;
-    const careers = person.careers as { name: string; weight: number }[] || [];
+    const careers = (person.careers ?? []) as { name: string; weight: number }[];
     for (const career of careers) {
       if (!careerMap.has(career.name)) careerMap.set(career.name, []);
       careerMap.get(career.name)!.push(person.id);
@@ -267,7 +269,7 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
   const interestMap = new Map<string, string[]>();
   for (const person of allPersons) {
     if (!nodeIds.has(person.id)) continue;
-    const interests = person.interests as { name: string; weight: number }[] || [];
+    const interests = (person.interests ?? []) as { name: string; weight: number }[];
     for (const interest of interests) {
       if (!interestMap.has(interest.name)) interestMap.set(interest.name, []);
       interestMap.get(interest.name)!.push(person.id);
@@ -289,7 +291,7 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
   const placeMap = new Map<string, string[]>();
   for (const person of allPersons) {
     if (!nodeIds.has(person.id)) continue;
-    const places = person.favoritePlaces as string[] || [];
+    const places = (person.favoritePlaces ?? []) as string[];
     for (const place of places) {
       if (!placeMap.has(place)) placeMap.set(place, []);
       placeMap.get(place)!.push(person.id);
@@ -311,7 +313,7 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
   const vibeMap = new Map<string, string[]>();
   for (const person of allPersons) {
     if (!nodeIds.has(person.id)) continue;
-    const vibes = person.vibeTags as string[] || [];
+    const vibes = (person.vibeTags ?? []) as string[];
     for (const vibe of vibes) {
       if (!vibeMap.has(vibe)) vibeMap.set(vibe, []);
       vibeMap.get(vibe)!.push(person.id);
@@ -332,9 +334,9 @@ export async function getGraphData(filter?: GraphFilter, userId?: string): Promi
   // Process interaction links from all interactions
   for (const interaction of allInteractions) {
     // Get only participants that are in the filtered nodes
-    const participants = interaction.persons
-      .map(ip => ip.person) // Get the actual Person from the join table
-      .filter(p => nodeIds.has(p.id));
+    const participants = (interaction.persons as any[] || [])
+      .map((ip: any) => ip.person) // Get the actual Person from the join table
+      .filter((p: any) => nodeIds.has(p.id));
 
     if (participants.length < 2) continue;
 

@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 import { ActionItemSchema } from "@/schemas/core";
 
 const ActionItemsRequestSchema = z.object({
@@ -12,10 +13,11 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
 
   try {
     const { id } = await context.params;
@@ -29,8 +31,8 @@ export async function PATCH(
     }
     const { actionItems } = parsed.data;
 
-    const updated = await prisma.interaction.update({
-      where: { id, userId: session.user.id },
+    const updated = await store.interaction.update({
+      where: { id, userId: keys.userId },
       data: { actionItems },
     });
 

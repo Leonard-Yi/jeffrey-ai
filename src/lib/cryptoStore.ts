@@ -161,7 +161,7 @@ export function createCryptoStore(prisma: PrismaClient, encKey: Buffer): CryptoS
   const personProxy = {
     async findMany(args: any) {
       const rows = await (prisma as any).person.findMany(args);
-      return rows.map((r: any) => decryptRecord(r, "Person", encKey));
+      return rows.map((r: any) => decryptNested(decryptRecord(r, "Person", encKey), encKey));
     },
     async findUnique(args: any) {
       const row = await (prisma as any).person.findUnique(args);
@@ -199,7 +199,7 @@ export function createCryptoStore(prisma: PrismaClient, encKey: Buffer): CryptoS
   const interactionProxy = {
     async findMany(args: any) {
       const rows = await (prisma as any).interaction.findMany(args);
-      return rows.map((r: any) => decryptRecord(r, "Interaction", encKey));
+      return rows.map((r: any) => decryptNested(decryptRecord(r, "Interaction", encKey), encKey));
     },
     async findUnique(args: any) {
       const row = await (prisma as any).interaction.findUnique(args);

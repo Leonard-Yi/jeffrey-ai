@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { generateEmbedding } from "@/lib/embedding";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 
 const ResolveRequestSchema = z.object({
   text: z.string(),
@@ -14,7 +15,7 @@ const ResolveRequestSchema = z.object({
  */
 function extractNames(text: string): string[] {
   // Extract 2-char Chinese names after common triggers
-  const triggerPattern = /(?:和|与|同|跟|和 |、)([\u4e00-\u9fa5]{2})/g;
+  const triggerPattern = /(?:和|与|同|跟|和 |、)([一-龥]{2})/g;
   const matches: string[] = [];
 
   const triggerMatches = text.matchAll(triggerPattern);
@@ -24,7 +25,7 @@ function extractNames(text: string): string[] {
 
   // Also try to find 2-char Chinese substrings that look like names (no trigger word)
   // This is a fallback - only use names that are common person name patterns
-  const namePattern = /([\u4e00-\u9fa5]{2})/g;
+  const namePattern = /([一-龥]{2})/g;
   const seen = new Set(matches);
   for (const m of text.matchAll(namePattern)) {
     const name = m[1];
@@ -50,10 +51,11 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
 
   try {
     console.log('[DEBUG] Resolve API called');
@@ -80,9 +82,9 @@ export async function POST(request: NextRequest) {
     if (mentionedNames.length === 0) {
       return NextResponse.json({ resolutions: [] });
     }
-    const persons = await prisma.person.findMany({
+    const persons = await store.person.findMany({
       where: {
-        userId: session.user.id,
+        userId: keys.userId,
         deletedAt: null,
         mergedIntoId: null,
         embedding: { not: null },

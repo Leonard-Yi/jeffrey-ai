@@ -1,12 +1,14 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
 
   try {
     const { searchParams } = new URL(request.url);
@@ -16,26 +18,14 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "lastContactDate";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
-    // 构建查询条件
-    const baseWhere = { userId: session.user.id };
-    const where = search
-      ? {
-          ...baseWhere,
-          OR: [
-            { name: { contains: search } },
-            { vibeTags: { has: search } },
-          ],
-        }
-      : baseWhere;
-
-    // 获取总数
-    const total = await prisma.person.count({ where });
-
-    // 获取分页数据
-    const persons = await prisma.person.findMany({
-      where,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+    // Fetch all non-deleted, non-merged persons for this user
+    // Filter/search in memory since encrypted fields can't be queried at DB level
+    const allPersons = await store.person.findMany({
+      where: {
+        userId: keys.userId,
+        deletedAt: null,
+        mergedIntoId: null,
+      },
       orderBy: { [sortBy]: sortOrder },
       include: {
         introducedBy: {
@@ -44,22 +34,40 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // 格式化数据
-    const members = persons.map((person) => {
-      const careers = person.careers as { name: string; weight: number }[];
-      const interests = person.interests as { name: string; weight: number }[];
+    // Apply search filter in memory
+    let filtered = allPersons;
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = allPersons.filter((person) => {
+        const nameMatch = person.name.toLowerCase().includes(q);
+        const vibeMatch = (person.vibeTags as string[] || []).some((t) =>
+          t.toLowerCase().includes(q)
+        );
+        return nameMatch || vibeMatch;
+      });
+    }
+
+    // Paginate in memory
+    const total = filtered.length;
+    const start = (page - 1) * pageSize;
+    const pagedPersons = filtered.slice(start, start + pageSize);
+
+    // Format data
+    const members = pagedPersons.map((person) => {
+      const careers = (person.careers ?? []) as { name: string; weight: number }[];
+      const interests = (person.interests ?? []) as { name: string; weight: number }[];
 
       return {
         id: person.id,
         name: person.name,
         careers: careers.map((c) => `${c.name}(${(c.weight * 100).toFixed(0)}%)`).join(", "),
         interests: interests.map((i) => `${i.name}(${(i.weight * 100).toFixed(0)}%)`).join(", "),
-        vibeTags: person.vibeTags.join(", "),
-        baseCities: person.baseCities.join(", "),
-        favoritePlaces: person.favoritePlaces.join(", "),
+        vibeTags: (person.vibeTags as string[] || []).join(", "),
+        baseCities: (person.baseCities as string[] || []).join(", "),
+        favoritePlaces: (person.favoritePlaces as string[] || []).join(", "),
         relationshipScore: Math.round(person.relationshipScore),
         lastContactDate: person.lastContactDate.toISOString().split("T")[0],
-        introducedBy: person.introducedBy?.name || "-",
+        introducedBy: (person.introducedBy as any)?.name || "-",
       };
     });
 

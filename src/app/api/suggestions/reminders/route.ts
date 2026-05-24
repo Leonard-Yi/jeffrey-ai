@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getEncryptionKeys } from "@/lib/getKeys";
+import { createCryptoStore } from "@/lib/cryptoStore";
 
 function subDays(date: Date, days: number): Date {
   const result = new Date(date);
@@ -25,22 +26,25 @@ function getDaysSince(date: Date): number {
 }
 
 export async function GET(_request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const keys = await getEncryptionKeys();
+  if (!keys) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const store = createCryptoStore(prisma, keys.encKey);
 
   try {
     const thirtyDaysAgo = subDays(new Date(), 30);
 
     // 1. 关系维护提醒：超过30天未联系的联系人
-    const staleContacts = await prisma.person.findMany({
+    // Fetch all persons and filter by lastContactDate in JS
+    // (lastContactDate is not encrypted, but other fields in the person record are)
+    const allPersons = await store.person.findMany({
       where: {
-        userId: session.user.id,
-        lastContactDate: { lt: thirtyDaysAgo },
+        userId: keys.userId,
+        deletedAt: null,
+        mergedIntoId: null,
       },
       orderBy: { lastContactDate: "asc" },
-      take: 10,
       select: {
         id: true,
         name: true,
@@ -50,11 +54,15 @@ export async function GET(_request: NextRequest) {
       },
     });
 
+    const staleContacts = allPersons
+      .filter((p) => new Date(p.lastContactDate) < thirtyDaysAgo)
+      .slice(0, 10);
+
     // 2. 待办承诺提醒：ownedBy='me' 且 resolved=false 的事项
-    // 先获取所有互动，然后在 JS 中过滤（因为 JSON 字段的 isEmpty 在某些 Prisma 版本不支持）
-    const allInteractions = await prisma.interaction.findMany({
+    // Fetch all interactions and filter in JS
+    const allInteractions = await store.interaction.findMany({
       where: {
-        userId: session.user.id,
+        userId: keys.userId,
       },
       include: {
         persons: {
@@ -79,14 +87,14 @@ export async function GET(_request: NextRequest) {
     }> = [];
 
     for (const ip of allInteractions) {
-      const items = ip.actionItems as ActionItem[];
+      const items = (ip.actionItems ?? []) as ActionItem[];
       // 过滤出有效的 actionItems（非空数组）
       if (!items || !Array.isArray(items) || items.length === 0) continue;
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (item.ownedBy === "me" && !item.resolved) {
           // 找到这个 interaction 中第一个人（通常是"我"）
-          const firstPerson = ip.persons[0]?.person;
+          const firstPerson = (ip as any).persons?.[0]?.person;
           if (firstPerson) {
             pendingDebts.push({
               id: `${ip.id}-${i}`,
@@ -106,7 +114,7 @@ export async function GET(_request: NextRequest) {
 
     // 格式化 staleContacts
     const staleContactsFormatted = staleContacts.map((person) => {
-      const careers = (person.careers as Array<{ name: string }>) || [];
+      const careers = ((person.careers ?? []) as Array<{ name: string }>) || [];
       return {
         id: person.id,
         name: person.name,
