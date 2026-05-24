@@ -163,8 +163,7 @@ const JeffreyInputPage = () => {
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [status, setStatus] = useState<'complete' | 'pending' | 'ambiguous' | null>(null);
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([]);
-  const [selectedQuickReply, setSelectedQuickReply] = useState<string | null>(null);
-  const [customReply, setCustomReply] = useState('');
+  const [followUpReply, setFollowUpReply] = useState('');
   const [originalInputText, setOriginalInputText] = useState('');
   const [existingPersons, setExistingPersons] = useState<Array<{ id: string; name: string; careers: Array<{ name: string }> }>>([]);
   const [ambiguousPersons, setAmbiguousPersons] = useState<Person[]>([]);
@@ -381,13 +380,13 @@ const JeffreyInputPage = () => {
       }
       console.log('[DEBUG] Calling analyze API...');
       await handleSubmitWithText(textToSubmit, !!followUpReply);
-      if (followUpReply) { setSelectedQuickReply(null); setCustomReply(''); setInputText(''); }
+      if (followUpReply) { setFollowUpReply(''); setInputText(''); }
     } catch {} finally { if (!showResolutionPrompt) setIsProcessing(false); }
   };
 
   const handleClear = () => {
     setInputText(''); setOriginalInputText(''); setJeffreyComment(''); setPersons([]); setPersonIds([]);
-    setFollowUpQuestion(''); setActionItems([]); setStatus(null); setSelectedQuickReply(null); setCustomReply('');
+    setFollowUpQuestion(''); setActionItems([]); setStatus(null); setFollowUpReply('');
     setAmbiguousPersons([]); setShowResolutionPrompt(false); setNameResolutions([]); setPendingText('');
     setConversationHistory([]); setDialogueComplete(false); setIsProcessing(false);
   };
@@ -714,81 +713,69 @@ const JeffreyInputPage = () => {
           {status === 'pending' && followUpQuestion && !dialogueComplete && (
             <Card>
               <SectionLabel>Jeffrey 的追问</SectionLabel>
-              <p style={{ fontSize: 14.5, color: C.textSecondary, fontStyle: 'italic', marginBottom: 16, lineHeight: 1.7 }}>
+              <p style={{ fontSize: 14.5, color: C.textSecondary, fontStyle: 'italic', marginBottom: 14, lineHeight: 1.7 }}>
                 &ldquo;{followUpQuestion}&rdquo;
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                {['不太清楚', '他做并购', customReply || '自定义回复'].map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => { if (opt === '自定义回复') { setCustomReply(''); } else { setSelectedQuickReply(opt); setCustomReply(''); } }}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: 8,
-                      fontSize: 13,
-                      fontWeight: 500,
-                      border: `1.5px solid ${(selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.accent : C.borderStrong}`,
-                      backgroundColor: (selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.accentLight : C.bgElevated,
-                      color: (selectedQuickReply === opt || (opt === '自定义回复' && customReply)) ? C.primary : C.textSecondary,
-                      cursor: 'pointer',
-                      transition: 'all 0.12s',
-                    }}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            <div style={{ marginBottom: 12 }}>
-              <input
-                type="text"
-                value={customReply}
-                onChange={e => { setCustomReply(e.target.value); setSelectedQuickReply('自定义回复'); }}
-                placeholder="输入自定义回复..."
+              <textarea
+                value={followUpReply}
+                onChange={e => setFollowUpReply(e.target.value)}
+                placeholder="直接输入你的回答..."
+                rows={2}
                 style={{
                   width: '100%',
-                  padding: '9px 12px',
+                  padding: '10px 14px',
                   borderRadius: 8,
                   border: `1.5px solid ${C.borderStrong}`,
                   fontSize: 14,
+                  lineHeight: 1.6,
+                  fontFamily: 'var(--font-body)',
                   color: C.text,
                   background: C.bg,
                   outline: 'none',
                   boxSizing: 'border-box',
+                  resize: 'vertical',
                   transition: 'border-color 0.12s',
+                  marginBottom: 12,
                 }}
-                onFocus={e => (e.target.style.borderColor = C.accent)}
+                onFocus={e => (e.target.style.borderColor = C.primary)}
                 onBlur={e => (e.target.style.borderColor = C.borderStrong)}
+                onKeyDown={e => {
+                  // Ctrl+Enter or Cmd+Enter to submit
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (followUpReply.trim()) handleSubmit(followUpReply.trim());
+                  }
+                }}
               />
-            </div>
-              <Button
-                variant="primary"
-                fullWidth
-                onClick={() => {
-                  const reply = (customReply && customReply.trim()) ? customReply : (selectedQuickReply || '');
-                  if (!reply) { alert('请输入回复内容或选择快捷回复'); return; }
-                  handleSubmit(reply);
-                }}
-                disabled={(!selectedQuickReply && !customReply) || isProcessing}
-              >
-                {isProcessing ? '发送中...' : '发送回复'}
-              </Button>
-              <Button
-                variant="secondary"
-                fullWidth
-                style={{ marginTop: 8 }}
-                onClick={() => {
-                  setDialogueComplete(true);
-                  setStatus('complete');
-                  setConversationHistory(p => [...p, {
-                    role: 'jeffrey' as const,
-                    content: '好的，信息已记录。如需补充随时告诉我。',
-                    timestamp: new Date().toLocaleString('zh-CN'),
-                  }]);
-                }}
-                disabled={isProcessing}
-              >
-                差不多了，不用问了
-              </Button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    if (!followUpReply.trim()) return;
+                    handleSubmit(followUpReply.trim());
+                  }}
+                  disabled={!followUpReply.trim() || isProcessing}
+                  style={{ flex: 2 }}
+                >
+                  {isProcessing ? '发送中...' : '回复'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setDialogueComplete(true);
+                    setStatus('complete');
+                    setConversationHistory(p => [...p, {
+                      role: 'jeffrey' as const,
+                      content: '好的，信息已记录。如需补充随时告诉我。',
+                      timestamp: new Date().toLocaleString('zh-CN'),
+                    }]);
+                  }}
+                  disabled={isProcessing}
+                  style={{ flex: 1 }}
+                >
+                  跳过
+                </Button>
+              </div>
             </Card>
           )}
 
