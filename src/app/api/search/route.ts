@@ -5,7 +5,7 @@ import { generateEmbedding, buildPersonSearchText, type WeightedTag } from "@/li
 import { getEncryptionKeys } from "@/lib/getKeys";
 import { createCryptoStore } from "@/lib/cryptoStore";
 import { enqueueEmbeddingRefresh } from "@/lib/embeddingQueue";
-import { encryptJson } from "@/lib/crypto";
+import { encrypt, encryptJson } from "@/lib/crypto";
 
 const SearchRequestSchema = z.object({
   q: z.string().optional().default(""),
@@ -50,7 +50,7 @@ function refreshStaleEmbeddingIfNeeded(
       // Write encrypted embedding through raw prisma (background task, no store available)
       await prisma.person.update({
         where: { id: person.id },
-        data: { searchText: expectedSearchText, embedding: encryptJson(newEmbedding, encKey) },
+        data: { searchText: encrypt(expectedSearchText, encKey), embedding: encryptJson(newEmbedding, encKey) },
       });
       console.log(`[Jeffrey.AI] Refreshed embedding for person id="${person.id}" (${newEmbedding.length}D)`);
     });

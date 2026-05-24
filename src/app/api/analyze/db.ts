@@ -3,7 +3,7 @@
 
 import { buildPersonSearchText, generateEmbedding, type WeightedTag } from "@/lib/embedding";
 import { mergeTags } from "@/lib/dbUtils";
-import { computeNameHash, encrypt } from "@/lib/crypto";
+import { computeNameHash, encrypt, encryptJson, encryptStringArray } from "@/lib/crypto";
 import type { CryptoStore } from "@/lib/cryptoStore";
 
 interface ExtractionData {
@@ -41,11 +41,12 @@ function calculateScoreBoost(data: {
 }
 
 /**
- * One-time backfill: encrypt plaintext names and compute nameHash
- * for legacy records created before blind-index encryption was added.
+ * One-time backfill: encrypt all plaintext fields and compute nameHash
+ * for legacy records created before field-level encryption was added.
  * Safe to call repeatedly — only touches records with nameHash = null.
+ * Idempotent: skips fields already starting with "v1:".
  */
-export async function backfillLegacyNames(
+export async function backfillLegacyEncryption(
   userId: string,
   store: CryptoStore,
   encKey: Buffer,
@@ -53,26 +54,88 @@ export async function backfillLegacyNames(
 ): Promise<number> {
   const rawPersons = await store.raw.person.findMany({
     where: { userId, nameHash: null },
-    select: { id: true, name: true },
+    select: {
+      id: true, name: true, aliases: true, careers: true, interests: true,
+      vibeTags: true, baseCities: true, favoritePlaces: true,
+      searchText: true, icebreakerData: true,
+    },
   });
-  if (rawPersons.length === 0) return 0;
 
+  let count = 0;
   for (const p of rawPersons) {
-    // Safety: skip if already encrypted (defense against double-encryption)
-    if (p.name.startsWith("v1:")) {
-      // Already encrypted — just backfill the missing nameHash
-      // Can't compute hash from ciphertext, so leave nameHash null
-      console.warn(`[Jeffrey.AI] Record ${p.id} has encrypted name but null nameHash — skipping`);
-      continue;
+    const data: Record<string, unknown> = {};
+
+    // Name: compute hash + encrypt (skip if already encrypted)
+    if (!p.name.startsWith("v1:")) {
+      data.nameHash = computeNameHash(p.name, pseudoKey);
+      data.name = encrypt(p.name, encKey);
     }
-    const nameHash = computeNameHash(p.name, pseudoKey);
-    const encryptedName = encrypt(p.name, encKey);
-    await store.raw.person.update({
-      where: { id: p.id },
-      data: { name: encryptedName, nameHash },
-    });
+
+    // String fields
+    for (const f of ["searchText"] as const) {
+      const v = p[f];
+      if (typeof v === "string" && v && !v.startsWith("v1:")) {
+        data[f] = encrypt(v, encKey);
+      }
+    }
+
+    // JSON fields (plaintext = actual object, encrypted = string starting with v1:)
+    for (const f of ["careers", "interests", "icebreakerData"] as const) {
+      const v = p[f];
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        data[f] = encryptJson(v, encKey);
+      }
+    }
+
+    // String array fields (plaintext elements don't start with v1:)
+    for (const f of ["vibeTags", "aliases", "baseCities", "favoritePlaces"] as const) {
+      const v = p[f];
+      if (Array.isArray(v) && v.length > 0 && typeof v[0] === "string" && !v[0].startsWith("v1:")) {
+        data[f] = encryptStringArray(v as string[], encKey);
+      }
+    }
+
+    if (Object.keys(data).length > 0) {
+      await store.raw.person.update({ where: { id: p.id }, data });
+      count++;
+    }
   }
-  return rawPersons.length;
+
+  // Interactions: detect plaintext by checking coreMemories first element
+  const rawInteractions = await store.raw.interaction.findMany({
+    where: { userId },
+    select: {
+      id: true, location: true, contextType: true, sentiment: true,
+      actionItems: true, coreMemories: true,
+    },
+  });
+
+  for (const ix of rawInteractions) {
+    const data: Record<string, unknown> = {};
+
+    for (const f of ["location", "contextType", "sentiment"] as const) {
+      const v = ix[f];
+      if (typeof v === "string" && v && !v.startsWith("v1:")) {
+        data[f] = encrypt(v, encKey);
+      }
+    }
+
+    // actionItems: JSON field
+    if (ix.actionItems && typeof ix.actionItems === "object" && !Array.isArray(ix.actionItems)) {
+      data.actionItems = encryptJson(ix.actionItems, encKey);
+    }
+
+    // coreMemories: string array
+    if (Array.isArray(ix.coreMemories) && ix.coreMemories.length > 0 && typeof ix.coreMemories[0] === "string" && !ix.coreMemories[0].startsWith("v1:")) {
+      data.coreMemories = encryptStringArray(ix.coreMemories as string[], encKey);
+    }
+
+    if (Object.keys(data).length > 0) {
+      await store.raw.interaction.update({ where: { id: ix.id }, data });
+    }
+  }
+
+  return count;
 }
 
 async function upsertPerson(

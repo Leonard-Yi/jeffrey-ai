@@ -43,10 +43,28 @@ const FIELD_META: Record<string, FieldMeta> = {
 
 // ─── Field-level encrypt/decrypt ───────────────────────────────
 
+function isAlreadyEncrypted(value: unknown, type: EncryptedFieldType): boolean {
+  if (value == null) return false;
+  switch (type) {
+    case "string":
+      return typeof value === "string" && value.startsWith("v1:");
+    case "json":
+      // Encrypted JSON is a string starting with v1: — plaintext JSON is an object
+      return typeof value === "string" && value.startsWith("v1:");
+    case "string[]":
+      // Encrypted arrays contain v1: strings
+      return Array.isArray(value) && value.length > 0 && typeof value[0] === "string" && value[0].startsWith("v1:");
+    default:
+      return false;
+  }
+}
+
 function encryptField(fieldName: string, value: unknown, key: Buffer): unknown {
   if (value == null) return value;
   const meta = FIELD_META[fieldName];
   if (!meta) return value; // not an encrypted field
+  // Defense against double-encryption
+  if (isAlreadyEncrypted(value, meta.type)) return value;
   switch (meta.type) {
     case "string":   return encrypt(value as string, key);
     case "json":     return encryptJson(value, key);
