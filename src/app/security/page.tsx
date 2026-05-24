@@ -311,6 +311,286 @@ export default function SecurityPage() {
           />
         </section>
 
+        {/* ── Admin's View ─────────────────────────────────────────── */}
+        <section
+          style={{
+            maxWidth: "880px",
+            margin: "0 auto",
+            padding: "0 48px 80px",
+          }}
+        >
+          <h2
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: C.text2xl,
+              fontWeight: 400,
+              color: C.text,
+              letterSpacing: "-0.01em",
+              marginBottom: "8px",
+              textAlign: "center",
+            }}
+          >
+            后台看到什么？
+          </h2>
+          <p
+            style={{
+              fontSize: C.textSm,
+              color: C.textMuted,
+              textAlign: "center",
+              marginBottom: "36px",
+            }}
+          >
+            即使攻击者拿到了完整数据库，他看到的也只有这些——
+          </p>
+
+          {/* Database Screenshot Comic */}
+          <div
+            style={{
+              background: "#0d1117",
+              borderRadius: C.radiusXl,
+              border: "1px solid #30363d",
+              overflow: "hidden",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
+            }}
+          >
+            {/* Title bar */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "12px 16px",
+                background: "#161b22",
+                borderBottom: "1px solid #30363d",
+              }}
+            >
+              <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ff5f56" }} />
+              <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ffbd2e" }} />
+              <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#27ca40" }} />
+              <span
+                style={{
+                  marginLeft: "12px",
+                  fontSize: "12px",
+                  fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
+                  color: "#8b949e",
+                }}
+              >
+                Supabase — jeffrey_db_main — Person 表
+              </span>
+            </div>
+
+            {/* Table rows */}
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
+                  fontSize: "12px",
+                  lineHeight: "1.6",
+                }}
+              >
+                <thead>
+                  <tr style={{ background: "#161b22", color: "#8b949e" }}>
+                    <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 500, borderBottom: "1px solid #30363d", whiteSpace: "nowrap" }}>id</th>
+                    <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 500, borderBottom: "1px solid #30363d", whiteSpace: "nowrap" }}>name</th>
+                    <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 500, borderBottom: "1px solid #30363d", whiteSpace: "nowrap" }}>careers</th>
+                    <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 500, borderBottom: "1px solid #30363d", whiteSpace: "nowrap" }}>coreMemories</th>
+                    <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 500, borderBottom: "1px solid #30363d", whiteSpace: "nowrap" }}>sentiment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    {
+                      id: "a1b2...",
+                      name: "v1:jK9mP2vR7s:7Hr8MtZTpEm56He2rGo1HO36FmuRBlQizg==",
+                      careers: "v1:Xy7ZqW3v:Ut8Mn5BcVx9Lp4Rj2Wk6Hf3SaDg1Qw==",
+                      memories: "v1:Nk4Pq9Rs:7Tv2Wx5Yz8Bc3Df1Gh6Jk9Lm2Np4Qr==",
+                      sentiment: "v1:SaDg1Qw2:Jk9Lm2Np4Qr7Tv2Wx5Yz8Bc3Df1Gh==",
+                      ver: "v1.0",
+                    },
+                    {
+                      id: "c3d4...",
+                      name: "v1:Wx5Yz8Bc3:Ds1Fg6Hj9Kl2Mn4Pq7Rt8Uv2Wx5Yz==",
+                      careers: "v1:Bc3Df1Gh:6Jk9Lm2Np4Qr7Tv2Wx5Yz8Bc3Df1Gh==",
+                      memories: "v1:K9Lm2Np4:Qr7Tv2Wx5Yz8Bc3Df1Gh6Jk9Lm2Np==",
+                      sentiment: "v1:Gh6Jk9Lm:2Np4Qr7Tv2Wx5Yz8Bc3Df1Gh6Jk==",
+                      ver: "v1.0",
+                    },
+                  ].map((row, i) => (
+                    <tr
+                      key={i}
+                      style={{
+                        background: i === 0 ? "#0d1117" : "#161b22",
+                        borderBottom: "1px solid #21262d",
+                      }}
+                    >
+                      <td style={{ padding: "10px 14px", color: "#58a6ff", whiteSpace: "nowrap" }}>{row.id}</td>
+                      <td style={{ padding: "10px 14px", color: "#7ee787", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</td>
+                      <td style={{ padding: "10px 14px", color: "#7ee787", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.careers}</td>
+                      <td style={{ padding: "10px 14px", color: "#7ee787", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.memories}</td>
+                      <td style={{ padding: "10px 14px", color: "#7ee787", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.sentiment}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Annotations */}
+            <div style={{ padding: "14px 18px", display: "flex", flexWrap: "wrap", gap: "16px", borderTop: "1px solid #30363d" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#7ee787", flexShrink: 0 }} />
+                <span style={{ fontSize: "11px", color: "#8b949e", fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" }}>
+                  All sensitive columns are AES-256-GCM ciphertext
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#ff7b72", flexShrink: 0 }} />
+                <span style={{ fontSize: "11px", color: "#8b949e", fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" }}>
+                  id / userId / date are unencrypted (needed for indexing)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* The Key Flow */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr auto 1fr",
+              alignItems: "center",
+              gap: "0",
+              marginTop: "36px",
+              fontSize: C.textSm,
+            }}
+          >
+            {/* Locked DB */}
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px 16px",
+                background: C.bgCard,
+                border: `1px solid ${C.border}`,
+                borderRadius: C.radiusLg,
+              }}
+            >
+              <div style={{ fontSize: "28px", marginBottom: "8px" }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+              </div>
+              <div style={{ fontWeight: 500, color: C.text, marginBottom: "4px" }}>加密数据库</div>
+              <div style={{ color: C.textMuted, lineHeight: 1.5 }}>
+                全是 v1:... 密文
+                <br />
+                无密码 = 无解
+              </div>
+            </div>
+
+            {/* Arrow 1 */}
+            <div style={{ color: C.textMuted, fontSize: "20px", padding: "0 4px" }}>→</div>
+
+            {/* Password */}
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px 16px",
+                background: C.accentLight,
+                border: `1.5px solid ${C.accent}`,
+                borderRadius: C.radiusLg,
+              }}
+            >
+              <div style={{ fontSize: "28px", marginBottom: "8px" }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                </svg>
+              </div>
+              <div style={{ fontWeight: 500, color: C.primary, marginBottom: "4px" }}>你的密码</div>
+              <div style={{ color: C.textMuted, lineHeight: 1.5 }}>
+                只在登录时存在于内存
+                <br />
+                不存盘 · 不记录 · 不传输
+              </div>
+            </div>
+
+            {/* Arrow 2 */}
+            <div style={{ color: C.textMuted, fontSize: "20px", padding: "0 4px" }}>→</div>
+
+            {/* Decrypted */}
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px 16px",
+                background: C.successBg,
+                border: `1px solid rgba(34,197,94,0.2)`,
+                borderRadius: C.radiusLg,
+              }}
+            >
+              <div style={{ fontSize: "28px", marginBottom: "8px" }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={C.success} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div style={{ fontWeight: 500, color: C.success, marginBottom: "4px" }}>解密成功</div>
+              <div style={{ color: C.textMuted, lineHeight: 1.5 }}>
+                王总 · 投资人 · AI 医疗
+                <br />
+                下次见面：周三
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom caption */}
+          <div
+            style={{
+              marginTop: "24px",
+              padding: "20px 24px",
+              background: C.bgCard,
+              border: `1px solid ${C.border}`,
+              borderRadius: C.radiusLg,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "14px",
+            }}
+          >
+            {/* Bcrypt hash display */}
+            <div
+              style={{
+                flex: 1,
+                fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
+                fontSize: "11px",
+                color: C.textMuted,
+                lineHeight: "1.7",
+              }}
+            >
+              <div style={{ fontSize: "12px", fontWeight: 600, color: C.textSecondary, marginBottom: "6px", fontFamily: "var(--font-body)" }}>
+                数据库 User 表中存储的"密码"：
+              </div>
+              <div style={{ wordBreak: "break-all", color: "#7ee787", background: "#0d1117", padding: "10px 14px", borderRadius: "6px", border: "1px solid #30363d" }}>
+                passwordHash: $2b$12$k8Hf3Jq7Rz9Wx1Yv4Np6Ku...
+              </div>
+              <div style={{ marginTop: "10px", fontSize: "12px", fontWeight: 600, color: C.textSecondary, fontFamily: "var(--font-body)", marginBottom: "6px" }}>
+                这不是你的密码：
+              </div>
+              <div style={{ color: C.textMuted, lineHeight: 1.6 }}>
+                bcrypt 是单向哈希。任何人都无法从 <code style={{ color: "#7ee787", background: "rgba(126,231,135,0.08)", padding: "1px 4px", borderRadius: "3px" }}>$2b$12$...</code> 反推出原始密码。
+                <br />
+                你的密码只存在于你的记忆里。我们从未见过它，也永远无法见到它。
+              </div>
+            </div>
+
+            {/* Decorative lock */}
+            <div style={{ flexShrink: 0, opacity: 0.3 }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.text} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
+                <circle cx="12" cy="16" r="1" />
+              </svg>
+            </div>
+          </div>
+        </section>
+
         {/* ── Architecture Diagram ───────────────────────────────── */}
         <section
           style={{
