@@ -285,7 +285,7 @@ export default function SecurityPage() {
             margin: "0 auto",
             padding: "0 48px 80px",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gridTemplateColumns: "repeat(3, 1fr)",
             gap: "24px",
           }}
         >

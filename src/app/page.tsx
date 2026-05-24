@@ -340,46 +340,9 @@ export default async function LandingPage() {
             ))}
           </div>
 
-          {/* Quote */}
-          <div
-            className="animate-fade-in-up stagger-6"
-            style={{
-              marginTop: "100px",
-              padding: "28px 32px",
-              background: C.accentLight,
-              borderRadius: "14px",
-              border: `1px solid ${C.borderAccent}`,
-              maxWidth: "560px",
-            }}
-          >
-          <p
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "18px",
-              color: C.textSecondary,
-              fontStyle: "italic",
-              lineHeight: 1.75,
-              marginBottom: "10px",
-            }}
-          >
-            "有些名字，值得被记住。
-            <br />
-            有些约定，值得被兑现。"
-          </p>
-          <p
-            style={{
-              fontSize: "12px",
-              color: C.textMuted,
-              letterSpacing: "0.05em",
-            }}
-          >
-            — Jeffrey.AI
-          </p>
-        </div>
-
         {/* Security / Trust Section */}
         <section
-          className="animate-fade-in-up stagger-7"
+          className="animate-fade-in-up stagger-6"
           style={{
             marginTop: "100px",
             padding: "48px",
@@ -389,7 +352,6 @@ export default async function LandingPage() {
             boxShadow: C.shadowMd,
           }}
         >
-          {/* Section header */}
           <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "12px" }}>
             <div
               style={{
@@ -436,7 +398,6 @@ export default async function LandingPage() {
             AI 服务商从未见过你的联系人信息。
           </p>
 
-          {/* Three lock columns */}
           <div
             style={{
               display: "grid",
@@ -514,6 +475,43 @@ export default async function LandingPage() {
             详细了解我们的安全策略 →
           </Link>
         </section>
+
+        {/* Quote */}
+        <div
+          className="animate-fade-in-up stagger-7"
+          style={{
+            marginTop: "100px",
+            padding: "28px 32px",
+            background: C.accentLight,
+            borderRadius: "14px",
+            border: `1px solid ${C.borderAccent}`,
+            maxWidth: "560px",
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "18px",
+              color: C.textSecondary,
+              fontStyle: "italic",
+              lineHeight: 1.75,
+              marginBottom: "10px",
+            }}
+          >
+            "有些名字，值得被记住。
+            <br />
+            有些约定，值得被兑现。"
+          </p>
+          <p
+            style={{
+              fontSize: "12px",
+              color: C.textMuted,
+              letterSpacing: "0.05em",
+            }}
+          >
+            — Jeffrey.AI
+          </p>
+        </div>
       </main>
 
       {/* Footer */}
