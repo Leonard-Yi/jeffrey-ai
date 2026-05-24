@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 
 const PUBLIC_PATHS = [
   "/",
+  "/security",
   "/auth/signin",
   "/auth/signup",
   "/auth/forgot-password",

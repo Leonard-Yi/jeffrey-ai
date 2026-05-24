@@ -285,34 +285,20 @@ export default async function LandingPage() {
               accent: C.accent,
               bg: C.accentLight,
             },
-            {
-              icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-              ),
-              title: "隐私优先",
-              desc: "你的数据用你的密码加密存储。连我们也看不到你的任何个人信息。",
-              accent: C.accent,
-              bg: C.accentLight,
-              link: "/security",
-            },
-          ].map((feature, i) => {
-            const cardContent = (
-              <div
-                className="animate-fade-in-up"
-                style={{
-                  background: C.bgCard,
-                  border: `1px solid ${C.border}`,
-                  borderRadius: "14px",
-                  padding: "28px",
-                  boxShadow: C.shadowMd,
-                  transition: `all ${C.transitionBase}`,
-                  animationDelay: `${0.1 + i * 0.05}s`,
-                  cursor: (feature as any).link ? "pointer" : "default",
-                  height: "100%",
-                }}
-              >
+          ].map((feature, i) => (
+            <div
+              key={i}
+              className="animate-fade-in-up"
+              style={{
+                background: C.bgCard,
+                border: `1px solid ${C.border}`,
+                borderRadius: "14px",
+                padding: "28px",
+                boxShadow: C.shadowMd,
+                transition: `all ${C.transitionBase}`,
+                animationDelay: `${0.1 + i * 0.05}s`,
+              }}
+            >
                 <div
                   style={{
                     width: "44px",
@@ -351,31 +337,21 @@ export default async function LandingPage() {
                   {feature.desc}
                 </p>
               </div>
-            );
+            ))}
+          </div>
 
-            if ((feature as any).link) {
-              return (
-                <Link key={i} href={(feature as any).link} style={{ textDecoration: "none" }}>
-                  {cardContent}
-                </Link>
-              );
-            }
-            return <div key={i}>{cardContent}</div>;
-          })}
-        </div>
-
-        {/* Quote */}
-        <div
-          className="animate-fade-in-up stagger-6"
-          style={{
-            marginTop: "100px",
-            padding: "28px 32px",
-            background: C.accentLight,
-            borderRadius: "14px",
-            border: `1px solid ${C.borderAccent}`,
-            maxWidth: "560px",
-          }}
-        >
+          {/* Quote */}
+          <div
+            className="animate-fade-in-up stagger-6"
+            style={{
+              marginTop: "100px",
+              padding: "28px 32px",
+              background: C.accentLight,
+              borderRadius: "14px",
+              border: `1px solid ${C.borderAccent}`,
+              maxWidth: "560px",
+            }}
+          >
           <p
             style={{
               fontFamily: "var(--font-display)",
@@ -400,6 +376,144 @@ export default async function LandingPage() {
             — Jeffrey.AI
           </p>
         </div>
+
+        {/* Security / Trust Section */}
+        <section
+          className="animate-fade-in-up stagger-7"
+          style={{
+            marginTop: "100px",
+            padding: "48px",
+            background: C.bgCard,
+            border: `1px solid ${C.border}`,
+            borderRadius: "16px",
+            boxShadow: C.shadowMd,
+          }}
+        >
+          {/* Section header */}
+          <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "12px" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "10px",
+                background: C.accentLight,
+                color: C.accent,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </div>
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "24px",
+                fontWeight: 400,
+                color: C.text,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              你的数据，只有你能看。
+            </h2>
+          </div>
+          <p
+            style={{
+              fontSize: "15px",
+              color: C.textSecondary,
+              lineHeight: 1.75,
+              maxWidth: "640px",
+            }}
+          >
+            所有敏感数据在写入数据库前都经过{' '}
+            <strong style={{ color: C.text }}>AES-256-GCM 加密</strong>
+            ，加密密钥由你的登录密码通过{' '}
+            <strong style={{ color: C.text }}>Argon2id</strong> 派生，服务器不存储密钥。
+            你的文本在发送给 AI 分析前，真实人名会先被替换为假名，AI 返回后再还原——
+            AI 服务商从未见过你的联系人信息。
+          </p>
+
+          {/* Three lock columns */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "20px",
+              marginTop: "32px",
+              marginBottom: "28px",
+            }}
+          >
+            {[
+              {
+                title: "存储加密",
+                tag: "AES-256-GCM",
+                body: "姓名、职业、互动记忆等全部敏感字段在存入数据库前加密。即使数据库泄露，看到的也只是密文。",
+              },
+              {
+                title: "AI 假名化",
+                tag: "NER 替换",
+                body: "文本发给 AI 前，本地 NER 识别真实人名并替换为假名。AI 返回后再还原。AI 提供商从没见过你的真实数据。",
+              },
+              {
+                title: "密钥不落盘",
+                tag: "Argon2id",
+                body: "加密密钥从你的密码派生，仅在登录后的会话内存中短暂存在。退出登录即消失，管理员无法绕过你的密码。",
+              },
+            ].map((item) => (
+              <div key={item.title}>
+                <div
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    color: C.text,
+                    marginBottom: "4px",
+                  }}
+                >
+                  {item.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 500,
+                    color: C.accent,
+                    letterSpacing: "0.03em",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {item.tag}
+                </div>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: C.textSecondary,
+                    lineHeight: 1.7,
+                    margin: 0,
+                  }}
+                >
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <Link
+            href="/security"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              fontSize: "14px",
+              fontWeight: 500,
+              color: C.primary,
+              textDecoration: "none",
+            }}
+          >
+            详细了解我们的安全策略 →
+          </Link>
+        </section>
       </main>
 
       {/* Footer */}
