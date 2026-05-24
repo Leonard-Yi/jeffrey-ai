@@ -3,10 +3,14 @@ import { createHmac } from "node:crypto";
 import { encrypt, decrypt } from "./crypto";
 import type { CryptoStore } from "./cryptoStore";
 
-let jiebaLoaded = false;
+let jiebaInstance: any = null;
 
-function ensureJieba() {
-  if (!jiebaLoaded) jiebaLoaded = true;
+function getJieba() {
+  if (!jiebaInstance) {
+    const nodejieba = require("nodejieba");
+    jiebaInstance = nodejieba;
+  }
+  return jiebaInstance;
 }
 
 interface Entity {
@@ -18,10 +22,7 @@ interface Entity {
 
 /** Extract named entities from Chinese text using jieba POS tagging. */
 function extractEntities(text: string): Entity[] {
-  ensureJieba();
-  // Use variable-based require to prevent Turbopack from statically analyzing and bundling this native module
-  const moduleName = "@node-rs/jieba";
-  const jieba = require(moduleName);
+  const jieba = getJieba();
   const tagged = jieba.tag(text) as Array<{ word: string; tag: string }>;
 
   const entities: Entity[] = [];

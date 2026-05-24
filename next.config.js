@@ -12,7 +12,7 @@ const nextConfig = {
     },
   ],
   // Mark native modules as external so Turbopack doesn't try to bundle them
-  serverExternalPackages: ['@node-rs/jieba'],
+  serverExternalPackages: ['nodejieba'],
   // Empty turbopack config to silence error about webpack config in Next.js 16 (Turbopack is default)
   turbopack: {},
   webpack: (config) => {
