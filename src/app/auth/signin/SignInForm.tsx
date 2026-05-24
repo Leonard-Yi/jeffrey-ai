@@ -11,13 +11,13 @@ export default function SignInForm() {
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl") || "/input";
   const isValidCallbackUrl = (url: string): string => {
-    if (url.startsWith("/")) return url;
+    // Relative paths: prepend origin — NextAuth requires absolute URLs
+    if (url.startsWith("/")) return window.location.origin + url;
     try {
       const u = new URL(url);
-      // Only allow same-origin callback URLs (prevent open redirect)
-      if (u.origin === window.location.origin) return u.pathname;
+      if (u.origin === window.location.origin) return url;
     } catch {}
-    return "/";
+    return window.location.origin + "/";
   };
   const callbackUrl = isValidCallbackUrl(rawCallbackUrl);
   const error = searchParams.get("error");
