@@ -92,6 +92,8 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
       if (msg.forceNode.release) {
         node.fx = null;
         node.fy = null;
+        node.vx = 0; // kill residual velocity, stop spinning
+        node.vy = 0;
       } else {
         node.fx = msg.forceNode.x;
         node.fy = msg.forceNode.y;

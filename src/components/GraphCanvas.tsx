@@ -223,6 +223,7 @@ export default function GraphCanvas({
 
     let isPanning = false;
     let panStart = { x: 0, y: 0 };
+    let dragMoved = false; // true if pointer moved significantly — suppresss click
 
     const getCanvasPos = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -268,6 +269,7 @@ export default function GraphCanvas({
       const pos = getCanvasPos(e);
 
       if (dragRef.current) {
+        dragMoved = true;
         onDragMove(pos.x, pos.y);
         return;
       }
@@ -302,8 +304,14 @@ export default function GraphCanvas({
 
     const onPointerUp = () => {
       if (dragRef.current) {
+        const wasDrag = dragMoved;
+        if (!wasDrag) {
+          // Only fire click if pointer barely moved (real click, not drag)
+          onNodeClick(dragRef.current.id);
+        }
         onDragEnd(dragRef.current.id);
         dragRef.current = null;
+        dragMoved = false;
       }
       isPanning = false;
     };
@@ -371,12 +379,7 @@ export default function GraphCanvas({
       }
     }
 
-    // 绑定节点 click 事件
-    for (const [id, gfx] of nodeGfxMap) {
-      gfx.circle.off("pointertap");
-      gfx.circle.on("pointertap", () => onNodeClick(id));
-    }
-  }, [appReady, dataVersion, onNodeClick]);
+  }, [appReady, dataVersion]);
 
   // ── 渲染循环 ───────────────────────────────────────────────
 

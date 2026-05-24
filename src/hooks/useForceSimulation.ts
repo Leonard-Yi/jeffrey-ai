@@ -139,6 +139,8 @@ export function useForceSimulation(
       if (node) {
         node.fx = null;
         node.fy = null;
+        node.vx = 0; // kill residual velocity from drag
+        node.vy = 0;
         workerRef.current?.postMessage({
           forceNode: { id: nodeId, x: 0, y: 0, release: true },
         });
