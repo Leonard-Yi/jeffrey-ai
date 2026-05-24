@@ -1,0 +1,4795 @@
+<!DOCTYPE html>
+<!-- saved from url=(0020)https://obsidian.md/ -->
+<html lang="en" dir="ltr" data-immersive-translate-page-theme="dark"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	
+	<script>
+	(function(){
+		var defined = ["en","ar","de","es","fr","it","ja","ko","pt-BR","ru","zh"];
+		var dflt = 'en';
+		var cur = 'en';
+		var pref = null;
+		try { pref = localStorage.getItem('lang'); } catch(e) {}
+		if (!pref && cur === dflt) return;
+		if (pref && pref === cur) return;
+		var target = pref;
+		if (!target) {
+			var langs = (navigator.languages || [navigator.language || '']);
+			for (var i = 0; i < langs.length; i++) {
+				var code = langs[i].toLowerCase().split('-')[0];
+				if (defined.indexOf(code) !== -1) { target = code; break; }
+			}
+		}
+		if (!target || target === cur) return;
+		var p = location.pathname;
+		// Strip any locale prefix from path
+		p = p.replace(new RegExp('^/(' + defined.join('|') + ')(/|$)'), '/');
+		// Don't redirect app routes
+		if (/^\/(account|buy)(\/|$)/.test(p)) return;
+		// Add target locale prefix
+		if (target !== dflt) p = '/' + target + (p === '/' ? '/' : p);
+		if (p.replace(/\/$/, '') === location.pathname.replace(/\/$/, '')) return;
+		location.replace(p + location.search + location.hash);
+	})();
+	</script>
+	<title>Obsidian - Sharpen your thinking</title>
+	<meta name="description" content="The free and flexible app for your private thoughts.">
+	<meta name="copyright" content="Obsidian">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="i18n-hash" content="ac49b39b">
+
+	<link rel="stylesheet" href="./Obsidian - Sharpen your thinking_files/tailwind.css">
+	<link rel="icon" href="https://obsidian.md/favicon.ico" sizes="32x32">
+	<link rel="icon" href="https://obsidian.md/favicon.svg" sizes="any" type="image/svg+xml">
+	<link rel="apple-touch-icon" href="https://obsidian.md/apple-touch-icon.png">
+
+	<link rel="alternate" type="application/atom+xml" href="https://obsidian.md/feed.xml" title="Obsidian Blog">
+	<link rel="alternate" type="application/feed+json" href="https://obsidian.md/feed.json" title="Obsidian Blog">
+	<link rel="alternate" type="application/atom+xml" href="https://obsidian.md/changelog.xml" title="Obsidian Changelog">
+	<link rel="alternate" type="application/feed+json" href="https://obsidian.md/changelog.json" title="Obsidian Changelog">
+
+	<meta property="og:site_name" content="Obsidian">
+	<meta property="og:title" content="Obsidian - Sharpen your thinking">
+	<meta property="og:description" content="The free and flexible app for your private thoughts.">
+	<meta property="og:type" content="website">
+	<meta property="og:image" content="https://obsidian.md/images/banner.png">
+
+	<meta name="twitter:title" content="Obsidian - Sharpen your thinking">
+	<meta name="twitter:description" content="The free and flexible app for your private thoughts.">
+	<meta name="twitter:site" content="@obsdmd">
+	<meta name="twitter:domain" content="obsidian.md">
+	<meta name="twitter:creator" content="@obsdmd">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:image" content="https://obsidian.md/images/banner.png">
+
+</head>
+<body class="theme-dark">
+<div class="header-height"></div>
+<header class="header scrolled">
+	
+	
+	<div class="container flex items-center">
+		<div class="flex items-center">
+			<a class="header-logo me-4 flex items-center gap-x-2 transition-colors -mt-[3px] current" href="https://obsidian.md/" aria-label="Go to the Obsidian home page">
+				<svg alt="Obsidian" height="22" viewBox="0 0 143 25" width="126" xmlns="http://www.w3.org/2000/svg"><path fill="#A88BFA" d="m6.91927 14.5955c.64053-.1907 1.67255-.4839 2.85923-.5565-.71191-1.7968-.88376-3.3691-.74554-4.76905.15962-1.61678.72977-2.9662 1.28554-4.11442.1186-.24501.2326-.47313.3419-.69198.1549-.30984.3004-.60109.4365-.8953.2266-.48978.3948-.92231.4798-1.32416.0836-.39515.0841-.74806-.0148-1.08657-.099-.338982-.3093-.703864-.7093-1.1038132-.5222-.1353116-1.1017-.0165173-1.53613.3742922l-5.15591 4.638241c-.28758.25871-.47636.60929-.53406.99179l-.44455 2.94723c.69903.6179 2.42435 2.41414 3.47374 4.90644.09364.2224.1819.4505.26358.6838z"></path><path fill="#A88BFA" d="m2.97347 10.3512c-.02431.1037-.05852.205-.10221.3024l-2.724986 6.0735c-.279882.6238-.15095061 1.3552.325357 1.8457l4.288349 4.4163c2.1899-3.2306 1.87062-6.2699.87032-8.6457-.75846-1.8013-1.90801-3.2112-2.65683-3.9922z"></path><path fill="#A88BFA" d="m5.7507 23.5094c.07515.012.15135.0192.2281.0215.81383.0244 2.18251.0952 3.29249.2997.90551.1669 2.70051.6687 4.17761 1.1005 1.1271.3294 2.2886-.5707 2.4522-1.7336.1192-.8481.343-1.8075.7553-2.6869l-.0095.0033c-.6982-1.9471-1.5865-3.2044-2.5178-4.0073-.9284-.8004-1.928-1.1738-2.8932-1.3095-1.60474-.2257-3.07497.1961-4.00103.4682.55465 2.3107.38396 5.0295-1.48417 7.8441z"></path><path fill="#A88BFA" d="m17.3708 19.3102c.9267-1.3985 1.5868-2.4862 1.9352-3.0758.1742-.295.1427-.6648-.0638-.9383-.5377-.7126-1.5666-2.1607-2.1272-3.5015-.5764-1.3785-.6624-3.51876-.6673-4.56119-.0019-.39626-.1275-.78328-.3726-1.09465l-3.3311-4.23183c-.0117.19075-.0392.37998-.0788.56747-.1109.52394-.32 1.04552-.5585 1.56101-.1398.30214-.3014.62583-.4646.95284-.1086.21764-.218.4368-.3222.652-.5385 1.11265-1.0397 2.32011-1.1797 3.73901-.1299 1.31514.0478 2.84484.8484 4.67094.1333.0113.2675.0262.4023.0452 1.1488.1615 2.3546.6115 3.4647 1.5685.9541.8226 1.8163 2.0012 2.5152 3.6463z"></path><path fill="currentColor" d="m39.752 4.5038c-5.952 0-10.248 3.744-10.248 8.88s4.296 8.88 10.248 8.88c5.928 0 10.224-3.744 10.224-8.88s-4.296-8.88-10.224-8.88zm0 3.47999c3.576 0 6.144 2.13601 6.144 5.40001s-2.568 5.4-6.144 5.4c-3.6 0-6.168-2.136-6.168-5.4s2.568-5.40001 6.168-5.40001z"></path><path fill="currentColor" d="m55.4847 20.5598c.864.936 2.472 1.704 4.584 1.704 4.32 0 6.8401-2.976 6.8401-6.576 0-3.624-2.5201-6.60001-6.8401-6.60001-2.112 0-3.72.79201-4.584 1.70401v-6.02401h-3.84v17.23201h3.84zm-.12-4.944c0-1.992 1.704-3.432 3.912-3.432 2.112 0 3.888 1.248 3.888 3.504s-1.776 3.48-3.888 3.48c-2.208 0-3.912-1.416-3.912-3.408z"></path><path fill="currentColor" d="m67.3181 19.9118c1.464 1.488 4.272 2.352 7.2 2.352 3.96 0 6.936-1.44 6.936-4.392 0-2.88-2.832-3.432-6.072-3.816-2.736-.312-3.576-.384-3.576-1.08 0-.648.864-1.056 2.496-1.056 1.968 0 3.672.6 4.824 1.656l1.992-2.304c-1.272-1.224-3.648-2.18401-6.624-2.18401-4.008 0-6.48 1.72801-6.48 4.32001 0 2.712 2.52 3.312 5.544 3.696 2.832.336 4.032.336 4.032 1.176 0 .792-1.056 1.128-2.784 1.128-2.16 0-4.152-.672-5.664-2.064z"></path><path fill="currentColor" d="m82.8395 8.05579h3.912v-3.288h-3.912zm3.864 1.29601h-3.84v12.648h3.84z"></path><path fill="currentColor" d="m99.8264 20.5598v1.44h3.8396v-17.23201h-3.8396v6.02401c-.864-.912-2.472-1.70401-4.584-1.70401-4.32 0-6.84 2.97601-6.84 6.60001 0 3.6 2.52 6.576 6.84 6.576 2.112 0 3.72-.768 4.584-1.704zm.12-4.944v.144c0 1.992-1.704 3.408-3.912 3.408-2.112 0-3.888-1.224-3.888-3.48s1.776-3.504 3.888-3.504c2.208 0 3.912 1.44 3.912 3.432z"></path><path fill="currentColor" d="m105.996 8.05579h3.912v-3.288h-3.912zm3.864 1.29601h-3.84v12.648h3.84z"></path><path fill="currentColor" d="m116.863 22.2638c2.232 0 4.056-.648 5.208-1.656.648 1.2 2.184 1.92 4.992 1.392v-2.832c-1.344.288-1.632-.024-1.632-.696v-4.608c0-3.168-2.376-4.77601-6.408-4.77601-3.48 0-6.264 1.51201-7.056 3.79201l3.456.936c.384-.984 1.704-1.704 3.432-1.704 2.04 0 2.856.768 2.856 1.728v.072l-5.04.456c-2.976.288-5.16 1.512-5.16 3.984 0 2.496 2.232 3.912 5.352 3.912zm4.848-5.112c0 1.464-2.184 2.304-4.152 2.304-1.488 0-2.328-.432-2.328-1.248 0-.84.672-1.152 1.992-1.272l4.488-.456z"></path><path fill="currentColor" d="m128.379 21.9998h3.84v-6.048c0-2.184 1.2-3.456 3.288-3.456 1.968 0 3 1.296 3 3.432v6.072h3.84v-7.2c0-3.504-2.232-5.71201-5.52-5.71201-2.04 0-3.624.76801-4.608 1.80001v-1.536h-3.84z"></path></svg>
+			</a>
+		</div>
+		<div class="group w-full">
+			<ul class="text-sm hidden md:flex items-center">
+				<li><a class="px-3 py-2 rounded-lg font-medium hover:text-white text-muted hover:bg-gray-800" href="https://obsidian.md/download">Download</a></li>
+				<li><a class="px-3 py-2 rounded-lg font-medium hover:text-white text-muted hover:bg-gray-800" href="https://obsidian.md/pricing">Pricing</a></li>
+				<li><a class="px-3 py-2 rounded-lg font-medium hover:text-white text-muted hover:bg-gray-800" href="https://obsidian.md/sync">Sync</a></li>
+				<li><a class="px-3 py-2 rounded-lg font-medium hover:text-white text-muted hover:bg-gray-800" href="https://obsidian.md/publish">Publish</a></li>
+				<li class="hidden lg:block"><a class="px-3 py-2 rounded-lg font-medium hover:text-white text-muted hover:bg-gray-800" href="https://obsidian.md/enterprise">Enterprise</a></li>
+				<li class="flex-grow" aria-hidden="true"></li>
+				<li class="relative">
+					<button class="header-lang-toggle px-2 py-2 me-2 rounded-lg ring-1 ring-inset ring-white/10 text-muted hover:text-white hover:bg-gray-800 flex items-center gap-1" aria-label="Change language">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-down" class="lucide lucide-chevron-down icon-xs icon"><path d="m6 9 6 6 6-6"></path></svg>
+					</button>
+					<ul class="header-lang-menu hidden absolute end-0 top-full mt-1 bg-gray-800 ring-1 ring-inset ring-white/10 rounded-lg p-1 min-w-[10rem] shadow-xl z-50 flex flex-col gap-0.5">
+						
+						<li><a href="https://obsidian.md/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;en&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-normal font-medium bg-gray-700 hover:text-normal current">English</a></li>
+						
+						<li><a href="https://obsidian.md/ar/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ar&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">العربية</a></li>
+						
+						<li><a href="https://obsidian.md/de/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;de&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Deutsch</a></li>
+						
+						<li><a href="https://obsidian.md/es/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;es&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Español</a></li>
+						
+						<li><a href="https://obsidian.md/fr/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;fr&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Français</a></li>
+						
+						<li><a href="https://obsidian.md/it/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;it&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Italiano</a></li>
+						
+						<li><a href="https://obsidian.md/ja/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ja&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">日本語</a></li>
+						
+						<li><a href="https://obsidian.md/ko/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ko&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">한국어</a></li>
+						
+						<li><a href="https://obsidian.md/pt-BR/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;pt-BR&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Português (Brasil)</a></li>
+						
+						<li><a href="https://obsidian.md/ru/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ru&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Русский</a></li>
+						
+						<li><a href="https://obsidian.md/zh/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;zh&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">简体中文</a></li>
+						
+					</ul>
+				</li>
+				<li><a class="px-3 py-2 rounded-lg font-medium hover:text-white text-muted hover:bg-gray-800" href="https://community.obsidian.md/">Community</a></li>
+				<li><a class="px-3 py-2 rounded-lg font-medium text-muted hover:text-white hover:bg-gray-800" href="https://obsidian.md/account">Account</a></li>
+			</ul>
+		</div>
+		<div class="ms-auto md:hidden z-10 flex items-center gap-4">
+			<div class="relative">
+				<button class="header-lang-toggle-mobile px-2 py-2 text-gray-400 flex items-center gap-1" aria-label="Change language">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+					
+				</button>
+				<ul class="header-lang-menu-mobile hidden absolute end-0 top-full mt-1 bg-gray-800 ring-1 ring-inset ring-white/10 rounded-lg p-1 min-w-[10rem] shadow-xl z-50 flex flex-col gap-0.5">
+					
+					<li><a href="https://obsidian.md/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;en&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-normal font-medium bg-gray-700 hover:text-normal current">English</a></li>
+					
+					<li><a href="https://obsidian.md/ar/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ar&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">العربية</a></li>
+					
+					<li><a href="https://obsidian.md/de/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;de&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Deutsch</a></li>
+					
+					<li><a href="https://obsidian.md/es/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;es&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Español</a></li>
+					
+					<li><a href="https://obsidian.md/fr/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;fr&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Français</a></li>
+					
+					<li><a href="https://obsidian.md/it/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;it&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Italiano</a></li>
+					
+					<li><a href="https://obsidian.md/ja/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ja&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">日本語</a></li>
+					
+					<li><a href="https://obsidian.md/ko/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ko&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">한국어</a></li>
+					
+					<li><a href="https://obsidian.md/pt-BR/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;pt-BR&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Português (Brasil)</a></li>
+					
+					<li><a href="https://obsidian.md/ru/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ru&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Русский</a></li>
+					
+					<li><a href="https://obsidian.md/zh/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;zh&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md text-sm whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">简体中文</a></li>
+					
+				</ul>
+			</div>
+			<a class="header-mobile-nav text-gray-200 hover:text-gray-100" href="https://obsidian.md/#" aria-label="Open the navigation menu">
+				<div class="header-mobile-nav-button">
+					<div class="header-mobile-nav-button-inner"></div>
+				</div>
+			</a>
+		</div>
+	</div>
+</header>
+
+<div class="header-mobile-nav-menu fixed top-0 right-0 bottom-0 left-0 overflow-scroll overscroll-contain block md:hidden">
+	<div class="container py-4">
+		<ul class="text-xl font-medium grid sm:grid-cols-2 pb-4 border-b border-gray-800">
+			<li><a class="flex py-1 items-center gap-2" href="https://obsidian.md/download">
+				Download</a></li>
+			<li><a class="flex py-1 items-center gap-2" href="https://obsidian.md/account">
+				Account</a></li>
+			<li><a class="flex py-1 items-center gap-3" href="https://obsidian.md/sync">
+				Sync</a></li>
+			<li><a class="flex py-1 items-center gap-3" href="https://obsidian.md/publish">
+				Publish</a></li>
+			<li><a class="flex py-1 items-center gap-3" href="https://obsidian.md/pricing">
+				Pricing</a></li>
+			<li><a class="flex py-1 items-center gap-3" href="https://community.obsidian.md/">
+				Plugins</a></li>
+			<li><a class="flex py-1 items-center gap-2" href="https://obsidian.md/enterprise">
+				Enterprise</a></li>
+			<li><a class="flex py-1 items-center gap-2" href="https://obsidian.md/clipper">
+				Web Clipper</a></li>
+		</ul>
+		<div class="text-muted mt-6">Learn more</div>
+		<ul class="font-medium grid grid-cols-2 my-2 pb8">
+			<li><a class="block py-1" href="https://obsidian.md/help/">Help</a></li>
+			<li><a class="block py-1" href="https://obsidian.md/about">About</a></li>
+
+			<li><a class="block py-1" href="https://obsidian.md/blog">Blog</a></li>
+			<li><a class="block py-1" href="https://discord.gg/obsidianmd" rel="noopener noreferrer" target="_blank">Discord</a></li>
+
+			<li><a class="block py-1" href="https://obsidian.md/changelog">Changelog</a></li>
+			<li><a class="block py-1" href="https://community.obsidian.md/">Community</a></li>
+
+			<li><a class="block py-1" href="https://obsidian.md/roadmap">Roadmap</a></li>
+			<li><a class="block py-1" href="https://obsidian.md/security">Security</a></li>
+
+			<li><a class="block py-1" href="https://obsidian.md/softwear">Merch store</a></li>
+			<li><a class="block py-1" href="https://obsidian.md/privacy">Privacy</a></li>
+		</ul>
+	</div>
+</div>
+<script>
+(function() {
+	document.querySelectorAll('.header-lang-toggle, .header-lang-toggle-mobile').forEach(function(btn) {
+		var menu = btn.nextElementSibling;
+		if (!menu) return;
+		btn.addEventListener('click', function(e) {
+			e.stopPropagation();
+			document.querySelectorAll('.header-lang-menu, .header-lang-menu-mobile').forEach(function(m) {
+				if (m !== menu) m.classList.add('hidden');
+			});
+			menu.classList.toggle('hidden');
+		});
+	});
+	document.addEventListener('click', function() {
+		document.querySelectorAll('.header-lang-menu, .header-lang-menu-mobile').forEach(function(m) {
+			m.classList.add('hidden');
+		});
+	});
+})();
+</script>
+
+
+	<div class="pt-24 sm:pt-24 relative bg-basalt">
+		<div class="container mb-12">
+			<div>
+				<div class="max-w-[42rem] text-center sm:text-start">
+					<h1 class="text-[13vw] font-semibold leading-[1.1] tracking-tight sm:text-title mb-8">
+						Sharpen your thinking.
+					</h1>
+					<p class="text-3xl sm:text-4xl text-muted mb-6 max-w-xl text-pretty mx-auto sm:mx-0">
+						The free and flexible app for your private&nbsp;thoughts.
+					</p>
+				</div>
+
+				<div class="py-6 mt-4 flex items-center gap-6 flex-col sm:flex-row">
+					<a class="download-button button button-primary text-xl py-4 px-6" href="https://obsidian.md/download">
+							Get Obsidian for <span class="download-os" style="visibility: visible;">Windows</span>
+							<script>
+								(function() {
+									let os = 'Windows';
+									if (/iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+										os = 'iOS';
+									} else if (/Android/.test(navigator.appVersion)) {
+										os = 'Android';
+									} else if (navigator.appVersion.indexOf('Mac') !== -1) {
+										os = 'macOS';
+									} else if (navigator.appVersion.indexOf('Linux') !== -1 || navigator.appVersion.indexOf('X11') !== -1) {
+										os = 'Linux';
+									}
+									const el = document.currentScript.previousElementSibling;
+									el.textContent = os;
+									el.style.visibility = 'visible';
+								})();
+							</script>
+					</a>
+					<a class="text-accent text-lg hidden sm:block font-medium" href="https://obsidian.md/download">
+							More&nbsp;platforms
+					</a>
+				</div>
+			</div>
+		</div>
+		<div class="container relative">
+			
+<div class="mock-overflow">
+	<div class="relative w-[56rem] max-w-none md:w-auto lg:mx-auto">
+	<div class="aspect-[1.9/1] overflow-hidden">
+	<div class="dir-reverse relative w-full h-full ui" aria-hidden="true" data-nosnippet="">
+
+	<!-- Desktop window -->
+	<div class="absolute inset-0 end-[14%]">
+	
+<div class="app-window relative h-full overflow-hidden shadow-2xl flex flex-col rounded-lg">
+
+	<!-- Top row: sidebar header + pane tabs -->
+	<div class="app-titlebar">
+		<!-- Sidebar: traffic lights + toolbar icons -->
+		<div class="flex items-center shrink-0 app-border border-e gap-0.5 w-[200px] px-3.5">
+			<div class="mock-macos-dots flex items-center" style="display: none;">
+				<div class="app-dot bg-[#ff5f57]"></div>
+				<div class="app-dot bg-[#febc2e] ms-2"></div>
+				<div class="app-dot bg-[#28c840] ms-2 me-2"></div>
+			</div>
+			<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="folder-closed" class="lucide lucide-folder-closed app-toolbar-icon is-active icon"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path><path d="M2 10h20"></path></svg>
+			<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="search" class="lucide lucide-search app-toolbar-icon icon"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+			<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="tags" class="lucide lucide-tags app-toolbar-icon icon"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"></path><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="6.5" cy="9.5" r=".5" fill="currentColor"></circle></svg>
+			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-toolbar-icon ms-auto rtl-mirror"><rect x="1" y="2" width="22" height="20" rx="4"></rect><rect x="4.5" y="6" width="4" height="12" rx="1" fill="currentColor"></rect></svg>
+		</div>
+		<script>
+			if (navigator.platform && navigator.platform.indexOf('Win') > -1) {
+				document.querySelectorAll('.mock-macos-dots').forEach(function(el) { el.style.display = 'none'; });
+			}
+		</script>
+		<!-- Left pane tabs -->
+		<div class="app-tab-bar flex-1 app-border lg:border-e">
+			<div class="app-tab is-active">
+				<span>Writing is telepathy</span>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" class="lucide lucide-x app-tab-close app-icon-muted icon"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+			</div>
+			<div class="app-tab">
+				<span>Evergreen notes</span>
+			</div>
+			<div class="app-tab-new">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" class="lucide lucide-plus app-tab-icon app-icon-faint icon"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+			</div>
+			<div class="flex-1 min-w-2"></div>
+		</div>
+		<!-- Right pane tabs (hidden on small screens) -->
+		<div class="app-tab-bar hidden lg:flex w-[38%]">
+			<div class="app-tab is-active">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="git-fork" class="lucide lucide-git-fork app-tab-icon app-icon-muted icon"><circle cx="12" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"></path><path d="M12 12v3"></path></svg>
+				<span>Graph of Writing is t...</span>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" class="lucide lucide-x app-tab-close app-icon-muted icon"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+			</div>
+			<div class="app-tab-new">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" class="lucide lucide-plus app-tab-icon app-icon-faint icon"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+			</div>
+			<div class="flex-1"></div>
+		</div>
+	</div>
+
+	<!-- Body: sidebar + split panes -->
+	<div class="flex flex-1 min-h-0">
+
+		<!-- Sidebar -->
+		<div class="app-sidebar w-[200px] min-w-0">
+			<div class="flex-1 hide-scroll overflow-y-auto px-2 pb-3">
+			
+				<div class="app-sidebar-folder">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-right" class="lucide lucide-chevron-right app-icon-sm app-icon-faint icon"><path d="m9 18 6-6-6-6"></path></svg>
+					<span>Clippings</span>
+				</div>
+				
+			
+				<div class="app-sidebar-folder">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-right" class="lucide lucide-chevron-right app-icon-sm app-icon-faint icon"><path d="m9 18 6-6-6-6"></path></svg>
+					<span>Daily</span>
+				</div>
+				
+			
+				<div class="app-sidebar-folder">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-down" class="lucide lucide-chevron-down app-icon-sm app-icon-faint icon"><path d="m6 9 6 6 6-6"></path></svg>
+					<span>Ideas</span>
+				</div>
+				
+				<div class="app-sidebar-file is-child is-active">
+					<span>Writing is telepathy</span>
+				</div>
+				
+			
+				<div class="app-sidebar-folder">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-right" class="lucide lucide-chevron-right app-icon-sm app-icon-faint icon"><path d="m9 18 6-6-6-6"></path></svg>
+					<span>Meta</span>
+				</div>
+				
+			
+				<div class="app-sidebar-folder">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-right" class="lucide lucide-chevron-right app-icon-sm app-icon-faint icon"><path d="m9 18 6-6-6-6"></path></svg>
+					<span>Projects</span>
+				</div>
+				
+			
+				<div class="app-sidebar-folder">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-right" class="lucide lucide-chevron-right app-icon-sm app-icon-faint icon"><path d="m9 18 6-6-6-6"></path></svg>
+					<span>References</span>
+				</div>
+				
+			
+				<div class="app-sidebar-file">
+					<span>Evergreen notes</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Calmness is a superpower</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Travel</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Creativity is combinatory u...</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Emergence</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Recipes</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Books</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Health</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>What if it were easy</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Tools</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Specialization is for insects</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>First principles</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>Philosophy</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>A little bit every day</span>
+				</div>
+			
+				<div class="app-sidebar-file">
+					<span>1,000 true fans</span>
+				</div>
+			
+			</div>
+			<!-- Vault name footer -->
+			<div class="app-vault-footer app-border border-t">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevrons-up-down" class="lucide lucide-chevrons-up-down app-icon-md app-icon-faint icon"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+				<span class="app-text-normal font-medium">Notes</span>
+				<div class="flex-1"></div>
+				<div class="flex items-center">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="help-circle" class="lucide lucide-help-circle app-toolbar-icon app-text-normal icon"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="settings" class="lucide lucide-settings app-toolbar-icon app-text-normal icon"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+				</div>
+			</div>
+		</div>
+
+		<!-- Left pane: editor -->
+		<div class="app-pane">
+			<!-- Editor content (scrollable + editable) -->
+			<div class="flex-1 hide-scroll app-editor overflow-y-auto py-5 px-7">
+				<div class="outline-0 cursor-text" contenteditable="true" spellcheck="false">
+					<div class="app-h1">Writing is telepathy</div>
+
+					<div class="mb-2.5"><span class="app-tag">#evergreen</span></div>
+
+					<p>From <span class="text-accent-400 hover:text-accent-300 underline">On Writing</span></p>
+
+					<div class="app-h2">Ideas can travel through time and space</div>
+
+					<p>Ideas can travel through time and space without being uttered out loud. The process of telepathy requires two places:</p>
+
+					<ul class="list-disc ps-5">
+						<li>A <strong>sending place</strong>, a transmission place — where the writer sends ideas, such as a desk</li>
+						<li>A <strong>receiving place</strong> — where the reader receives the ideas/imagery such as a couch, a comfortable chair, in bed</li>
+					</ul>
+
+					<div class="app-h2">Quote</div>
+
+					<blockquote>Look, here’s a table covered with red cloth. On it is a cage the size of a small fish aquarium. In the cage is a white rabbit with a pink nose and pink-rimmed eyes. On its back, clearly marked in blue ink, is the numeral 8. The most interesting thing here isn’t even the carrot-munching rabbit in the cage, but the number on its back. I never opened my mouth and you never opened yours. We’re not even in the same year together, let alone the same room... except we are together. We are close. We’re having a meeting of the minds. We’ve engaged in an act of telepathy.</blockquote>
+				</div>
+			</div>
+		</div>
+
+		<!-- Right pane: graph (hidden on small screens) -->
+		<div class="hidden lg:flex flex-col select-none cursor-default min-w-0 w-[38%]">
+			<!-- Graph content -->
+			<div class="flex-1 min-h-0 overflow-hidden flex items-center justify-center p-2">
+				
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 522 472">
+	<path stroke-width="1" stroke="rgba(255,255,255,0.2)" d="m270.3 151-47.8-1m48.1-.6-66.3-47.8m66.3 48.4-38.1-71.8m38.5 70.9-8.1-92.8m63.3 47.3L271 151m38.4-78.8-38.7 79.3m-.4-.4L218 219.6m52.6-69L206 184m-.4.7-35.7 7.8m-43.3 83.1 17.4-44.5m0 .7 26.8-39.6m-44.1 83-66.5-31.6m26.5-57.8 39.8 90.1m-.5-.2-70.6-68.6m76.6-38.6-5.5 107.2m.3-.3-14.3 54.4m-52.2-86.3-16.5 46.2m1.1-1.3-19.2-32.8m30-48.2-3.2-82.8m56-26.6-56.7 26.1m102.6-60.7-11.5 53m.2-.7L109 98m94.3 4.4-59.8 13m-.3 1.2 19.5 30.6m.1-.3-30.6 21.4m.6 0-80.5-44.1m170.5 26.1-60.8-3.4m.4.9 41.6-45.5m106.4-29.6-.3-38m35.7 38.6-19.9 31M418.8 56l-72.4 17.4M161.9 147l8 45m.5-.2L131.7 168M271 151.7l11.6 120.7m1.1 1.1 43.8-43.7M282 272.9l-42.2 33.7m141.3 42.2L338 327.6m43.3 20.9-47.6 15.2m47.2-14.5-76.6-7.3m75.7 7.8 13.2 56.3m.7-1.4-59.7-40.8m60.4 40.1-62.9-3.7m61.7 5.3L364.8 437m29.2-31.5-65.5 30.8M126.7 274.8 240 306m97.7 21.5L283.5 272m-.1.8 58.4 19.2m-.7-1.2 39 58.6m-37.8-58.2 12-34.5m-.3-1.2-26.3-26.7m-2.7-1.1 41.8-4.7m0-.7-13.2 33.5m13.8-32 11.4-38.7m39 18.9-40.2-18.6M418 204l-75.6-9.3m35.8-9.4L352.6 159m64.1 44.2 15.3 35.3m1 .4-36.4 4.7m20.1-39.5-20.4 39.7m-.5-.5-27-19.6m-17-64.4-69.5 112.5m1 0 43.6-167.1m-1.4.1 26.3 54.7m85.3-10-82.6 10.2m82-10.7-19.4 55.5m32.7-20.8L437.5 149m59.4-22.8-48.2 58m-16.1 54.6 17-54.1M431.8 238 381 348.8m1 0 15.2-104.7m-.2-.4L342.6 291m-214.7-16.7 155.2-2.4M126 275.4 270.8 152m126.7 90L354 255.6m-27.3-26.1 15.7 62.5m-.6-97.9-15.1 35.1m25.5-70.6-10.1 35.7m114-75.9-19.4 31.3m-293.6-35.1-11 53.8M127 276.2l-82.5 12.9m260.2 52.6-64.2-35.6m215.7-185.8 41 6.7m-48.3 55.5-32 21.4M218 219.3l-73.3 12.1"></path>
+	<circle cx="8.3" cy="8.3" r="8.3" transform="matrix(0 1 1 0 121.3 265)" fill="#fff"></circle>
+	<circle cx="8.3" cy="8.3" r="8.3" transform="matrix(0 1 1 0 265.4 141)" fill="#fff"></circle>
+	<circle cx="8.3" cy="8.3" r="8.3" transform="matrix(0 1 1 0 410.6 193.9)" fill="#fff"></circle>
+	<circle cx="8.3" cy="8.3" r="8.3" transform="matrix(0 1 1 0 426.7 228)" fill="#fff"></circle>
+	<circle cx="11.1" cy="11.1" r="11.1" transform="matrix(0 1 1 0 372.5 336)" fill="#fff"></circle>
+	<circle cx="8.3" cy="8.3" r="8.3" transform="matrix(0 1 1 0 277.3 262.2)" fill="#fff"></circle>
+	<circle cx="8.3" cy="8.3" r="8.3" transform="matrix(0 1 1 0 387.9 395.6)" fill="#fff"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 361.3 430.4)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 329.5 357.2)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 300.3 335.6)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 323.3 222.6)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 362.7 216.2)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 374.1 179.2)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 350 249.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 392.8 237.3)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 433.3 142.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 453 112.2)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 445.4 177)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 324.8 430)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 327.9 394)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 333.7 321.2)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 338 284.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 236.3 300)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 140.3 225.5)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 56.1 237.3)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 40.8 281.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 21.4 249)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 166.2 186.2)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 202.3 177.6)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 158.5 140.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 48.2 117.8)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 51.9 199.9)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 83.6 179.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 105 91)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 150.9 56)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 139.8 108.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 128.6 161.9)" fill="#22c55e"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 214.5 213)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 218.6 143.8)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 338.5 188.4)" fill="#22c55e"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 348.4 152.4)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 305.7 28)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 414.7 49)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 492.9 120)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 342.7 67)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 305.6 65.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 322.7 97.8)" fill="#22c55e"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 108.7 323)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 258.5 49.5)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 228.2 71.7)" fill="#AAA"></circle>
+	<circle cx="5.6" cy="5.6" r="5.6" transform="matrix(0 1 1 0 200.1 95.2)" fill="#AAA"></circle>
+</svg>
+
+			</div>
+		</div>
+
+	</div>
+
+	<!-- Status bar (floating bottom-right of window) -->
+	<div class="app-statusbar absolute bottom-0 end-0">
+		<span>1 backlink</span>
+		<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="book-open" class="lucide lucide-book-open w-[11px] h-[11px] icon"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+		<span>206 words</span>
+		<span>1139 char</span>
+	</div>
+</div>
+
+	</div>
+
+	</div>
+	</div>
+	</div>
+	<!-- Mobile phone (outside overflow-hidden, inside relative wrapper) -->
+	<div class="absolute start-0 -bottom-[8%] w-[220px] z-10" aria-hidden="true" data-nosnippet="">
+	<div class="dir-reverse app-phone rounded-[30px] overflow-hidden shadow-2xl flex flex-col select-none cursor-default ui">
+		<!-- Status bar -->
+		<div class="flex items-center justify-between shrink-0 pt-3 px-4 pb-1 text-[10px] text-white font-semibold">
+			<span class="mock-local-time">12:45</span>
+			<div class="flex items-center gap-1 text-[8px]">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="signal" class="lucide lucide-signal app-icon-md icon"><path d="M2 20h.01"></path><path d="M7 20v-4"></path><path d="M12 20v-8"></path><path d="M17 20V8"></path><path d="M22 4v16"></path></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="wifi" class="lucide lucide-wifi app-icon-md icon"><path d="M12 20h.01"></path><path d="M2 8.82a15 15 0 0 1 20 0"></path><path d="M5 12.859a10 10 0 0 1 14 0"></path><path d="M8.5 16.429a5 5 0 0 1 7 0"></path></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="battery-full" class="lucide lucide-battery-full app-icon-md icon"><rect width="16" height="10" x="2" y="7" rx="2" ry="2"></rect><line x1="22" x2="22" y1="11" y2="13"></line><line x1="6" x2="6" y1="11" y2="13"></line><line x1="10" x2="10" y1="11" y2="13"></line><line x1="14" x2="14" y1="11" y2="13"></line></svg>
+			</div>
+		</div>
+
+		<!-- App header -->
+		<div class="flex items-center shrink-0 py-1 px-2.5">
+			<div class="app-phone-bubble-round flex items-center justify-center w-6 h-6">
+				<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-phone-icon rtl-mirror"><rect x="1" y="2" width="22" height="20" rx="4"></rect><rect x="5" y="6" width="1" height="12" rx="1" fill="currentColor"></rect></svg>
+			</div>
+			<div class="flex-1"></div>
+			<div class="app-phone-bubble flex items-center gap-2 py-1 px-2">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="book-open" class="lucide lucide-book-open app-phone-icon icon"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="more-horizontal" class="lucide lucide-more-horizontal app-phone-icon icon"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+			</div>
+		</div>
+
+		<!-- Note content -->
+		<div class="flex-1 overflow-hidden outline-0 cursor-text select-text p-4" contenteditable="true" spellcheck="false">
+			<div class="text-lg font-bold app-text-normal mb-2">Japan Trip Planning</div>
+
+			<div class="flex gap-1.5 flex-wrap mb-3">
+				<span class="app-tag app-tag-sm">#projects</span>
+				<span class="app-tag app-tag-sm">#travel</span>
+			</div>
+
+			<div class="text-[13px] font-semibold app-text-normal mb-1.5">To-do</div>
+
+			<div class="text-[10px] app-text-muted leading-[2]">
+				<div class="app-task"><span class="app-checkbox"></span> Schedule flights</div>
+				<div class="app-task"><span class="app-checkbox"></span> Ask for recommendations</div>
+				<div class="app-task is-sub"><span class="app-checkbox is-checked">✓</span> Keiko</div>
+				<div class="app-task is-sub"><span class="app-checkbox is-checked">✓</span> Andrew</div>
+				<div class="app-task is-sub"><span class="app-checkbox"></span> Garrett</div>
+				<div class="app-task"><span class="app-checkbox"></span> Research ryokans in <span class="text-accent-400 underline">Kyoto</span></div>
+				<div class="app-task"><span class="app-checkbox"></span> Itinerary</div>
+			</div>
+		</div>
+
+		<!-- Bottom toolbar -->
+		<div class="shrink-0 px-5 pt-2 pb-3.5">
+			<div class="app-phone-bubble flex items-center justify-around py-2 px-1 text-[#999]">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-left" class="lucide lucide-chevron-left app-icon-lg icon"><path d="m15 18-6-6 6-6"></path></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-right" class="lucide lucide-chevron-right app-icon-lg icon"><path d="m9 18 6-6-6-6"></path></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="search" class="lucide lucide-search app-icon-lg icon"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" class="lucide lucide-plus app-icon-lg icon"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+				<span class="w-3.5 h-[13px] border-[1.5px] border-[#999] rounded-[3px] inline-flex items-center justify-center text-[7px] text-[#999] font-semibold">1</span>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="menu" class="lucide lucide-menu app-icon-lg icon"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>
+			</div>
+		</div>
+	</div>
+	<script>!function(){var e=document.querySelector(".mock-local-time");if(e){var t=new Date,o=new Intl.DateTimeFormat(void 0,{hour:"numeric"}).resolvedOptions(),r="h23"===o.hourCycle||"h24"===o.hourCycle||!1===o.hour12,i=new Intl.DateTimeFormat(void 0,{hour:"numeric",minute:"2-digit",...r?{hour12:!1}:{hour12:!0}}).formatToParts(t);e.textContent=i.filter((e=>"hour"===e.type||"minute"===e.type||"literal"===e.type)).map((e=>e.value)).join("").trim()}}();</script>
+	</div>
+	</div>
+</div>
+
+		</div>
+	
+
+	<div class="mb-8 sm:mb-12"></div>
+
+	<div class="py-16 lg:pb-24">
+		<div class="relative gap-y-12 items-center md:bg-basalt container grid grid-cols-1 lg:grid-cols-2 logo-shimmer sm:px-8">
+			<div class="max-w-2xl mx-auto lg:mx-0">
+				<dl class="text-xl md:text-2xl flex flex-col gap-y-4 divide-y divide-gray-800">
+
+					<div>
+						<dt class="font-medium">
+						Your thoughts are yours.
+						</dt>
+						<dd class="text-muted mt-1"><span class="text-normal font-semibold"></span> Obsidian stores notes privately on your device, so you can access them quickly, even offline. No one else can read them, not even&nbsp;us.</dd>
+					</div>
+
+					<div class="pt-4">
+						<dt class="font-medium">
+						Your mind is unique.
+						</dt>
+						<dd class="text-muted mt-1"><span class="text-normal font-semibold"></span> With <a href="https://community.obsidian.md/" class="underline">thousands of plugins</a> and themes, you can shape Obsidian to fit your way of&nbsp;thinking.</dd>
+					</div>
+
+					<div class="pt-4">
+						<dt class="font-medium">
+						Your knowledge should last.
+						</dt>
+						<dd class="text-muted mt-1"><span class="text-normal font-semibold"></span> Obsidian uses open file formats, so you’re never locked&nbsp;in. You own your data for the long&nbsp;term.</dd>
+					</div>
+				</dl>
+			</div>
+
+			<div class="flex items-center justify-center cards select-none">
+				<div class="pt-12 sm:pt-8">
+					<a class="download-button logo-shimmer" href="https://obsidian.md/download" aria-label="Download Obsidian">
+						<div class="mx-auto card card-logo card-shimmer flex items-center justify-center bg-secondary rounded-[20%] w-48 h-48 lg:w-64 lg:h-64 shadow-2xl hover:shadow-3xl">
+							<img src="./Obsidian - Sharpen your thinking_files/obsidian-logo-gradient.svg" width="85%" height="85%" alt="Obsidian" class="sm:hidden">
+<svg fill="none" class="hidden sm:inline-block" height="100%" width="100%" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+	<radialgradient id="logo-bottom-left" cx="0" cy="0" gradientTransform="matrix(-29 -189 126 -19 185.62486632378466 389.58276525047717)" gradientUnits="userSpaceOnUse" r="1">
+		<stop offset="0" stop-color="#fff" stop-opacity=".4"></stop>
+		<stop offset="1" stop-opacity=".1"></stop>
+	</radialgradient>
+	<radialgradient id="logo-top-right" cx="0" cy="0" gradientTransform="matrix(50 -379 280 37 408.37513367621534 408.9006816994274)" gradientUnits="userSpaceOnUse" r="1">
+		<stop offset="0" stop-color="#fff" stop-opacity=".6"></stop>
+		<stop offset="1" stop-color="#fff" stop-opacity=".1"></stop>
+	</radialgradient>
+	<radialgradient id="logo-top-left" cx="0" cy="0" gradientTransform="matrix(-56 -288 149 -29 137.7251871467015 393.38412864933196)" gradientUnits="userSpaceOnUse" r="1">
+		<stop offset="0" stop-color="#fff" stop-opacity=".8"></stop>
+		<stop offset="1" stop-color="#fff" stop-opacity=".4"></stop>
+	</radialgradient>
+	<radialgradient id="logo-bottom-right" cx="0" cy="0" gradientTransform="matrix(-77 -157 180 -89 407.9498395885416 463.58276525047717)" gradientUnits="userSpaceOnUse" r="1">
+		<stop offset="0" stop-color="#fff" stop-opacity=".3"></stop>
+		<stop offset="1" stop-opacity=".3"></stop>
+	</radialgradient>
+	<radialgradient id="logo-top-edge" cx="0" cy="0" gradientTransform="matrix(-36 166 -112 -24 310 128.2)" gradientUnits="userSpaceOnUse" r="1">
+		<stop offset="0" stop-color="#fff" stop-opacity="0"></stop>
+		<stop offset="1" stop-color="#fff" stop-opacity=".2"></stop>
+	</radialgradient>
+	<radialgradient id="logo-left-edge" cx="0" cy="0" gradientTransform="matrix(88 89 -190 187 111 220.2)" gradientUnits="userSpaceOnUse" r="1">
+		<stop offset="0" stop-color="#fff" stop-opacity=".2"></stop>
+		<stop offset="1" stop-color="#fff" stop-opacity=".4"></stop>
+	</radialgradient>
+	<radialgradient id="logo-bottom-edge" cx="0" cy="0" gradientTransform="matrix(9 130 -276 20 215 284)" gradientUnits="userSpaceOnUse" r="1">
+		<stop offset="0" stop-color="#fff" stop-opacity=".2"></stop>
+		<stop offset="1" stop-color="#fff" stop-opacity=".3"></stop>
+	</radialgradient>
+	<radialgradient id="logo-middle-edge" cx="0" cy="0" gradientTransform="matrix(-198 -104 327 -623 400 399.2)" gradientUnits="userSpaceOnUse" r="1">
+		<stop offset="0" stop-color="#fff" stop-opacity=".2"></stop>
+		<stop offset=".5" stop-color="#fff" stop-opacity=".2"></stop>
+		<stop offset="1" stop-color="#fff" stop-opacity=".3"></stop>
+	</radialgradient>
+	<clippath id="clip">
+		<path d="M.2.2h512v512H.2z"></path>
+	</clippath>
+	<g clip-path="url(#clip)">
+		<path d="M382.3 475.6c-3.1 23.4-26 41.6-48.7 35.3-32.4-8.9-69.9-22.8-103.6-25.4l-51.7-4a34 34 0 0 1-22-10.2l-89-91.7a34 34 0 0 1-6.7-37.7s55-121 57.1-127.3c2-6.3 9.6-61.2 14-90.6 1.2-7.9 5-15 11-20.3L248 8.9a34.1 34.1 0 0 1 49.6 4.3L386 125.6a37 37 0 0 1 7.6 22.4c0 21.3 1.8 65 13.6 93.2 11.5 27.3 32.5 57 43.5 71.5a17.3 17.3 0 0 1 1.3 19.2 1494 1494 0 0 1-44.8 70.6c-15 22.3-21.9 49.9-25 73.1z" fill="#6c31e3"></path>
+		<path d="M165.9 478.3c41.4-84 40.2-144.2 22.6-187-16.2-39.6-46.3-64.5-70-80-.6 2.3-1.3 4.4-2.2 6.5L60.6 342a34 34 0 0 0 6.6 37.7l89.1 91.7a34 34 0 0 0 9.6 7z" fill="url(#logo-bottom-left)"></path>
+		<path d="M278.4 307.8c11.2 1.2 22.2 3.6 32.8 7.6 34 12.7 65 41.2 90.5 96.3 1.8-3.1 3.6-6.2 5.6-9.2a1536 1536 0 0 0 44.8-70.6 17 17 0 0 0-1.3-19.2c-11-14.6-32-44.2-43.5-71.5-11.8-28.2-13.5-72-13.6-93.2 0-8.1-2.6-16-7.6-22.4L297.6 13.2a34 34 0 0 0-1.5-1.7 96 96 0 0 1 2 54 198.3 198.3 0 0 1-17.6 41.3l-7.2 14.2a171 171 0 0 0-19.4 71c-1.2 29.4 4.8 66.4 24.5 115.8z" fill="url(#logo-top-right)"></path>
+		<path d="M278.4 307.8c-19.7-49.4-25.8-86.4-24.5-115.9a171 171 0 0 1 19.4-71c2.3-4.8 4.8-9.5 7.2-14.1 7.1-13.9 14-27 17.6-41.4a96 96 0 0 0-2-54A34.1 34.1 0 0 0 248 9l-105.4 94.8a34.1 34.1 0 0 0-10.9 20.3l-12.8 85-.5 2.3c23.8 15.5 54 40.4 70.1 80a147 147 0 0 1 7.8 24.8c28-6.8 55.7-11 82.1-8.3z" fill="url(#logo-top-left)"></path>
+		<path d="M333.6 511c22.7 6.2 45.6-12 48.7-35.4a187 187 0 0 1 19.4-63.9c-25.6-55-56.5-83.6-90.4-96.3-36-13.4-75.2-9-115 .7 8.9 40.4 3.6 93.3-30.4 162.2 4 1.8 8.1 3 12.5 3.3 0 0 24.4 2 53.6 4.1 29 2 72.4 17.1 101.6 25.2z" fill="url(#logo-bottom-right)"></path>
+		<g clip-rule="evenodd" fill-rule="evenodd">
+			<path d="M254.1 190c-1.3 29.2 2.4 62.8 22.1 112.1l-6.2-.5c-17.7-51.5-21.5-78-20.2-107.6a174.7 174.7 0 0 1 20.4-72c2.4-4.9 8-14.1 10.5-18.8 7.1-13.7 11.9-21 16-33.6 5.7-17.5 4.5-25.9 3.8-34.1 4.6 29.9-12.7 56-25.7 82.4a177.1 177.1 0 0 0-20.7 72z" fill="url(#logo-top-edge)"></path>
+			<path d="M194.3 293.4c2.4 5.4 4.6 9.8 6 16.5L195 311c-2.1-7.8-3.8-13.4-6.8-20-17.8-42-46.3-63.6-69.7-79.5 28.2 15.2 57.2 39 75.7 81.9z" fill="url(#logo-left-edge)"></path>
+			<path d="M200.6 315.1c9.8 46-1.2 104.2-33.6 160.9 27.1-56.2 40.2-110.1 29.3-160z" fill="url(#logo-bottom-edge)"></path>
+			<path d="M312.5 311c53.1 19.9 73.6 63.6 88.9 100-19-38.1-45.2-80.3-90.8-96-34.8-11.8-64.1-10.4-114.3 1l-1.1-5c53.2-12.1 81-13.5 117.3 0z" fill="url(#logo-middle-edge)"></path>
+		</g>
+	</g>
+</svg>
+
+						</div>
+
+						<div class="text-center flex justify-center mt-12 mb-2 text-white">
+							<svg height="30" viewBox="0 0 114 19" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+	<path d="M10.7519 0.503906C4.79991 0.503906 0.503906 4.24791 0.503906 9.38391C0.503906 14.5199 4.79991 18.2639 10.7519 18.2639C16.6799 18.2639 20.9759 14.5199 20.9759 9.38391C20.9759 4.24791 16.6799 0.503906 10.7519 0.503906ZM10.7519 3.98391C14.3279 3.98391 16.8959 6.11991 16.8959 9.38391C16.8959 12.6479 14.3279 14.7839 10.7519 14.7839C7.15191 14.7839 4.58391 12.6479 4.58391 9.38391C4.58391 6.11991 7.15191 3.98391 10.7519 3.98391Z"></path>
+	<path d="M26.4847 16.5599C27.3487 17.4959 28.9567 18.2639 31.0687 18.2639C35.3887 18.2639 37.9087 15.2879 37.9087 11.6879C37.9087 8.06391 35.3887 5.08791 31.0687 5.08791C28.9567 5.08791 27.3487 5.87991 26.4847 6.79191V0.767906H22.6447V17.9999H26.4847V16.5599ZM26.3647 11.6159C26.3647 9.62391 28.0687 8.18391 30.2767 8.18391C32.3887 8.18391 34.1647 9.43191 34.1647 11.6879C34.1647 13.9439 32.3887 15.1679 30.2767 15.1679C28.0687 15.1679 26.3647 13.7519 26.3647 11.7599V11.6159Z"></path>
+	<path d="M38.318 15.9119C39.782 17.3999 42.59 18.2639 45.518 18.2639C49.478 18.2639 52.454 16.8239 52.454 13.8719C52.454 10.9919 49.622 10.4399 46.382 10.0559C43.646 9.74391 42.806 9.67191 42.806 8.97591C42.806 8.32791 43.67 7.91991 45.302 7.91991C47.27 7.91991 48.974 8.51991 50.126 9.57591L52.118 7.27191C50.846 6.04791 48.47 5.08791 45.494 5.08791C41.486 5.08791 39.014 6.81591 39.014 9.40791C39.014 12.1199 41.534 12.7199 44.558 13.1039C47.39 13.4399 48.59 13.4399 48.59 14.2799C48.59 15.0719 47.534 15.4079 45.806 15.4079C43.646 15.4079 41.654 14.7359 40.142 13.3439L38.318 15.9119Z"></path>
+	<path d="M53.8394 4.05591H57.7514V0.767906H53.8394V4.05591ZM57.7034 5.35191H53.8634V17.9999H57.7034V5.35191Z"></path>
+	<path d="M70.8263 16.5599V17.9999H74.6663V0.767906H70.8263V6.79191C69.9623 5.87991 68.3543 5.08791 66.2423 5.08791C61.9223 5.08791 59.4023 8.06391 59.4023 11.6879C59.4023 15.2879 61.9223 18.2639 66.2423 18.2639C68.3543 18.2639 69.9623 17.4959 70.8263 16.5599ZM70.9463 11.6159V11.7599C70.9463 13.7519 69.2423 15.1679 67.0343 15.1679C64.9223 15.1679 63.1463 13.9439 63.1463 11.6879C63.1463 9.43191 64.9223 8.18391 67.0343 8.18391C69.2423 8.18391 70.9463 9.62391 70.9463 11.6159Z"></path>
+	<path d="M76.9957 4.05591H80.9077V0.767906H76.9957V4.05591ZM80.8597 5.35191H77.0197V17.9999H80.8597V5.35191Z"></path>
+	<path d="M87.8626 18.2639C90.0946 18.2639 91.9186 17.6159 93.0706 16.6079C93.7186 17.8079 95.2546 18.5279 98.0626 17.9999V15.1679C96.7186 15.4559 96.4306 15.1439 96.4306 14.4719V9.86391C96.4306 6.69591 94.0546 5.08791 90.0226 5.08791C86.5426 5.08791 83.7586 6.59991 82.9666 8.87991L86.4226 9.81591C86.8066 8.83191 88.1266 8.11191 89.8546 8.11191C91.8946 8.11191 92.7106 8.87991 92.7106 9.83991V9.91191L87.6706 10.3679C84.6946 10.6559 82.5106 11.8799 82.5106 14.3519C82.5106 16.8479 84.7426 18.2639 87.8626 18.2639ZM92.7106 13.1519C92.7106 14.6159 90.5266 15.4559 88.5586 15.4559C87.0706 15.4559 86.2306 15.0239 86.2306 14.2079C86.2306 13.3679 86.9026 13.0559 88.2226 12.9359L92.7106 12.4799V13.1519Z"></path>
+	<path d="M99.379 17.9999H103.219V11.9519C103.219 9.76791 104.419 8.49591 106.507 8.49591C108.475 8.49591 109.507 9.79191 109.507 11.9279V17.9999H113.347V10.7999C113.347 7.29591 111.115 5.08791 107.827 5.08791C105.787 5.08791 104.203 5.85591 103.219 6.88791V5.35191H99.379V17.9999Z"></path>
+</svg>
+
+						</div>
+					</a>
+					<div class="text-center text-xl sm:text-2xl mt-12 font-medium">
+						Free without limits.<br>
+						<a class="download-button text-accent" href="https://obsidian.md/download">
+								Download now
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="py-16 sm:py-24">
+		<div class="container cards">
+			<div>
+				<div class="lg:mx-auto max-w-2xl mb-16">
+					<h2 class="text-title mb-4">Spark ideas.</h2>
+					<p class="text-xl text-muted sm:text-2xl">From personal notes to journaling, knowledge bases, and project management, Obsidian gives you the tools to come up with ideas and organize&nbsp;them.</p>
+				</div>
+
+				<div class="text-lg md:text-xl col-span-2 grid grid-cols-1 gap-6 md:grid-cols-2">
+
+					<div class="card card-shimmer ring-1 ring-inset ring-white/5 flex flex-col bg-secondary rounded-xl overflow-hidden" style="--mouse-x: 474.9177551269531px; --mouse-y: 124.82949447631836px;">
+						<dl class="p-6">
+							<dt class="md:text-2xl font-semibold mb-1">
+							Links
+							</dt>
+							<dd class="text-muted leading-tight">Create connections between your notes. Link anything and everything — ideas, people, places, books, and beyond. Invent your own personal Wikipedia.
+							</dd>
+						</dl>
+						<div class="md:h-96 w-full overflow-hidden mt-auto pt-6 ps-6 sm:ps-12 relative">
+							<div class="relative ui bg-gray-900 border-t border-s border-gray-800 h-96 rounded-ss-xl shadow-xl pt-8 ps-12 pe-2 text-sm md:text-base leading-5" aria-hidden="true" data-nosnippet="">
+								<p class="mt-4 mb-2 outline-0" contenteditable="true" spellcheck="false">In <span class="text-accent-400 hover:text-accent-300 underline">Meditations on First Philosophy</span> the philosopher <span class="text-accent-400 hover:text-accent-300 underline">René Descartes</span> describes a series of doubts about the nature of reality, arriving at the famous phrase:</p>
+
+								<div class="relative my-2 ">
+									<ul class="list-disc ps-4 marker:text-faint">
+										<li class="text-accent-400"><span class="text-faint">[[</span>I thin<span class="text-faint">]]</span></li>
+									</ul>
+									<div class="select-none absolute start-4 rounded-lg text-sm bg-gray-800 shadow-xl border border-gray-700 p-1.5 sm:p-2 min-w-[250px]">
+										<ul class="cursor-default">
+											<li class="hover:bg-gray-700 rounded py-1 px-2">I <strong>thin</strong>k therefore I am</li>
+											<li class="hover:bg-gray-700 rounded py-1 px-2">Just <strong>thin</strong>k about it</li>
+											<li class="rounded py-1 px-2 hover:bg-gray-700 mt-1"><strong>Thin</strong>king, Fast and Slow<br><div class="text-xs text-gray-400">Books/</div></li>
+											<li class="rounded py-1 px-2 hover:bg-gray-700 mt-1">The <strong>Thin</strong>g<br><div class="text-xs text-gray-400">Movies/</div></li>
+										</ul>
+									</div>
+								</div>
+								<p class="outline-0" contenteditable="true" spellcheck="false">He argues that doubting requires thinking, and therefore, the act of thinking confirms his existence.</p>
+							</div>
+						</div>
+					</div>
+
+					<div class="group card card-shimmer ring-1 ring-inset ring-white/5 flex flex-col bg-secondary rounded-xl overflow-hidden" style="--mouse-x: 430.91943359375px; --mouse-y: 58.82949447631836px;">
+						<dl class="p-6">
+							<dt class="md:text-2xl font-semibold mb-1">
+							Graph
+							</dt>
+							<dd class="text-muted leading-tight">Visualize the relationships between your notes. Find hidden patterns in your thinking through a visually engaging and interactive&nbsp;graph.</dd>
+						</dl>
+						<div class="md:h-96 w-full overflow-hidden mt-auto pt-6 ps-6 sm:ps-12 relative">
+							<div class="relative ui border-t border-s bg-gray-900 border-gray-800 rounded-ss-xl ps-6 pt-2 select-none cursor-default min-h-[100%] max-w-[180%] demo-graph" data-graph-labels="{&quot;Philosophy&quot;:&quot;Philosophy&quot;,&quot;Books&quot;:&quot;Books&quot;,&quot;René Descartes&quot;:&quot;René Descartes&quot;}" style="padding: 0px; overflow: hidden; position: relative;"><canvas style="position: absolute; left: 0px; top: 0px; margin: 0px; padding: 0px; border: 0px; width: 100%; height: 100%; overflow: hidden; touch-action: none; cursor: inherit;" width="499" height="374"></canvas><canvas style="margin: 0px; padding: 0px; border: 0px; width: 499px; height: 374px; overflow: hidden;" width="569" height="426"></canvas></div>
+						</div>
+					</div>
+
+					<div class=" card card-shimmer ring-1 ring-inset ring-white/5 flex flex-col bg-secondary rounded-xl overflow-hidden">
+						<a href="https://obsidian.md/canvas" class="group p-6">
+							<dl>
+								<dt class="md:text-2xl font-semibold mb-2 group-hover:text-normal">
+								Canvas
+								</dt>
+								<dd class="text-muted leading-tight">An infinite space to research, brainstorm, diagram, and lay out your ideas. Canvas is a limitless playground for your mind. <span class="text-accent font-medium hover:text-accent-300">Learn&nbsp;more.</span></dd>
+							</dl>
+						</a>
+						<div class="md:h-96 w-full overflow-hidden mt-auto pt-6 ps-6 sm:ps-12 relative">
+							<div class="mock-mirror relative ui bg-gray-900 border-t border-l border-gray-800 h-96 rounded-tl-xl shadow-xl pt-8 pl-8 pr-2 text-sm md:text-base leading-5" aria-hidden="true" data-nosnippet="">
+								<div class="absolute left-8 top-8 w-[280px]">
+									<span class="select-none cursor-grab active:cursor-grabbing bg-green-500 rounded-sm px-0.5 text-black text-xs">Lecture 1</span>
+									<div class="w-full h-[112px] rounded bg-green-900 border border-green-400 opacity-30">
+									</div>
+								</div>
+								<div class="absolute hide-scroll overflow-auto h-[95px] left-[40px] w-[100px] top-[65px] text-[6px] leading-[8px] px-2 pb-1 rounded border-gray-700 border hover:border-accent-500 focus:outline-accent-500" contenteditable="true" spellcheck="false">
+									<p class="my-1">Rationalists</p>
+									<ul class="list-disc ps-2">
+										<li>Reason and innate knowledge → acquire knowledge</li>
+										<li class="my-1">Fundamental truths and principles can be known independent of experience</li>
+										<li class="my-1">A priori reasoning</li>
+										<li class="my-1">Reason and deduction</li>
+									</ul>
+								</div>
+								<svg class="absolute top-[245px] left-[152px]" width="70px" height="40px" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 585 325"><path d="M.4 2.6C379.8 2.6 232.8 322 584.6 322" stroke-linecap="square" stroke="#777" stroke-width="10"></path></svg>
+								<div class="absolute hide-scroll overflow-auto h-[95px] left-[150px] w-[130px] top-[65px] text-[6px] leading-[8px] px-2 pb-1 rounded border-gray-700 border hover:border-accent-500 focus:outline-accent-500" contenteditable="true" spellcheck="false">
+									<p class="my-1">Empiricists</p>
+									<ul class="list-disc ps-2">
+										<li>Experience and sensory perception → acquire knowledge</li>
+										<li class="my-1">All knowledge is derived from experience and observation of the external world</li>
+										<li class="my-1">A posteriori reasoning</li>
+									</ul>
+								</div>
+								<div class="absolute left-8 w-[120px] h-[140px] top-[180px] text-[6px] leading-[9px] p-2 rounded border-gray-700 border hover:border-accent-500 focus:outline-accent-500 hide-scroll overflow-auto" contenteditable="true" spellcheck="false">
+									<div class="font-semibold text-[9px] mb-1.5">Cogito, ergo sum</div>
+									<p class="my-1">In <span class="text-accent-400 hover:text-accent-300 underline">Meditations on First Philosophy</span> the philosopher <span class="text-accent-400 hover:text-accent-300 underline">René Descartes</span> describes a series of doubts about the nature of reality, arriving at the famous phrase:</p>
+									<p class="my-1"><span class="text-accent-400 hover:text-accent-300 underline">I think therefore I am</span></p>
+									<p class="my-1">He argues that doubting requires thinking, and therefore, the act of thinking confirms his existence.</p>
+								</div>
+								<div class="absolute w-[500px] top-[200px] left-[200px]">
+									<span class="select-none cursor-grab active:cursor-grabbing bg-yellow-500 rounded-sm px-0.5 text-black text-xs">Philosophers</span>
+									<div class="w-full h-[400px] rounded bg-yellow-900 border border-yellow-400 opacity-30">
+									</div>
+								</div>
+								<div class="cursor-grab active:cursor-grabbing absolute top-[240px] left-[220px] border border-gray-600 hover:border-gray-500 rounded overflow-hidden">
+									<img src="./Obsidian - Sharpen your thinking_files/home-descartes.jpg" width="68" height="83" alt="Image of Rene Descartes embedded in Obsidian Canvas" class="max-w-none">
+								</div>
+								<div class="cursor-grab active:cursor-grabbing absolute top-[240px] left-[300px] border border-gray-600 hover:border-gray-500 rounded overflow-hidden">
+									<img src="./Obsidian - Sharpen your thinking_files/home-spinoza.png" width="68" height="83" alt="Image of Baruch Spinoza embedded in Obsidian Canvas" class="max-w-none">
+								</div>
+								<div class="bg-white hide-scroll absolute top-[35px] left-[335px] h-[160px] overflow-auto border border-gray-600 hover:border-accent-400 rounded">
+									<img src="./Obsidian - Sharpen your thinking_files/home-wiki-hume.png" width="120" height="200" alt="Wikipedia page about David Hume embedded in Obsidian Canvas" class="max-w-none">
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="card card-shimmer ring-1 ring-inset ring-white/5 flex flex-col bg-secondary rounded-xl overflow-hidden hover:text-">
+						<a href="https://community.obsidian.md/" class="group p-6">
+							<dl>
+								<dt class="md:text-2xl font-semibold mb-2 group-hover:text-normal">
+								Plugins
+								</dt>
+								<dd class="text-muted leading-tight">Build your ideal thinking space. With thousands of plugins and our open API, it’s easy to tailor Obsidian to fit your personal workflow. <span class="text-accent font-medium hover:text-accent-300">Learn&nbsp;more.</span></dd>
+							</dl>
+						</a>
+						<div class="md:h-96 w-full overflow-hidden mt-auto pt-6 ps-6 sm:ps-12 relative">
+							<div class="select-none cursor-default relative ui bg-gray-900 border-t border-s border-gray-800 h-96 rounded-ss-xl shadow-xl pt-8 ps-12 pe-4 text-normal text-sm md:text-base leading-5" aria-hidden="true" data-nosnippet="">
+								<div class="text-xl font-semibold border-b pb-4 border-gray-700">Community plugins</div>
+								<div class="border-b py-4 border-gray-700 flex items-center gap-1">
+									<div>
+										<div id="plugins-calendar">Calendar <span class="text-xs text-muted">by Liam Cain</span></div>
+										<div class="text-xs sm:text-sm text-muted pt-1 flex items-center">Calendar view of your daily notes.</div>
+									</div>
+									<div class="shrink-0 ms-auto checkbox-container is-enabled bg-gray-600"><input type="checkbox" aria-labelledby="plugins-calendar"></div>
+								</div>
+								<div class="border-b py-4 border-gray-700 flex items-center gap-1">
+									<div>
+										<div id="plugins-kanban">Kanban <span class="text-xs text-muted">by Matthew Meyers</span></div>
+										<div class="text-xs sm:text-sm text-muted pt-1">Markdown-backed kanban boards.</div>
+									</div>
+									<div class="ms-auto checkbox-container is-enabled bg-gray-600"><input type="checkbox" aria-labelledby="plugins-kanban"></div>
+								</div>
+								<div class="border-b py-4 border-gray-700 flex items-center gap-1">
+									<div>
+										<div id="plugins-dataview">Dataview <span class="text-xs text-muted">by Michael Brenan</span></div>
+										<div class="text-xs sm:text-sm text-muted pt-1">Advanced queries for the data-obsessed.</div>
+									</div>
+									<div class="ms-auto checkbox-container bg-gray-600"><input type="checkbox" aria-labelledby="plugins-dataview"></div>
+								</div>
+								<div class="border-b py-4 border-gray-700 flex items-center gap-1">
+									<div>
+										<div id="plugins-outliner">Outliner <span class="text-xs text-muted">by Viacheslav Slinko</span></div>
+										<div class="text-xs sm:text-sm text-muted pt-1">Work with your lists.</div>
+									</div>
+									<div class="ms-auto checkbox-container bg-gray-600"><input type="checkbox" aria-labelledby="plugins-outliner"></div>
+								</div>
+								<div class="border-b py-4 border-gray-700 flex items-center gap-1">
+									<div>
+										<div id="plugins-tasks">Tasks <span class="text-xs text-muted">by Martin Schenck and Clare Macrae</span></div>
+										<div class="text-xs sm:text-sm text-muted pt-1">Track tasks across your entire vault.</div>
+									</div>
+									<div class="ms-auto checkbox-container bg-gray-600"><input type="checkbox" aria-labelledby="plugins-tasks"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="overflow-hidden py-12 xl:py-24">
+		<div class="container tab-container" style="--active-tab: 1;">
+		<div class="mx-auto grid grid-cols-1 gap-x-8 gap-y-8 lg:grid-cols-2 items-center">
+			<div class="lg:pe-8 lg:pt-4">
+				<div class="lg:max-w-lg">
+					<h2 class="text-title mb-4">Sync securely.</h2>
+					<p class="mt-6 text-xl sm:text-2xl text-muted">Access your notes on any device, secured with end-to-end encryption. <a href="https://obsidian.md/sync" class="text-accent font-medium">Learn&nbsp;more.</a></p>
+					<div class="mt-8 relative max-w-xl lg:max-w-none">
+						<div class="tab-glider absolute md:bg-secondary -start-[3%] h-1/3 rounded-lg w-[106%] transition-all duration-100" style="transform: translateY(calc(100% * var(--active-tab)))"></div>
+						<dl class="grid grid-cols-1 auto-rows-fr text-muted text-lg leading-normal">
+							<div class="tab-button relative ps-9 pe-3 rounded-lg py-4" data-tab="tab-history" data-tab-number="0">
+								<dt><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="history" class="lucide lucide-history icon-xl absolute start-0 top-4 text-accent-400 icon"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg></dt>
+								<dd class="inline"><strong class="font-semibold text-normal">Version history.</strong> Easily track changes between revisions, with one year of version history for every&nbsp;note.</dd>
+							</div>
+
+							<div class="tab-button active relative ps-9 pe-3 rounded-lg py-4" data-tab="tab-collab" data-tab-number="1">
+								<dt><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="users" class="lucide lucide-users icon-xl absolute start-0 top-4 text-accent-400 icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></dt>
+								<dd class="inline"><strong class="font-semibold text-normal">Collaboration.</strong> Work with your team on shared files without compromising your private&nbsp;data.</dd>
+							</div>
+
+							<div class="tab-button relative ps-9 pe-3 rounded-lg py-4" data-tab="tab-encryption" data-tab-number="2">
+								<dt><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="settings" class="lucide lucide-settings icon-xl absolute start-0 top-4 text-accent-400 icon"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></dt>
+								<dd class="inline"><strong class="font-semibold text-normal">Fine-grained control.</strong> Decide which files and preferences you want to sync to which&nbsp;devices.</dd>
+							</div>
+						</dl>
+					</div>
+				</div>
+			</div>
+			<div class="tab-content max-w-none md:-ms-4 lg:-ms-0 lg:aspect-square">
+				<!-- Settings tab -->
+				<div class="tab-pane lg:aspect-square relative rounded-xl sm:rounded-3xl isolate overflow-hidden bg-accent-400 ps-6 pt-8 sm:ps-12 sm:pe-0 sm:pt-12" data-tab="tab-encryption" style="height: auto;" aria-hidden="true" data-nosnippet="">
+					<div class="mx-auto max-w-2xl sm:mx-0 sm:max-w-none h-full">
+					<div class="ui ui-light rounded-ss-xl shadow-xl pt-8 ps-8 pe-8 bg-white" style="min-height: 400px; height: 100%;">
+						<div class="text-lg sm:text-xl font-semibold border-b pb-4 border-gray-200">Selective sync</div>
+						<div class="border-b py-4 border-gray-200 flex items-center gap-4">
+							<div class="flex-1 min-w-0">
+								<div>Images</div>
+								<div class="text-sm text-gray-500 pt-1">Sync image files to this device</div>
+							</div>
+							<div class="shrink-0 checkbox-container is-enabled"><input type="checkbox"></div>
+						</div>
+						<div class="border-b py-4 border-gray-200 flex items-center gap-4">
+							<div class="flex-1 min-w-0">
+								<div>Audio</div>
+								<div class="text-sm text-gray-500 pt-1">Sync audio files to this device</div>
+							</div>
+							<div class="shrink-0 checkbox-container is-enabled"><input type="checkbox"></div>
+						</div>
+						<div class="border-b py-4 border-gray-200 flex items-center gap-4">
+							<div class="flex-1 min-w-0">
+								<div>Video</div>
+								<div class="text-sm text-gray-500 pt-1">Sync video files to this device</div>
+							</div>
+							<div class="shrink-0 checkbox-container"><input type="checkbox"></div>
+						</div>
+						<div class="border-b py-4 border-gray-200 flex items-center gap-4">
+							<div class="flex-1 min-w-0">
+								<div>PDFs</div>
+								<div class="text-sm text-gray-500 pt-1">Sync PDF files to this device</div>
+							</div>
+							<div class="shrink-0 checkbox-container is-enabled"><input type="checkbox"></div>
+						</div>
+					</div>
+					</div>
+				</div>
+				<!-- Version history tab -->
+				<div class="tab-pane lg:aspect-square relative rounded-xl sm:rounded-3xl isolate overflow-hidden bg-accent-400 ps-6 pt-8 sm:ps-12 sm:pe-0 sm:pt-12" data-tab="tab-history" style="height: auto;" aria-hidden="true" data-nosnippet="">
+					<div class="mx-auto max-w-2xl sm:mx-0 sm:max-w-none h-full">
+					<div class="ui ui-light rounded-ss-xl shadow-xl bg-white text-sm flex" style="min-height: 400px; height: 100%;">
+						<!-- History sidebar -->
+						<div class="shrink-0 pt-8 ps-8 pe-8 w-1/2">
+							<div class="text-lg sm:text-xl font-semibold pb-4 border-b border-gray-200">Version history</div>
+
+							<div class="flex items-center gap-2 py-3">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-green-500 text-white">LC</div>
+								<span class="flex-1 min-w-0 text-xs text-gray-500 mock-date" data-days="1" data-time="8:48 AM">May 23, 2026 8:48 AM</span>
+							</div>
+
+							<div class="flex items-center gap-2 py-3">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-red-400 text-white">TG</div>
+								<span class="flex-1 min-w-0 text-xs text-gray-500 mock-date" data-days="3" data-time="12:24 PM">May 21, 2026 12:24 PM</span>
+							</div>
+
+							<div class="flex items-center gap-2 py-3 -mx-2 px-2 rounded-lg" style="background: #f3f4f6;">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style="background: hsl(258,88%,66%); color: white;">SA</div>
+								<span class="flex-1 min-w-0 text-xs font-semibold text-gray-800 mock-date" data-days="4" data-time="6:19 PM">May 20, 2026 6:19 PM</span>
+							</div>
+
+							<div class="flex items-center gap-2 py-3">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-green-500 text-white">LC</div>
+								<span class="flex-1 min-w-0 text-xs text-gray-500 mock-date" data-days="5" data-time="3:02 PM">May 19, 2026 3:02 PM</span>
+							</div>
+
+							<div class="flex items-center gap-2 py-3">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-red-400 text-white">TG</div>
+								<span class="flex-1 min-w-0 text-xs text-gray-500 mock-date" data-days="7" data-time="9:15 AM">May 17, 2026 9:15 AM</span>
+							</div>
+
+							<div class="flex items-center gap-2 py-3">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style="background: hsl(258,88%,66%); color: white;">SA</div>
+								<span class="flex-1 min-w-0 text-xs text-gray-500 mock-date" data-days="9" data-time="7:30 PM">May 15, 2026 7:30 PM</span>
+							</div>
+							<script>document.querySelectorAll('.mock-date').forEach(function(el){var d=new Date();d.setDate(d.getDate()-parseInt(el.dataset.days));el.textContent=d.toLocaleDateString(document.documentElement.lang,{month:'short',day:'numeric',year:'numeric'})+' '+el.dataset.time;});</script>
+						</div>
+
+						<!-- Diff content -->
+						<div class="flex-1 pt-8 ps-6 pe-4 bg-gray-50 border-s border-gray-200">
+							
+							<div class="font-mono text-xs leading-relaxed space-y-0.5">
+								<div class="py-0.5 px-2 text-gray-500">&nbsp;&nbsp;# Writing is telepathy</div>
+								<div class="py-0.5 px-2 text-gray-500">&nbsp;</div>
+								<div class="py-0.5 px-2 rounded" style="background: rgba(239,68,68,0.1); color: #dc2626;">- Obsidian saves notes as text files.</div>
+								<div class="py-0.5 px-2 rounded" style="background: rgba(34,197,94,0.1); color: #16a34a;">+ Obsidian stores your notes locally as plain text Markdown files.</div>
+								<div class="py-0.5 px-2 text-gray-500">&nbsp;</div>
+								<div class="py-0.5 px-2 text-gray-500">&nbsp;&nbsp;- Create links between your notes</div>
+								<div class="py-0.5 px-2 text-gray-500">&nbsp;&nbsp;- Use tags to organize your ideas</div>
+								<div class="py-0.5 px-2 rounded" style="background: rgba(34,197,94,0.1); color: #16a34a;">+ - Build your own personal wiki</div>
+							</div>
+						</div>
+					</div>
+					</div>
+				</div>
+				<!-- Collaboration tab -->
+				<div class="tab-pane active lg:aspect-square relative rounded-xl sm:rounded-3xl isolate overflow-hidden bg-accent-400 ps-6 pt-8 sm:ps-12 sm:pe-0 sm:pt-12" data-tab="tab-collab" style="height: auto;" aria-hidden="true" data-nosnippet="">
+					<div class="mx-auto max-w-2xl sm:mx-0 sm:max-w-none h-full">
+					<div class="ui ui-light rounded-ss-xl shadow-xl pt-8 ps-8 pe-8 bg-white" style="min-height: 400px; height: 100%;">
+						<div class="text-lg sm:text-xl font-semibold border-b pb-4 border-gray-200">Shared vaults</div>
+						<div class="py-4">
+							<div class="flex gap-2 mb-4">
+								<div class="flex-1 rounded-lg px-3 py-2 text-sm border border-gray-200 text-gray-400">Invite by email...</div>
+							</div>
+							<div class="flex items-center gap-3 py-3 border-t border-gray-200">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-indigo-500 text-white">EX</div>
+								<div class="flex-1 text-sm font-medium text-gray-800">Erica Xu</div>
+								<div class="text-xs text-gray-400">Owner</div>
+							</div>
+							<div class="flex items-center gap-3 py-3 border-t border-gray-200">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 text-white" style="background: hsl(258,88%,66%);">SA</div>
+								<div class="flex-1 text-sm font-medium text-gray-800">Steph Ango</div>
+								<div class="text-xs text-gray-400">Can edit</div>
+							</div>
+							<div class="flex items-center gap-3 py-3 border-t border-gray-200">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-green-500 text-white">LC</div>
+								<div class="flex-1 text-sm font-medium text-gray-800">Liam Cain</div>
+								<div class="text-xs text-gray-400">Can edit</div>
+							</div>
+							<div class="flex items-center gap-3 py-3 border-t border-gray-200">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-red-400 text-white">TG</div>
+								<div class="flex-1 text-sm font-medium text-gray-800">Tony Grosinger</div>
+								<div class="text-xs text-gray-400">Can edit</div>
+							</div>
+						</div>
+					</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		</div>
+	</div>
+
+	<div class="py-16 xl:py-24 cards">
+		<div class="container">
+			<div class="mx-auto grid grid-cols-1 gap-x-8 gap-y-12 lg:grid-cols-2">
+				<div>
+				<h2 class="text-title mb-4">Publish instantly.</h2>
+				<p class="mt-6 text-xl sm:text-2xl text-muted">Turn your notes into an online wiki, knowledge base, documentation, or digital&nbsp;garden. <a href="https://obsidian.md/publish" class="text-accent font-medium">Learn&nbsp;more.</a></p>
+				</div>
+				<dl class="col-span-2 grid grid-cols-1 gap-y-8 gap-x-12 sm:grid-cols-3">
+					<div class="text-lg sm:text-xl flex flex-row sm:flex-col gap-y-2 gap-x-3">
+						<div>
+							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="square-pen" class="lucide lucide-square-pen icon-xl text-accent h-8 w-8 -mt-1 sm:mt-0 icon"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"></path></svg>
+						</div>
+						<div>
+							<dt class="font-semibold inline sm:block">
+								Seamless editing<span class="sm:hidden">.</span>
+							</dt>
+							<dd class="mt-2 text-lg leading-6 text-muted inline sm:block">
+								Publish your notes instantly from the Obsidian app, and make it easy for readers to explore your web of&nbsp;ideas.
+							</dd>
+						</div>
+					</div>
+					<div class="text-lg sm:text-xl flex flex-row sm:flex-col gap-y-2 gap-x-3">
+						<div>
+							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="palette" class="lucide lucide-palette icon-xl text-accent h-8 w-8 -mt-1 sm:mt-0 icon"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg>
+						</div>
+						<div>
+							<dt class="font-semibold inline sm:block">
+								Customization<span class="sm:hidden">.</span>
+							</dt>
+							<dd class="mt-2 text-lg leading-6 text-muted inline sm:block">
+								Control the look and feel of your site with themes, custom domains, password protection, and&nbsp;more.
+							</dd>
+						</div>
+					</div>
+					<div class="text-lg sm:text-xl flex flex-row sm:flex-col gap-y-2 gap-x-3">
+						<div class="">
+							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="line-chart" class="lucide lucide-line-chart icon-xl text-accent h-8 w-8 -mt-1 sm:mt-0 icon"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+						</div>
+						<div>
+							<dt class="font-semibold inline sm:block">
+								Optimized for performance<span class="sm:hidden">.</span>
+							</dt>
+							<dd class="mt-2 text-lg leading-6 text-muted inline sm:block">
+								Obsidian Publish sites are fast, mobile-friendly, and optimized for SEO, no configuration required.
+							</dd>
+						</div>
+					</div>
+				</dl>
+			</div>
+		</div>
+		<div class="relative overflow-hidden pt-16 mb-24">
+			<div class="container">
+				<div class="w-[48rem] md:w-auto">
+					<img src="./Obsidian - Sharpen your thinking_files/publish-example-dark.png" alt="Example of Obsidian Help site powered by Obsidian Publish" class="mb-[-12%] rounded-xl shadow-2xl ring-1 ring-white/20" width="2899" height="1757">
+					<div class="relative" aria-hidden="true">
+					<div class="absolute -inset-x-20 bottom-0 bg-gradient-to-t from-primary pt-[7%]"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="-mt-12 text-center text-muted sm:text-lg">Explore the <a href="https://obsidian.md/help/" class="underline">Obsidian Help</a> site, powered&nbsp;by&nbsp;<a href="https://obsidian.md/publish" class="underline">Obsidian&nbsp;Publish</a>.</div>
+	</div>
+
+
+	<div class="sm:py-32 mt-12">
+		<div class="mx-auto container sm:mb-32 text-center">
+			<h2 class="text-title mb-12">It’s your time to&nbsp;shine.</h2>
+
+			<a class="button button-primary text-xl py-4 px-8" href="https://obsidian.md/download">Get Obsidian</a>
+		</div>
+
+		<div class="container cards mt-12">
+				<div class="text-lg grid grid-cols-1 gap-y-4 gap-x-6 md:grid-cols-3">
+
+					<a href="https://discord.gg/obsidianmd" target="_blank" class="card card-shimmer card-grow ring-1 ring-inset ring-white/5 bg-secondary rounded-xl p-6">
+							<div class="md:text-xl font-semibold mb-3">
+							Join us on Discord
+							</div>
+							<div class="text-muted leading-tight">Get help, ask questions, meet other Obsidian users, and learn about their&nbsp;setup.</div>
+					</a>
+
+					<a href="https://forum.obsidian.md/" target="_blank" class="card card-shimmer card-grow ring-1 ring-inset ring-white/5 bg-secondary rounded-xl p-6">
+						<div class="md:text-xl font-semibold mb-3">
+						Discussion forum
+						</div>
+						<div class="text-muted leading-tight">Post feature requests, report bugs, and explore in-depth discussions about knowledge management.</div>
+					</a>
+
+					<a href="https://docs.obsidian.md/" target="_blank" class="card card-shimmer card-grow ring-1 ring-inset ring-white/5 bg-secondary rounded-xl p-6">
+						<div class="md:text-xl font-semibold mb-3">
+						Developer docs
+						</div>
+						<div class="text-muted leading-tight">Learn how to build your own Obsidian plugins and themes, using our open API and documentation.</div>
+					</a>
+
+				</div>
+
+		</div>
+
+	</div>
+
+
+
+<footer class="container flex flex-row-reverse flex-wrap pt-24 pb-12 sm:pt-24 md:pb-32">
+	<div class="grid grid-cols-2 gap-3 gap-y-6 md:grid-cols-3 justify-between w-full mb-24 ms-auto md:w-3/5 lg:w-1/2 md:mb-0 leading-tight md:ps-6 [&amp;_li]:mt-2">
+
+		<div>
+			<ul class="">
+				<li class="text-faint mb-3">Get started</li>
+				<li><a class="font-medium" href="https://obsidian.md/download">Download</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/pricing">Pricing</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/enterprise">Enterprise</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/account">Account</a></li>
+			</ul>
+			<ul class="mt-8">
+				<li class="text-faint mb-3">Obsidian</li>
+				<li><a class="font-medium current" href="https://obsidian.md/">Overview</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/sync">Sync</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/publish">Publish</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/canvas">Canvas</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/mobile">Mobile</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/clipper">Web Clipper</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/cli">CLI</a></li>
+			</ul>
+		</div>
+
+		<div>
+			<ul class="">
+				<li class="text-faint mb-3">Learn</li>
+				<li><a class="font-medium" href="https://obsidian.md/help/">Help</a></li>
+				<li><a class="font-medium" href="https://docs.obsidian.md/" target="_blank">Developers</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/changelog">Changelog</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/about">About</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/roadmap">Roadmap</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/blog">Blog</a></li>
+			</ul>
+			<ul class="mt-8">
+				<li class="text-faint mb-3">Resources</li>
+				<li><a class="font-medium" href="https://status.obsidian.md/" rel="noopener noreferrer">System status</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/license">License overview</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/terms">Terms of service</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/privacy">Privacy policy</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/security">Security</a></li>
+			</ul>
+		</div>
+
+		<div>
+			<ul class="">
+				<li class="text-faint mb-3">Community</li>
+				<li><a class="font-medium" href="https://community.obsidian.md/plugins">Plugins</a></li>
+				<li><a class="font-medium" href="https://community.obsidian.md/themes">Themes</a></li>
+				<li><a class="font-medium" href="https://discord.gg/obsidianmd" rel="noopener noreferrer" target="_blank">Discord</a></li>
+				<li><a class="font-medium" href="https://forum.obsidian.md/" target="_blank">Forum</a> <span class="text-gray-600">/</span> <a class="font-medium" href="https://forum-zh.obsidian.md/" target="_blank">中文论坛</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/softwear">Merch store</a></li>
+				<li><a class="font-medium" href="https://obsidian.md/brand">Brand guidelines</a></li>
+			</ul>
+		</div>
+	</div>
+
+	<div class="me-auto w-full sm:w-auto">
+		<a class="header-logo me-4 flex items-center gap-x-2 transition-colors current" href="https://obsidian.md/" aria-label="Go to the Obsidian home page">
+			<svg alt="Obsidian" height="22" viewBox="0 0 143 25" width="126" xmlns="http://www.w3.org/2000/svg"><path fill="#A88BFA" d="m6.91927 14.5955c.64053-.1907 1.67255-.4839 2.85923-.5565-.71191-1.7968-.88376-3.3691-.74554-4.76905.15962-1.61678.72977-2.9662 1.28554-4.11442.1186-.24501.2326-.47313.3419-.69198.1549-.30984.3004-.60109.4365-.8953.2266-.48978.3948-.92231.4798-1.32416.0836-.39515.0841-.74806-.0148-1.08657-.099-.338982-.3093-.703864-.7093-1.1038132-.5222-.1353116-1.1017-.0165173-1.53613.3742922l-5.15591 4.638241c-.28758.25871-.47636.60929-.53406.99179l-.44455 2.94723c.69903.6179 2.42435 2.41414 3.47374 4.90644.09364.2224.1819.4505.26358.6838z"></path><path fill="#A88BFA" d="m2.97347 10.3512c-.02431.1037-.05852.205-.10221.3024l-2.724986 6.0735c-.279882.6238-.15095061 1.3552.325357 1.8457l4.288349 4.4163c2.1899-3.2306 1.87062-6.2699.87032-8.6457-.75846-1.8013-1.90801-3.2112-2.65683-3.9922z"></path><path fill="#A88BFA" d="m5.7507 23.5094c.07515.012.15135.0192.2281.0215.81383.0244 2.18251.0952 3.29249.2997.90551.1669 2.70051.6687 4.17761 1.1005 1.1271.3294 2.2886-.5707 2.4522-1.7336.1192-.8481.343-1.8075.7553-2.6869l-.0095.0033c-.6982-1.9471-1.5865-3.2044-2.5178-4.0073-.9284-.8004-1.928-1.1738-2.8932-1.3095-1.60474-.2257-3.07497.1961-4.00103.4682.55465 2.3107.38396 5.0295-1.48417 7.8441z"></path><path fill="#A88BFA" d="m17.3708 19.3102c.9267-1.3985 1.5868-2.4862 1.9352-3.0758.1742-.295.1427-.6648-.0638-.9383-.5377-.7126-1.5666-2.1607-2.1272-3.5015-.5764-1.3785-.6624-3.51876-.6673-4.56119-.0019-.39626-.1275-.78328-.3726-1.09465l-3.3311-4.23183c-.0117.19075-.0392.37998-.0788.56747-.1109.52394-.32 1.04552-.5585 1.56101-.1398.30214-.3014.62583-.4646.95284-.1086.21764-.218.4368-.3222.652-.5385 1.11265-1.0397 2.32011-1.1797 3.73901-.1299 1.31514.0478 2.84484.8484 4.67094.1333.0113.2675.0262.4023.0452 1.1488.1615 2.3546.6115 3.4647 1.5685.9541.8226 1.8163 2.0012 2.5152 3.6463z"></path><path fill="currentColor" d="m39.752 4.5038c-5.952 0-10.248 3.744-10.248 8.88s4.296 8.88 10.248 8.88c5.928 0 10.224-3.744 10.224-8.88s-4.296-8.88-10.224-8.88zm0 3.47999c3.576 0 6.144 2.13601 6.144 5.40001s-2.568 5.4-6.144 5.4c-3.6 0-6.168-2.136-6.168-5.4s2.568-5.40001 6.168-5.40001z"></path><path fill="currentColor" d="m55.4847 20.5598c.864.936 2.472 1.704 4.584 1.704 4.32 0 6.8401-2.976 6.8401-6.576 0-3.624-2.5201-6.60001-6.8401-6.60001-2.112 0-3.72.79201-4.584 1.70401v-6.02401h-3.84v17.23201h3.84zm-.12-4.944c0-1.992 1.704-3.432 3.912-3.432 2.112 0 3.888 1.248 3.888 3.504s-1.776 3.48-3.888 3.48c-2.208 0-3.912-1.416-3.912-3.408z"></path><path fill="currentColor" d="m67.3181 19.9118c1.464 1.488 4.272 2.352 7.2 2.352 3.96 0 6.936-1.44 6.936-4.392 0-2.88-2.832-3.432-6.072-3.816-2.736-.312-3.576-.384-3.576-1.08 0-.648.864-1.056 2.496-1.056 1.968 0 3.672.6 4.824 1.656l1.992-2.304c-1.272-1.224-3.648-2.18401-6.624-2.18401-4.008 0-6.48 1.72801-6.48 4.32001 0 2.712 2.52 3.312 5.544 3.696 2.832.336 4.032.336 4.032 1.176 0 .792-1.056 1.128-2.784 1.128-2.16 0-4.152-.672-5.664-2.064z"></path><path fill="currentColor" d="m82.8395 8.05579h3.912v-3.288h-3.912zm3.864 1.29601h-3.84v12.648h3.84z"></path><path fill="currentColor" d="m99.8264 20.5598v1.44h3.8396v-17.23201h-3.8396v6.02401c-.864-.912-2.472-1.70401-4.584-1.70401-4.32 0-6.84 2.97601-6.84 6.60001 0 3.6 2.52 6.576 6.84 6.576 2.112 0 3.72-.768 4.584-1.704zm.12-4.944v.144c0 1.992-1.704 3.408-3.912 3.408-2.112 0-3.888-1.224-3.888-3.48s1.776-3.504 3.888-3.504c2.208 0 3.912 1.44 3.912 3.432z"></path><path fill="currentColor" d="m105.996 8.05579h3.912v-3.288h-3.912zm3.864 1.29601h-3.84v12.648h3.84z"></path><path fill="currentColor" d="m116.863 22.2638c2.232 0 4.056-.648 5.208-1.656.648 1.2 2.184 1.92 4.992 1.392v-2.832c-1.344.288-1.632-.024-1.632-.696v-4.608c0-3.168-2.376-4.77601-6.408-4.77601-3.48 0-6.264 1.51201-7.056 3.79201l3.456.936c.384-.984 1.704-1.704 3.432-1.704 2.04 0 2.856.768 2.856 1.728v.072l-5.04.456c-2.976.288-5.16 1.512-5.16 3.984 0 2.496 2.232 3.912 5.352 3.912zm4.848-5.112c0 1.464-2.184 2.304-4.152 2.304-1.488 0-2.328-.432-2.328-1.248 0-.84.672-1.152 1.992-1.272l4.488-.456z"></path><path fill="currentColor" d="m128.379 21.9998h3.84v-6.048c0-2.184 1.2-3.456 3.288-3.456 1.968 0 3 1.296 3 3.432v6.072h3.84v-7.2c0-3.504-2.232-5.71201-5.52-5.71201-2.04 0-3.624.76801-4.608 1.80001v-1.536h-3.84z"></path></svg>
+		</a>
+		<div class="mt-6 text-base md:text-sm text-faint mb-3 md:mb-2">Follow us</div>
+		<div class="text-base md:text-sm grid gap-y-2 grid-cols-2 gap-x-4 md:gap-y-1 mb-4">
+			<a class="font-medium" href="https://discord.com/invite/obsidianmd" rel="noopener noreferrer" target="_blank">Discord</a>
+			<a class="font-medium" href="https://x.com/obsdmd" rel="noopener noreferrer" target="_blank">Twitter</a>
+			<a class="font-medium" href="https://bsky.app/profile/obsidian.md" rel="me noopener noreferrer" target="_blank">Bluesky</a>
+			<a class="font-medium" href="https://www.threads.net/@obsdmd" rel="me noopener noreferrer" target="_blank">Threads</a>
+			<a class="font-medium" href="https://mas.to/@obsidian" rel="me noopener noreferrer" target="_blank">Mastodon</a>
+			<a class="font-medium" href="https://www.youtube.com/@obsdmd" rel="noopener noreferrer" target="_blank">YouTube</a>
+			<a class="font-medium" href="https://github.com/obsidianmd" rel="noopener noreferrer" target="_blank">GitHub</a>
+		</div>
+		<details class="relative text-sm mb-4 group">
+			<summary class="list-none cursor-pointer text-faint hover:text-normal flex items-center gap-1.5 select-none px-3 py-3 sm:py-1.5 rounded-lg ring-1 ring-inset ring-white/10 hover:bg-gray-800 min-w-[10rem] whitespace-nowrap">
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+				English
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-down" class="lucide lucide-chevron-down icon-xs ms-auto icon"><path d="m6 9 6 6 6-6"></path></svg>
+			</summary>
+			<ul class="absolute bottom-full start-0 mb-1 bg-gray-800 ring-1 ring-inset ring-white/10 rounded-lg p-1 min-w-[10rem] shadow-xl flex flex-col gap-0.5">
+				
+				<li><a href="https://obsidian.md/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;en&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-normal font-medium bg-gray-700 hover:text-normal current">English</a></li>
+				
+				<li><a href="https://obsidian.md/ar/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ar&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">العربية</a></li>
+				
+				<li><a href="https://obsidian.md/de/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;de&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Deutsch</a></li>
+				
+				<li><a href="https://obsidian.md/es/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;es&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Español</a></li>
+				
+				<li><a href="https://obsidian.md/fr/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;fr&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Français</a></li>
+				
+				<li><a href="https://obsidian.md/it/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;it&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Italiano</a></li>
+				
+				<li><a href="https://obsidian.md/ja/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ja&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">日本語</a></li>
+				
+				<li><a href="https://obsidian.md/ko/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ko&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">한국어</a></li>
+				
+				<li><a href="https://obsidian.md/pt-BR/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;pt-BR&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Português (Brasil)</a></li>
+				
+				<li><a href="https://obsidian.md/ru/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;ru&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">Русский</a></li>
+				
+				<li><a href="https://obsidian.md/zh/" onclick="try{localStorage.setItem(&#39;lang&#39;,&#39;zh&#39;);sessionStorage.setItem(&#39;scrollY&#39;,scrollY)}catch(e){}" class="block px-3 py-1.5 rounded-md whitespace-nowrap text-muted hover:text-normal hover:bg-gray-700">简体中文</a></li>
+				
+			</ul>
+		</details>
+		<div class="text-sm text-faint">© 2026 Obsidian</div>
+	</div>
+</footer>
+<script>
+document.addEventListener('click', function(e) {
+	document.querySelectorAll('footer details[open]').forEach(function(d) {
+		if (!d.contains(e.target)) d.removeAttribute('open');
+	});
+});
+</script>
+
+
+
+<script src="./Obsidian - Sharpen your thinking_files/static.js.下载"></script>
+<script src="./Obsidian - Sharpen your thinking_files/download.js.下载"></script>
+<script src="./Obsidian - Sharpen your thinking_files/graph.js.下载"></script><script type="text/javascript" src="./Obsidian - Sharpen your thinking_files/pixi.min.js.下载"></script>
+
+
+
+</body><div id="immersive-translate-browser-popup" style="all: initial"><template shadowrootmode="open"><style>/** 基础色阶定义 **/
+:root,
+#mount[data-theme="light"],
+#mount:not([data-theme="dark"]) {
+  /* 中性灰阶（light） */
+  --c-00: #000000;
+  --c-22: #222222;
+  --c-33: #333333;
+  --c-66: #666666;
+  --c-83: #838383;
+  --c-99: #999999;
+  --c-c7: #c7c7c7;
+  --c-cc: #cccccc;
+  --c-e6: #e6e6e6;
+  --c-f5: #f5f5f5;
+  --c-ff: #ffffff;
+  /* 品牌主色阶（light） */
+  --p-main: #ea4c89;
+  --p-hover: #ec5e95;
+  --p-active: #e34a85;
+  --p-special: #ee71a2;
+  --p-disabled: #f4a5c4;
+  --p-text-disabled: #f9c9dc;
+  --p-weak: #fdedf3;
+  /* Surface 层级（light，TC 填充-1） */
+  --s-1: #f3f5f6;
+  --s-1-hover: #f6f8f9;
+  --s-1-active: #edf1f2;
+  --s-1-weak: #fafbfb;
+  /* 输入/边框（light，TC 填充-2） */
+  --input-bg-base: #fafbfc;
+  --input-border: #ecf0f7;
+  --input-border-strong: #e0e0e6;
+  --input-bg-strong: #fafdff;
+}
+
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  /* 中性灰阶（dark） */
+  --c-00: #ffffff;
+  --c-22: #dbdbdb;
+  --c-33: #dbdbdb;
+  --c-66: #b3b3b3;
+  --c-83: #838383;
+  --c-99: #707070;
+  --c-c7: #666666;
+  --c-cc: #5c5c5c;
+  --c-e6: #3b3b3b;
+  --c-f5: #262626;
+  --c-ff: #222222;
+  /* 品牌主色阶（dark） */
+  --p-main: #e23c7c;
+  --p-hover: #ea4c89;
+  --p-active: #d5467d;
+  --p-special: #a93a65;
+  --p-disabled: #7e2f4d;
+  --p-text-disabled: #522335;
+  --p-weak: #26171d;
+  /* Surface 层级（dark，TC 填充-1） */
+  --s-1: #2d2e2f;
+  --s-1-hover: #323434;
+  --s-1-active: #202121;
+  --s-1-weak: #262627;
+  /* 输入/边框（dark，TC 填充-2） */
+  --input-bg-base: #2b2d30;
+  --input-border: #3e434b;
+  --input-border-strong: #43474b;
+  --input-bg-strong: #1f2123;
+}
+
+:root,
+#mount [data-theme] {
+  /* 业务/通用变量引用色阶（全局可见，含 Shadow DOM） */
+  --primary: var(--p-main);
+  --primary-hover: var(--p-hover);
+  --primary-inverse: #fff;
+  --modal-background: var(--s-1);
+  --modal-border: var(--input-border);
+  --modal-text: var(--c-22);
+  --modal-text-secondary: var(--c-66);
+  --modal-error: var(--p-main);
+  --modal-required: #f53f3f;
+  --modal-success: #68cd52;
+  --modal-button-background: var(--p-main);
+  --modal-button-text: var(--c-ff);
+  --modal-input-background: var(--input-bg-base);
+  --modal-check-color: var(--p-main);
+  --background-color: var(--c-ff);
+  --background-light-green: var(--s-1-weak, #f5f7f9);
+  --text-black-2: var(--c-22);
+  --text-gray-2: var(--c-22);
+  --text-gray-6: var(--c-66);
+  --text-gray-9: var(--c-99);
+  --text-gray-c2: var(--c-c7);
+  --switch-background-color: var(--c-c7, hsl(205deg, 16%, 77%));
+  --float-ball-more-button-border-color: var(--c-f5, #f6f6f6);
+  --float-ball-more-button-background-color: var(--c-ff);
+  --float-ball-more-button-hover-color: var(--p-weak);
+  --float-ball-more-button-svg-color: #6c6f73;
+  --service-bg-hover: var(--s-1-hover, #f7faff);
+  --service-bg: var(--s-1-weak, #fafbfb);
+}
+
+#mount {
+  --font-family: system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu",
+    "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  /* PC/H5 兼容的字号、间距、圆角、阴影变量 */
+  --f-12: 12px;
+  --f-14: 14px;
+  --f-15: 15px;
+  --f-16: 16px;
+  --f-18: 18px;
+  --f-20: 20px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-24: 24px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --control-height-lg: 44px;
+  --width-28: 28px;
+  --width-24: 24px;
+  --width-20: 20px;
+  --width-18: 18px;
+  --width-16: 16px;
+  --width-label-md: 56px;
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.12);
+
+  /* 常规变量 */
+  --line-height: 1.5;
+  --font-weight: 400;
+  --font-size: 16px;
+  --border-radius: 4px;
+  --border-width: 2px;
+  --outline-width: 3px;
+  --spacing: 16px;
+  --typography-spacing-vertical: 24px;
+  --block-spacing-vertical: calc(var(--spacing) * 2);
+  --block-spacing-horizontal: var(--spacing);
+  --grid-spacing-vertical: 0;
+  --grid-spacing-horizontal: var(--spacing);
+  --form-element-spacing-vertical: 12px;
+  --form-element-spacing-horizontal: 16px;
+  --nav-element-spacing-vertical: 16px;
+  --nav-element-spacing-horizontal: 8px;
+  --nav-link-spacing-vertical: 8px;
+  --nav-link-spacing-horizontal: 8px;
+  --form-label-font-weight: var(--font-weight);
+  --transition: 0.2s ease-in-out;
+  --modal-overlay-backdrop-filter: blur(4px);
+  --switch-color: var(--primary-inverse);
+  --switch-checked-background-color: var(--primary);
+  --icon-xia: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgaWQ9IkZyYW1lIj4KPHBhdGggaWQ9IlZlY3RvciIgZD0iTTguMDAyOTEgOS42Nzk4M0wzLjgzMzM5IDUuNTEyMjFMMy4wMjUzOSA2LjMxOTgzTDguMDAzMjkgMTEuMjk1MUwxMi45NzYyIDYuMzE5ODNMMTIuMTY3OSA1LjUxMjIxTDguMDAyOTEgOS42Nzk4M1oiIGZpbGw9IiM4MzgzODMiLz4KPC9nPgo8L3N2Zz4K");
+  /* 兼容旧变量：主色直接引用品牌主色阶 */
+  --primary: var(--p-main);
+  --primary-hover: var(--p-hover);
+  --primary-inverse: #fff;
+  /* Modal 业务变量引用色阶 */
+  --modal-background: var(--s-1);
+  --modal-border: var(--input-border);
+  --modal-text: var(--c-22);
+  --modal-text-secondary: var(--c-66);
+  --modal-error: var(--p-main);
+  --modal-required: #f53f3f;
+  --modal-success: #68cd52;
+  --modal-button-background: var(--p-main);
+  --modal-button-text: var(--c-ff);
+  --modal-input-background: var(--input-bg-base);
+  --modal-check-color: var(--p-main);
+  --background-color: var(--c-ff);
+  --background-light-green: var(--s-1-weak, #f5f7f9);
+  --text-black-2: var(--c-22);
+  --text-gray-2: var(--c-22);
+  --text-gray-6: var(--c-66);
+  --text-gray-9: var(--c-99);
+  --text-gray-c2: var(--c-c7);
+  --switch-background-color: var(--c-c7, hsl(205deg, 16%, 77%));
+  --float-ball-more-button-border-color: var(--c-f5, #f6f6f6);
+  --float-ball-more-button-background-color: var(--c-ff);
+  --float-ball-more-button-hover-color: var(--p-weak);
+  --float-ball-more-button-svg-color: #6c6f73;
+  --service-bg-hover: var(--s-1-hover, #f7faff);
+  --service-bg: var(--s-1-weak, #fafbfb);
+  line-height: var(--line-height);
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+}
+
+@media (max-width: 480px) {
+  :root,
+  #mount {
+    --f-12: 10px;
+    --f-14: 12px;
+    --f-15: 13px;
+    --f-16: 14px;
+    --f-18: 16px;
+    --f-20: 18px;
+    --space-4: 4px;
+    --space-6: 4px;
+    --space-8: 6px;
+    --space-12: 8px;
+    --space-16: 12px;
+    --space-18: 14px;
+    --space-24: 18px;
+    --radius-8: 6px;
+    --radius-12: 10px;
+    --radius-16: 12px;
+    --control-height-lg: 38px;
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1);
+    --width-28: 24px;
+    --width-24: 20px;
+    --width-20: 16px;
+    --width-18: 14px;
+    --width-16: 12px;
+    --width-label-md: 52px;
+  }
+}
+
+#mount * {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+:where(#mount) a,
+:where(#mount) [role="link"] {
+  --color: var(--primary);
+  --background-color: transparent;
+  outline: none;
+  background-color: var(--background-color);
+  color: var(--color);
+  -webkit-text-decoration: var(--text-decoration);
+  text-decoration: var(--text-decoration);
+  transition: background-color var(--transition), color var(--transition),
+    box-shadow var(--transition), -webkit-text-decoration var(--transition);
+  transition: background-color var(--transition), color var(--transition),
+    text-decoration var(--transition), box-shadow var(--transition);
+  transition: background-color var(--transition), color var(--transition),
+    text-decoration var(--transition), box-shadow var(--transition),
+    -webkit-text-decoration var(--transition);
+}
+:where(#mount) a:is([aria-current], :hover, :active, :focus),
+:where(#mount) [role="link"]:is([aria-current], :hover, :active, :focus) {
+  --color: var(--primary-hover);
+  --text-decoration: underline;
+}
+
+:where(#mount) label {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--text-gray-2, #222222);
+}
+
+:where(#mount) button {
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.3;
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 0 14px;
+  border: none;
+  background-color: var(--primary, #ea4c89);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+:where(#mount) button:hover {
+  background-color: var(--primary-hover, #f082ac);
+}
+
+:where(#mount) button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:where(#mount) select,
+:where(#mount) input,
+:where(#mount) textarea {
+  font-family: inherit;
+  color: var(--text-gray-2, #222222);
+}
+
+:where(#mount) select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  font-family: inherit;
+  color: var(--text-gray-2, inherit);
+  font-size: 13px;
+  line-height: 1.3;
+  outline: none;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 12px;
+  background-color: var(--popup-item-background-color, transparent);
+  background-image: var(--icon-xia, none);
+  background-repeat: no-repeat;
+  background-position: center right 12px;
+  background-size: 16px auto;
+  cursor: pointer;
+}
+
+:where(#mount) input[type="checkbox"] {
+  accent-color: var(--primary, #ea4c89);
+}
+
+[type="checkbox"],
+[type="radio"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 1.25em;
+  height: 1.25em;
+  margin-top: -0.125em;
+  margin-right: 0.375em;
+  margin-left: 0;
+  -webkit-margin-start: 0;
+  margin-inline-start: 0;
+  -webkit-margin-end: 0.375em;
+  margin-inline-end: 0.375em;
+  border-width: var(--border-width);
+  font-size: inherit;
+  vertical-align: middle;
+  cursor: pointer;
+}
+[type="checkbox"]::-ms-check,
+[type="radio"]::-ms-check {
+  display: none;
+}
+[type="checkbox"]:checked,
+[type="checkbox"]:checked:active,
+[type="checkbox"]:checked:focus,
+[type="radio"]:checked,
+[type="radio"]:checked:active,
+[type="radio"]:checked:focus {
+  --background-color: var(--primary);
+  --border-color: var(--primary);
+  background-image: var(--icon-checkbox);
+  background-position: center;
+  background-size: 0.75em auto;
+  background-repeat: no-repeat;
+}
+[type="checkbox"] ~ label,
+[type="radio"] ~ label {
+  display: inline-block;
+  margin-right: 0.375em;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+[type="checkbox"]:indeterminate {
+  --background-color: var(--primary);
+  --border-color: var(--primary);
+  background-image: var(--icon-minus);
+  background-position: center;
+  background-size: 0.75em auto;
+  background-repeat: no-repeat;
+}
+
+[type="radio"] {
+  border-radius: 50%;
+}
+[type="radio"]:checked,
+[type="radio"]:checked:active,
+[type="radio"]:checked:focus {
+  --background-color: var(--primary-inverse);
+  border-width: 0.35em;
+  background-image: none;
+}
+
+:where(#mount) [type="checkbox"][role="switch"] {
+  --background-color: var(--switch-background-color);
+  --border-color: var(--switch-background-color);
+  --color: var(--switch-color);
+  width: 2.25em;
+  height: 1.25em;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: 1.25em;
+  background-color: var(--background-color);
+  line-height: 1.25em;
+}
+:where(#mount) [type="checkbox"][role="switch"]:focus {
+  --background-color: var(--switch-background-color);
+  --border-color: var(--switch-background-color);
+}
+:where(#mount) [type="checkbox"][role="switch"]:checked {
+  --background-color: var(--switch-checked-background-color);
+  --border-color: var(--switch-checked-background-color);
+}
+:where(#mount) [type="checkbox"][role="switch"]:before {
+  display: block;
+  width: calc(1.25em - (var(--border-width) * 2));
+  height: 100%;
+  border-radius: 50%;
+  background-color: var(--color);
+  content: "";
+  transition: margin 0.1s ease-in-out;
+}
+:where(#mount) [type="checkbox"][role="switch"]:checked {
+  background-image: none;
+}
+:where(#mount) [type="checkbox"][role="switch"]:checked::before {
+  margin-left: calc(1.125em - var(--border-width));
+  -webkit-margin-start: calc(1.125em - var(--border-width));
+  margin-inline-start: calc(1.125em - var(--border-width));
+}
+
+:where(#mount) [type="checkbox"][aria-invalid="false"],
+:where(#mount) [type="checkbox"]:checked[aria-invalid="false"],
+:where(#mount) [type="radio"][aria-invalid="false"],
+:where(#mount) [type="radio"]:checked[aria-invalid="false"],
+:where(#mount) [type="checkbox"][role="switch"][aria-invalid="false"],
+:where(#mount) [type="checkbox"][role="switch"]:checked[aria-invalid="false"] {
+  --border-color: var(--form-element-valid-border-color);
+}
+:where(#mount) [type="checkbox"][aria-invalid="true"],
+:where(#mount) [type="checkbox"]:checked[aria-invalid="true"],
+:where(#mount) [type="radio"][aria-invalid="true"],
+:where(#mount) [type="radio"]:checked[aria-invalid="true"],
+:where(#mount) [type="checkbox"][role="switch"][aria-invalid="true"],
+:where(#mount) [type="checkbox"][role="switch"]:checked[aria-invalid="true"] {
+  --border-color: var(--form-element-invalid-border-color);
+}
+
+.text-black {
+  color: var(--text-black-2);
+}
+
+.text-gray-2 {
+  color: var(--text-gray-2);
+}
+
+.text-gray-6 {
+  color: var(--text-gray-6);
+}
+
+.text-gray-9 {
+  color: var(--text-gray-9);
+}
+
+.text-gray-c2 {
+  color: var(--text-gray-c2);
+}
+
+.pt-4 {
+  padding-top: 16px;
+}
+
+.p-2 {
+  padding: 8px;
+}
+
+.pl-5 {
+  padding-left: 48px;
+}
+
+.p-0 {
+  padding: 0;
+}
+
+.pl-2 {
+  padding-left: 8px;
+}
+
+.pl-4 {
+  padding-left: 24px;
+}
+
+.pt-2 {
+  padding-top: 8px;
+}
+
+.pb-2 {
+  padding-bottom: 8px;
+}
+
+.pb-4 {
+  padding-bottom: 16px;
+}
+
+.pb-5 {
+  padding-bottom: 20px;
+}
+
+.pr-5 {
+  padding-right: 48px;
+}
+
+.text-sm {
+  font-size: 13px;
+}
+
+.text-base {
+  font-size: 16px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-end {
+  justify-content: flex-end;
+}
+
+.flex-grow {
+  flex-grow: 1;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.mb-0 {
+  margin-bottom: 0px;
+}
+
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mb-3 {
+  margin-bottom: 12px;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.py-2 {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.py-2-5 {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.mt-0 {
+  margin-top: 0;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+
+.mt-3 {
+  margin-top: 12px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mt-5 {
+  margin-top: 20px;
+}
+
+.mt-6 {
+  margin-top: 24px;
+}
+
+.mb-1 {
+  margin-bottom: 4px;
+}
+
+.ml-4 {
+  margin-left: 24px;
+}
+
+.ml-3 {
+  margin-left: 16px;
+}
+
+.ml-2 {
+  margin-left: 8px;
+}
+
+.ml-1 {
+  margin-left: 4px;
+}
+
+.mr-1 {
+  margin-right: 4px;
+}
+
+.mr-2 {
+  margin-right: 8px;
+}
+
+.mr-3 {
+  margin-right: 16px;
+}
+
+.mx-2 {
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.pl-3 {
+  padding-left: 12px;
+}
+
+.pr-3 {
+  padding-right: 12px;
+}
+
+.p-3 {
+  padding: 12px;
+}
+
+.px-1 {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.px-3 {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.pt-3 {
+  padding-top: 12px;
+}
+
+.px-6 {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.px-4 {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.pt-6 {
+  padding-top: 20px;
+}
+
+.py-3 {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.py-0 {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.left-auto {
+  left: auto !important;
+}
+
+.max-h-28 {
+  max-height: 112px;
+}
+
+.max-h-30 {
+  max-height: 120px;
+}
+
+.overflow-y-scroll {
+  overflow-y: scroll;
+}
+
+.text-xs {
+  font-size: 12px;
+}
+
+.inline-flex {
+  display: inline-flex;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-3 {
+  flex: 3;
+}
+
+.flex-4 {
+  flex: 4;
+}
+
+.flex-2 {
+  flex: 2;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.max-content {
+  width: max-content;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.items-baseline {
+  align-items: baseline;
+}
+
+.my-5 {
+  margin-top: 48px;
+  margin-bottom: 48px;
+}
+
+.my-4 {
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+.my-3 {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.pt-3 {
+  padding-top: 12px;
+}
+
+.px-3 {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.pt-2 {
+  padding-top: 8px;
+}
+
+.px-2 {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.pt-1 {
+  padding-top: 4px;
+}
+
+.px-1 {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.pb-2 {
+  padding-bottom: 8px;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.w-auto {
+  width: auto;
+}
+
+.shrink-0 {
+  flex-shrink: 0;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.close {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  background-image: var(--icon-close);
+  background-position: center;
+  background-size: auto 1rem;
+  background-repeat: no-repeat;
+  opacity: 0.5;
+  transition: opacity var(--transition);
+}
+
+.padding-two-column {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+.muted {
+  color: #999;
+}
+
+.text-label {
+  color: #666;
+}
+
+.display-none {
+  display: none;
+}
+
+/* dark use #18232c */
+@media (prefers-color-scheme: dark) {
+  .text-label {
+    color: #9ca3af;
+  }
+}
+
+.text-decoration-none {
+  text-decoration: none;
+}
+
+.text-decoration-none:is([aria-current], :hover, :active, :focus),
+[role="link"]:is([aria-current], :hover, :active, :focus) {
+  --text-decoration: none !important;
+  background-color: transparent !important;
+}
+
+.text-overflow-ellipsis {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.max-w-20 {
+  max-width: 180px;
+  white-space: nowrap;
+}
+
+[data-theme="light"],
+#mount:not([data-theme="dark"]) {
+  --popup-footer-background-color: #e8eaeb;
+  --popup-content-background-color: #ffffff;
+  --popup-item-background-color: #f3f5f6;
+  --popup-item-hover-background-color: #eaeced;
+  --popup-trial-pro-background-color: #f9fbfc;
+  --service-select-content-shadow: 0px 2px 12px 0px rgba(75, 76, 77, 0.2);
+  --service-select-border-color: #fafafa;
+  --service-select-selected-background-color: #f3f5f6;
+  --download-app-background: #f3f5f6;
+  --translate-language-background-color: #f3f5f6;
+  --translate-language-icon-color: #666666;
+  --translate-language-text-color: #222222;
+  --translate-language-hover-background-color: #fdedf3;
+  --translate-language-hover-icon-color: #e95d93;
+  --error-bg: #fdedf3;
+  --error-text: #222;
+  --error-link: #ea4c89;
+}
+
+[data-theme="dark"] {
+  --popup-footer-background-color: #0d0d0d;
+  --popup-content-background-color: #191919;
+  --popup-item-background-color: #272727;
+  --popup-item-hover-background-color: #333333;
+  --popup-trial-pro-background-color: #222222;
+  --service-select-content-shadow: 0px 2px 12px 0px rgba(0, 0, 0, 0.9);
+  --service-select-border-color: #2c2c2c;
+  --service-select-selected-background-color: #333333;
+  --download-app-background: #333;
+  --translate-language-background-color: #2d2e2f;
+  --translate-language-icon-color: #b3b3b3;
+  --translate-language-text-color: #b3b3b3;
+  --translate-language-hover-background-color: #a97b8c;
+  --translate-language-hover-icon-color: rgba(255, 255, 255, 0.9);
+  --error-bg: #26171d;
+  --error-text: #dbdbdb;
+  --error-link: #ea4c89;
+}
+
+#mount {
+  min-width: 268px;
+}
+
+body {
+  padding: 0;
+  margin: 0 auto;
+  min-width: 268px;
+  border-radius: 10px;
+}
+
+.popup-container {
+  font-size: 16px;
+  --font-size: 16px;
+  color: #666;
+  background-color: var(--popup-footer-background-color);
+  width: 316px;
+  min-width: 316px;
+  position: relative;
+  overflow: hidden;
+}
+
+.popup-content {
+  background-color: var(--popup-content-background-color);
+  border-radius: 0px 0px 12px 12px;
+  padding: 16px 20px;
+}
+
+.popup-userscript-three-feature-layout {
+  background-color: var(--popup-footer-background-color);
+  width: 350px;
+  min-width: 350px;
+}
+
+.popup-userscript-three-feature-layout .popup-content {
+  padding-bottom: 20px;
+  border-radius: 0 0 12px 12px;
+}
+
+.popup-userscript-three-feature-layout .popup-footer {
+  border-radius: 0;
+}
+
+.immersive-translate-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  touch-action: none;
+}
+
+.immersive-translate-popup-wrapper {
+  background: var(--background-color);
+  border-radius: 10px;
+  border: 1px solid var(--muted-border-color);
+}
+
+.main-button {
+  font-size: 16px;
+  font-weight: 700;
+  vertical-align: middle;
+  border-radius: 12px;
+  padding: unset;
+  height: 48px;
+  line-height: 48px;
+  flex: 1;
+}
+
+select.translate-service,
+select.min-select {
+  --form-element-spacing-horizontal: 0;
+  margin-bottom: 0px;
+  max-width: unset;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  border: none;
+  border-radius: 8px;
+  padding-right: 30px;
+  padding-left: 0px;
+  background-position: center right 12px;
+  background-size: 16px auto;
+  background-image: var(--icon-xia);
+  text-overflow: ellipsis;
+  color: var(--text-gray-2);
+  background-color: transparent;
+  box-shadow: unset !important;
+  cursor: pointer;
+}
+
+select.more {
+  background-position: center right;
+  padding-right: 20px;
+}
+
+select.translate-service {
+  color: var(--text-black-2);
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOCIgaGVpZ2h0PSI4IiB2aWV3Qm94PSIwIDAgOCA4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxnIG9wYWNpdHk9IjAuOCI+PHBhdGggZD0iTTMuNDc5NzMgNi4zODY0M0wwLjcyOTI5NyAzLjMyMjE2QzAuNjE2ODggMy4xOTY5NCAwLjU1NDY5NSAzLjAzNDU5IDAuNTU0Njg4IDIuODY2M0MwLjU1NDY4OCAyLjQ4OTI0IDAuODYwNTQ3IDIuMTgzNTkgMS4yMzc4NCAyLjE4MzU5SDYuNzM4NzFDNi45MDcwNyAyLjE4MzU4IDcuMDY5NTEgMi4yNDU3MiA3LjE5NDg4IDIuMzU4MDlDNy40NzU3NCAyLjYwOTg2IDcuNDk5MTkgMy4wNDE0OCA3LjI0NzI2IDMuMzIyMTZMNC40OTY4MiA2LjM4NjQ0QzQuNDgwMzIgNi40MDQ4MiA0LjQ2MjgzIDYuNDIyMjkgNC40NDQ0NCA2LjQzODc4QzQuMTYzNTggNi42OTA1NSAzLjczMTY2IDYuNjY3MTEgMy40Nzk3MyA2LjM4NjQzWiIgZmlsbD0iIzk5OTk5OSIvPjwvZz48L3N2Zz4K");
+  background-size: 8px auto;
+}
+
+.min-select-container.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.popup-footer {
+  background-color: var(--popup-footer-background-color);
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+/* Footer 三栏布局样式 */
+.footer-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+.footer-icon-btn {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-icon-btn svg {
+  color: #999999;
+}
+
+[data-theme="dark"] .footer-icon-btn svg {
+  color: #707070;
+}
+
+.footer-link-text {
+  font-size: 12px;
+  line-height: 18px;
+  color: #666666;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .footer-link-text {
+  color: #b3b3b3;
+}
+
+.footer-link-btn-right {
+  justify-content: flex-end;
+}
+
+.footer-center-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #999999;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.footer-center-text.is-overflowing {
+  justify-content: flex-start;
+}
+
+.footer-center-text.is-overflowing .footer-center-content {
+  animation: footer-scroll-text 12s linear infinite;
+}
+
+@keyframes footer-scroll-text {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.footer-center-content {
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-scroll-gap {
+  display: inline-block;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .footer-center-text {
+  color: #707070;
+}
+
+.footer-text-content {
+  display: inline-block;
+}
+
+.footer-privacy-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer-version-inline-text {
+  font-size: 12px;
+  color: #999999;
+  line-height: 1;
+  border-bottom: 1px solid transparent;
+}
+
+[data-theme="dark"] .footer-version-inline-text {
+  color: #707070;
+}
+
+.footer-version-inline-text:hover {
+  border-bottom-color: #999999;
+}
+
+[data-theme="dark"] .footer-version-inline-text:hover {
+  border-bottom-color: #707070;
+}
+
+.translate-language-row {
+  gap: 4px;
+}
+
+.translate-language-exchange {
+  width: 36px;
+  height: 48px;
+  background-color: var(--translate-language-background-color);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--translate-language-icon-color);
+  flex-shrink: 0;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.translate-language-exchange:hover {
+  color: var(--translate-language-hover-icon-color);
+}
+
+.translate-language-exchange-active {
+  background-color: var(--translate-language-hover-background-color);
+  color: var(--translate-language-hover-icon-color);
+}
+
+.translate-language-exchange-active:hover {
+  background-color: var(--translate-language-hover-background-color);
+  color: var(--translate-language-hover-icon-color);
+}
+
+.translate-language-arrow {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+}
+
+.translation-service-container {
+  background-color: var(--popup-item-background-color);
+  border-radius: 12px;
+}
+
+.translation-service-primary-field {
+  position: relative;
+}
+
+.translation-service-guide-hitbox {
+  position: absolute;
+  right: 46px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: auto;
+}
+
+.min-select-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 44px;
+  background-color: var(--popup-item-background-color);
+  padding-left: 16px;
+}
+
+.min-select-container:first-child {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.min-select-container:last-child {
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.min-select-container:only-child {
+  border-radius: 10px;
+}
+
+.popup-ai-context-label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 1;
+  min-width: 60px;
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.popup-ai-context-switch {
+  align-self: center;
+  margin: 0;
+  margin-inline-end: 12px;
+}
+
+.translate-mode {
+  width: 36px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: var(--translate-language-background-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--translate-language-text-color);
+  margin-right: 8px;
+}
+
+/* 快捷操作设置标题栏 */
+.widgets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 4px;
+  margin-top: 20px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.widgets-header-title {
+  color: #999999;
+}
+
+.widgets-header-action {
+  color: #999999;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.widgets-header-action:hover {
+  color: #666666;
+}
+
+.widgets-container {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  gap: 8px;
+}
+
+.popup-userscript-three-feature-layout .widgets-container-compact-monkey {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.widgets-container.widgets-single-item {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 12px;
+}
+
+.widgets-container.widgets-single-item .widget-item {
+  max-width: none;
+}
+
+/* 当只有两个小组件时的样式优化 */
+.widgets-container.widgets-two-items {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.widgets-container.widgets-two-items .widget-item {
+  max-width: none;
+}
+
+.widget-item {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: 1px solid #eef0f2;
+  box-sizing: border-box;
+  font-size: 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 0 14px;
+  text-align: left;
+  gap: 6px;
+}
+
+.widget-item.widget-item-single {
+  flex: 1 1 auto;
+  flex-direction: row;
+  justify-content: center;
+  border: 1px solid #eef0f2;
+  border-radius: 16px;
+  padding: 0 14px;
+  background: transparent;
+}
+
+.popup-userscript-three-feature-layout .widget-item-compact {
+  min-height: 60px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 12px;
+}
+
+.widget-item svg {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+}
+
+.widget-icon-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--c-66, #666666);
+  font-size: 14px;
+  line-height: 21px;
+  text-align: left;
+  word-break: keep-all;
+}
+
+.popup-userscript-three-feature-layout .widget-item-compact .widget-icon-text {
+  white-space: nowrap;
+  overflow: visible;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.widget-item.widget-item-single .widget-icon-text {
+  white-space: nowrap;
+  text-align: left;
+  color: var(--c-66, #666666);
+}
+
+[data-theme="dark"] .widget-item,
+[data-theme="dark"] .widget-item.widget-item-single {
+  border-color: #2e2e2e;
+}
+
+[data-theme="dark"] .widget-icon-text,
+[data-theme="dark"] .widget-item.widget-item-single .widget-icon-text {
+  color: var(--c-66, #666666);
+}
+
+[data-theme="dark"] .more-settings-icon {
+  fill: #191919;
+}
+
+.share-button-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 3px 0 8px;
+}
+
+.share-button-container svg {
+  fill: var(--text-gray-9);
+}
+
+.min-select-container:hover,
+.widget-item:hover {
+  background-color: var(--popup-item-hover-background-color);
+}
+
+.main-button:hover {
+  background-color: #f5508f;
+}
+
+.share-button-container:hover {
+  background-color: var(--popup-item-background-color);
+  border-radius: 6px;
+}
+
+.error-boundary {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  display: flex;
+  padding: 12px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+  word-break: break-all;
+  margin: 12px;
+  border-radius: 12px;
+  flex-direction: column;
+}
+
+.upgrade-pro {
+  border-radius: 11px;
+  background: linear-gradient(57deg, #272727 19.8%, #696969 82.2%);
+  padding: 2px 8px;
+  transform: scale(0.85);
+}
+
+.upgrade-pro span {
+  background: linear-gradient(180deg, #ffeab4 17.65%, #f8c235 85.29%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.upgrade-pro svg {
+  margin-top: -2px;
+}
+
+.upgrade-pro:hover {
+  background: linear-gradient(57deg, #3d3d3d 19.8%, #949494 82.2%);
+}
+
+.border-bottom-radius-0 {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.trial-pro-container {
+  border-radius: 0px 0px 12px 12px;
+  background: var(--popup-trial-pro-background-color);
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding-left: 16px;
+  padding-right: 12px;
+  font-size: 12px;
+}
+
+.trial-pro-container label {
+  line-height: 13px;
+  color: var(--text-black-2);
+}
+
+.trial-pro-container img {
+  margin-left: 5px;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.upgrade-pro-discount-act {
+  height: 25px;
+  display: flex;
+  padding: 0 4px;
+  align-items: center;
+  border-radius: 15px;
+  background: linear-gradient(
+    90deg,
+    #cefbfa 11.33%,
+    #d7f56f 63.75%,
+    #fccd5e 100%
+  );
+  transform: scale(0.9);
+  box-shadow: 0px 1.8px 3.6px 0px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.upgrade-pro-discount-act span {
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 4px;
+  color: #222222;
+}
+
+.upgrade-pro-discount-act:hover {
+  text-decoration: unset;
+  background: linear-gradient(
+    90deg,
+    #e2fffe 11.33%,
+    #e6ff91 63.75%,
+    #ffdf93 100%
+  );
+}
+
+.custom-select-container {
+  width: 200px;
+  position: relative;
+  flex: 1;
+}
+
+#translation-service-select {
+  padding-right: 12px;
+}
+
+.custom-select-content {
+  border-radius: 12px;
+  background: var(--popup-content-background-color);
+  box-shadow: var(--service-select-content-shadow);
+  border: 1px solid var(--service-select-border-color);
+  padding: 8px;
+  position: absolute;
+  left: -68px;
+  right: 0;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.custom-select-item.default {
+  width: 100%;
+  padding: 0;
+}
+
+.custom-select-item {
+  font-size: 14px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-black-2);
+  width: auto;
+  overflow: hidden;
+  height: 30px;
+  line-height: 30px;
+}
+
+.custom-select-item-img {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .custom-select-item-img {
+    margin-right: 6px;
+  }
+}
+
+.custom-select-content .custom-select-item.selected,
+.custom-select-content .custom-select-item:hover {
+  background: var(--service-select-selected-background-color);
+}
+
+.custom-select-item > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.custom-select-item-pro {
+  font-size: 12px;
+  margin-left: 6px;
+  display: flex;
+}
+
+.custom-select-item-pro img {
+  margin: 0 3px;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.service-select-inline-sponsor-container {
+  width: 50px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.service-select-inline-sponsor-marquee {
+  min-width: max-content;
+  display: inline-flex;
+  align-items: center;
+  column-gap: 12px;
+  animation: service-select-inline-sponsor-scroll 10s linear infinite;
+}
+
+.service-select-inline-sponsor-track {
+  min-width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@keyframes service-select-inline-sponsor-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50% - 6px));
+  }
+}
+
+.custom-select-group-header {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-gray-9);
+  padding: 8px 8px 6px;
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.custom-select-group-header--recommendation {
+  color: #beb3a0;
+  font-weight: 400;
+  letter-spacing: 0;
+  padding-top: 4px;
+}
+
+.custom-select-group-header-tip {
+  display: inline-flex;
+  align-items: center;
+  color: #bcbcbc;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.more-container {
+  position: relative;
+}
+
+.new-menu-indicator {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: #ef3434;
+  border-radius: 50%;
+  right: 18px;
+  top: 4px;
+}
+
+.download-app {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 8px;
+  background: var(--download-app-background);
+  padding: 4px 8px;
+  color: var(--text-gray-6);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Popup 动画效果 */
+@keyframes popup-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes popup-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+}
+
+.popup-generic-content {
+  animation: popup-fade-in 0.2s ease-out;
+}
+
+.popup-generic-content.hiding {
+  animation: popup-fade-out 0.15s ease-in;
+}
+
+select.min-select {
+  --form-element-spacing-horizontal: 0;
+  max-width: 128px;
+  overflow: hidden;
+  color: var(--primary);
+  font-size: 13px;
+  border: none;
+  padding: 0;
+  padding-right: 20px;
+  text-overflow: ellipsis;
+  color: var(--color);
+}
+select.min-select-secondary {
+  color: var(--color);
+}
+select.min-select:focus {
+  outline: none;
+  border: none;
+  --box-shadow: none;
+}
+
+select.min-select-left {
+  padding-right: 0px;
+  /* padding-left: 24px; */
+  /* background-position: center left 0; */
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+select.transform-padding-left {
+  padding-left: 12px;
+  transform: translateX(-12px);
+  background-position: center right 0px;
+}
+
+select.text-gray-6 {
+  color: var(--text-gray-6);
+}
+
+/* dark use black, for windows */
+@media (prefers-color-scheme: dark) {
+  select.translate-service option,
+  select.min-select option {
+    background-color: #666666;
+  }
+}
+
+select.min-select-no-arrow {
+  background-image: none;
+  padding-right: 0;
+}
+
+.activity-tips {
+  border-radius: 8px;
+  padding: 0px 8px;
+  height: 26px;
+  background: linear-gradient(
+    83deg,
+    #faccde -0.87%,
+    #fce7ef 43.13%,
+    #fbd6e4 72.08%,
+    #ffb3d1 96.34%
+  );
+  color: #333;
+  cursor: pointer;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.activity-tips-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.countdown-container {
+  min-width: 50px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+.activity-tips-text {
+  font-weight: 600;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 非会员升级提示 */
+.upgrade-tips {
+  padding: 0px 6px 0px 4px;
+  height: 18px;
+  color: #ea4c89;
+  cursor: pointer;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.upgrade-tips svg:first-child {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  filter: drop-shadow(0px 4px 4px rgba(236, 76, 140, 0.2));
+}
+
+.upgrade-tips-text {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.upgrade-tips-switch {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 24px;
+  background: #cccccc;
+  flex-shrink: 0;
+}
+
+.upgrade-tips-switch-thumb {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* 抽屉组件样式 */
+.drawer-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.25s ease,
+    visibility 0.25s ease;
+}
+
+.drawer-overlay.drawer-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.drawer-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  border-radius: 12px 12px 0 0;
+  z-index: 101;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-visible .drawer-panel {
+  transform: translateY(0);
+}
+
+[data-theme="dark"] .drawer-panel {
+  background: #222222;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  flex-shrink: 0;
+}
+
+.drawer-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333333;
+}
+
+[data-theme="dark"] .drawer-title {
+  color: #e0e0e0;
+}
+
+.drawer-close {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999999;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.drawer-close:hover {
+  background-color: #f3f5f6;
+}
+
+[data-theme="dark"] .drawer-close:hover {
+  background-color: #333333;
+}
+
+.drawer-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.drawer-body.drawer-body-hover {
+  padding: 0 20px 20px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.drawer-body.drawer-body-more-settings {
+  padding-top: 0;
+}
+
+.drawer-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #eef0f2;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+[data-theme="dark"] .drawer-footer {
+  border-top: 1px solid #2e2e2e;
+}
+
+.drawer-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.drawer-footer-actions-single {
+  justify-content: center;
+}
+
+.drawer-footer-text {
+  font-size: 12px;
+  cursor: pointer;
+  color: #999999;
+  text-decoration: none;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.drawer-footer-actions-single .drawer-footer-text {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.drawer-footer-text:hover {
+  text-decoration: underline;
+}
+
+/* 抽屉内容区域样式 */
+.drawer-section {
+  margin-bottom: 16px;
+}
+
+.drawer-section:last-child {
+  margin-bottom: 0;
+}
+
+.drawer-section-highlight {
+  background-color: #f9f9f9;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+[data-theme="dark"] .drawer-section-highlight {
+  background-color: #2a2a2a;
+}
+
+.drawer-section-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666666;
+  margin-bottom: 12px;
+}
+
+[data-theme="dark"] .drawer-section-title {
+  color: #999999;
+}
+
+.drawer-section-divider {
+  height: 1px;
+  background-color: #eef0f2;
+  margin: 16px 0;
+}
+
+/* ========== 通用抽屉组件样式 ========== */
+.popup-drawer-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popup-drawer-card {
+  background: #f3f5f6;
+  border-radius: 12px;
+  padding: 12px 12px 16px;
+}
+
+[data-theme="dark"] .popup-drawer-card {
+  background: #2a2a2a;
+}
+
+.popup-drawer-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 21px;
+  gap: 12px;
+}
+
+.popup-drawer-card-header input[type="checkbox"][role="switch"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.popup-drawer-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #222222;
+  line-height: 21px;
+}
+
+[data-theme="dark"] .popup-drawer-card-title {
+  color: #e0e0e0;
+}
+
+.popup-drawer-card-divider {
+  height: 1px;
+  width: calc(100% + 24px);
+  background-color: #ffffff;
+  margin: 12px -12px 16px;
+}
+
+[data-theme="dark"] .popup-drawer-card-divider {
+  background-color: #333333;
+}
+
+.popup-drawer-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.popup-drawer-demo-region-fixed {
+  height: 51px;
+  max-height: 51px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup-drawer-demo-region-min {
+  min-height: 51px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup-drawer-demo-selection {
+  width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.popup-drawer-demo-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup-drawer-demo-plus,
+.popup-drawer-demo-equal {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 21px;
+  color: #333333;
+}
+
+[data-theme="dark"] .popup-drawer-demo-plus,
+[data-theme="dark"] .popup-drawer-demo-equal {
+  color: #e0e0e0;
+}
+
+.popup-drawer-demo-logo {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup-drawer-demo-logo img {
+  width: 28px;
+  height: 28px;
+  display: block;
+  filter: drop-shadow(0 4px 12px rgba(255, 166, 201, 0.5));
+}
+
+.popup-drawer-demo-result {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  color: #333333;
+}
+
+.popup-drawer-demo-result-ellipsis {
+  min-width: 0;
+  max-width: calc(100% - 72px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .popup-drawer-demo-result {
+  color: #e0e0e0;
+}
+
+.popup-drawer-trigger {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.popup-drawer-trigger-label {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #999999;
+  padding-left: 4px;
+}
+
+.popup-drawer-trigger-options {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.popup-drawer-trigger-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #eef0f2;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #333333;
+  background: #ffffff;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.popup-drawer-trigger-option-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.popup-drawer-trigger-option:not(.popup-drawer-trigger-option-selected):hover {
+  border-color: #d0d3d6;
+}
+
+.popup-drawer-trigger-option-selected {
+  border: 0.5px solid #ea4c89;
+  background: #fdedf3;
+  box-shadow: 0px 4px 12px rgba(255, 166, 201, 0.5);
+}
+
+[data-theme="dark"] .popup-drawer-trigger-option {
+  background: #1f1f1f;
+  border-color: #333333;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"]
+  .popup-drawer-trigger-option:not(
+    .popup-drawer-trigger-option-selected
+  ):hover {
+  border-color: #444444;
+}
+
+[data-theme="dark"] .popup-drawer-trigger-option-selected {
+  background: rgba(233, 76, 137, 0.2);
+  border-color: #ea4c89;
+  box-shadow: 0 4px 12px 0 rgba(255, 166, 201, 0.3);
+}
+
+.popup-drawer-trigger-option-with-icon {
+  gap: 8px;
+}
+
+/* ========== 通用抽屉演示区域样式 ========== */
+/* 键帽样式 */
+.popup-drawer-demo-keycap {
+  min-width: 72px;
+  padding: 9px;
+  height: auto;
+  box-sizing: border-box;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #ffffff;
+  background:
+    radial-gradient(
+      60px 36px at 85% 100%,
+      rgba(208, 208, 208, 0.2),
+      rgba(255, 255, 255, 0)
+    ),
+    radial-gradient(72px 36px at 50% 0%, #101010 0%, #242424 100%);
+  box-shadow:
+    2px 2px 3.5px rgba(0, 0, 0, 0.4),
+    inset 0.5px 0.7px 0.4px rgba(255, 255, 255, 0.5),
+    inset -0.5px -0.5px 0.2px rgba(0, 0, 0, 0.6);
+}
+
+.popup-drawer-demo-keycap-text {
+  max-width: 50px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 小圆点样式 */
+.popup-drawer-demo-mini-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ea4c89;
+  flex-shrink: 0;
+  align-self: center;
+  box-shadow: 0 4px 12px rgba(255, 166, 201, 0.5);
+}
+
+[data-theme="dark"] .drawer-section-divider {
+  background-color: #333333;
+}
+
+/* 开关行 */
+.drawer-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.drawer-switch-row.drawer-row-border {
+  border-bottom: 1px solid #eef0f2;
+  margin-bottom: 8px;
+  padding-bottom: 12px;
+}
+
+[data-theme="dark"] .drawer-switch-row.drawer-row-border {
+  border-bottom-color: #333333;
+}
+
+.drawer-switch-label {
+  font-size: 14px;
+  color: #222222;
+}
+
+[data-theme="dark"] .drawer-switch-label {
+  color: #e0e0e0;
+}
+
+/* 链接行 */
+.drawer-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  cursor: pointer;
+  border-bottom: 1px solid #eef0f2;
+  font-size: 14px;
+  color: #222222;
+}
+
+.drawer-link-row:last-child {
+  border-bottom: none;
+}
+
+[data-theme="dark"] .drawer-link-row {
+  border-bottom-color: #333333;
+  color: #e0e0e0;
+}
+
+.drawer-link-row:hover {
+  color: #ea4c89;
+}
+
+/* 演示区域 */
+.drawer-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.drawer-demo-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #eef0f2;
+}
+
+[data-theme="dark"] .drawer-demo-icon {
+  background-color: #333333;
+  border-color: #444444;
+}
+
+.drawer-demo-plus,
+.drawer-demo-equal {
+  font-size: 16px;
+  color: #999999;
+}
+
+.drawer-demo-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.drawer-demo-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.drawer-demo-result {
+  font-size: 14px;
+  color: #222222;
+  padding: 8px 12px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #eef0f2;
+}
+
+[data-theme="dark"] .drawer-demo-result {
+  background-color: #333333;
+  border-color: #444444;
+  color: #e0e0e0;
+}
+
+/* 触发方式选项 */
+.drawer-options {
+  display: flex;
+  gap: 8px;
+}
+
+.drawer-options-wrap {
+  flex-wrap: wrap;
+}
+
+.drawer-option {
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #666666;
+  background-color: #f3f5f6;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .drawer-option {
+  background-color: #333333;
+  color: #b3b3b3;
+}
+
+.drawer-option:hover {
+  background-color: #eaeced;
+}
+
+[data-theme="dark"] .drawer-option:hover {
+  background-color: #3a3a3a;
+}
+
+.drawer-option-selected {
+  border-color: #ea4c89;
+  background-color: #fdedf3;
+  color: #ea4c89;
+  box-shadow: 0px 4px 12px rgba(255, 166, 201, 0.5);
+}
+
+[data-theme="dark"] .drawer-option-selected {
+  background-color: rgba(234, 76, 137, 0.2);
+}
+
+.drawer-body.drawer-body-selection {
+  padding: 0 20px 20px 20px;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+/* ========== 更多设置抽屉样式 ========== */
+.more-settings-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.more-settings-quick-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.more-settings-feature-card {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  background-color: #f3f5f6;
+  transition: background-color 0.2s ease;
+}
+
+.more-settings-feature-card:hover {
+  background-color: #e8eaec;
+}
+
+.more-settings-feature-card:active {
+  background-color: #dde0e2;
+}
+
+.more-settings-feature-card-label {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #666666;
+  white-space: nowrap;
+}
+
+.more-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.more-settings-switch-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 21px;
+  gap: 12px;
+}
+
+.more-settings-switch-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  color: #222222;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.more-settings-switch-row input[type="checkbox"] {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+[data-theme="dark"] .more-settings-switch-label {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .more-settings-feature-card {
+  background-color: #2a2a2a;
+}
+
+[data-theme="dark"] .more-settings-feature-card:hover {
+  background-color: #333333;
+}
+
+[data-theme="dark"] .more-settings-feature-card:active {
+  background-color: #3a3a3a;
+}
+
+[data-theme="dark"] .more-settings-feature-card-label {
+  color: #e0e0e0;
+}
+
+/* 动作按钮样式 */
+.more-settings-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  color: #222222;
+  background-color: #f3f5f6;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.more-settings-action-button:hover {
+  background-color: #e8eaec;
+}
+
+.more-settings-action-button:active {
+  background-color: #dde0e2;
+}
+
+.more-settings-action-button-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 21px;
+  color: inherit;
+  text-align: center;
+}
+
+[data-theme="dark"] .more-settings-action-button {
+  color: #e0e0e0;
+  background-color: #2a2a2a;
+}
+
+[data-theme="dark"] .more-settings-action-button:hover {
+  background-color: #333333;
+}
+
+[data-theme="dark"] .more-settings-action-button:active {
+  background-color: #3a3a3a;
+}
+
+[data-theme="dark"] .more-settings-action-button-label {
+  color: #e0e0e0;
+}
+
+/* 错误消息组件样式 */
+.error-message-container {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 16px;
+  margin-top: 6px;
+  margin-bottom: -14px;
+  border: 1px solid #f53f3f;
+  border-radius: 12px;
+  background-color: var(--error-bg);
+}
+
+.error-message-icon-wrapper {
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+}
+
+.error-message-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #f53f3f;
+}
+
+.error-message-text {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  color: var(--error-text);
+}
+
+.error-message-text a {
+  color: var(--error-link);
+  text-decoration: underline;
+}
+
+.ad-banner-container {
+  margin-top: 16px;
+  margin-bottom: 20px;
+}
+
+html {
+  font-size: 17px;
+}
+
+@media print {
+  .imt-fb-container {
+    display: none !important;
+  }
+}
+
+#mount {
+  position: absolute;
+  display: none;
+  min-width: 250px;
+  height: auto;
+  --font-size: 17px;
+  font-size: 17px;
+}
+
+/* float-ball */
+.imt-fb-container {
+  position: fixed;
+  padding: 0;
+  top: 335px;
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+  display: none;
+  direction: ltr;
+  background-color: transparent !important;
+}
+
+.imt-fb-container:hover .imt-manga-button {
+  opacity: 1;
+}
+
+.imt-fb-container.left {
+  align-items: flex-start;
+  left: 0;
+}
+
+.imt-fb-container.right {
+  align-items: flex-end;
+  right: 0;
+}
+
+.imt-fb-btn {
+  cursor: pointer;
+  background: var(--float-ball-more-button-background-color);
+  height: 36px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.08);
+}
+
+.imt-fb-btn.left {
+  border-top-right-radius: 36px;
+  border-bottom-right-radius: 36px;
+  padding-left: 3px;
+}
+
+.imt-fb-btn.right {
+  border-top-left-radius: 36px;
+  border-bottom-left-radius: 36px;
+  padding-right: 3px;
+}
+
+.imt-fb-btn.mini.left {
+  transform: translateX(-22px);
+}
+
+.imt-fb-btn.mini.right {
+  transform: translateX(22px);
+}
+
+.imt-fb-btn.mini.active {
+  transform: translateX(0);
+}
+
+.imt-fb-btn div {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.imt-fb-btn .imt-fb-hit-area {
+  position: absolute;
+  top: 0;
+  height: 36px;
+  bottom: -6px;
+  left: -6px;
+  right: -6px;
+  background: transparent;
+}
+
+.imt-fb-btn.mini.right .imt-fb-hit-area {
+  left: -10px;
+}
+
+.imt-fb-btn.mini.left .imt-fb-hit-area {
+  right: -10px;
+}
+
+.imt-fb-btn.left div {
+  border-top-right-radius: 34px;
+  border-bottom-right-radius: 34px;
+  justify-content: flex-end;
+}
+
+.imt-fb-btn.right div {
+  border-top-left-radius: 34px;
+  border-bottom-left-radius: 34px;
+}
+
+.imt-fb-logo-img {
+  width: 20px;
+  height: 20px;
+  margin: 0 10px;
+}
+
+.imt-fb-logo-img-big-bg {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  background-color: #ed6d8f;
+  border-radius: 50%;
+  margin: 0 5px;
+}
+
+.imt-float-ball-translated {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  bottom: 4px;
+  right: 4px;
+}
+
+.btn-animate {
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-transition: -webkit-transform ease-out 250ms;
+  transition: -webkit-transform ease-out 250ms;
+  transition: transform ease-out 250ms;
+  transition: transform ease-out 250ms, -webkit-transform ease-out 250ms;
+}
+
+.imt-fb-setting-btn {
+  margin-right: 18px;
+  width: 28px;
+  height: 28px;
+}
+
+.immersive-translate-popup-wrapper {
+  background: var(--background-color);
+  border-radius: 20px;
+  box-shadow: 2px 10px 24px 0px #0e121614;
+  border: none;
+}
+
+.popup-container {
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.popup-content {
+  border-radius: 20px 20px 12px 12px;
+}
+.popup-footer {
+  border-radius: 20px;
+}
+
+.popup-userscript-three-feature-layout {
+  border-radius: 20px;
+}
+
+.popup-userscript-three-feature-layout .popup-content {
+  border-radius: 20px 20px 12px 12px;
+}
+
+.popup-userscript-three-feature-layout .popup-footer {
+  border-radius: 0;
+}
+
+.imt-fb-close-button {
+  cursor: pointer;
+  position: absolute;
+  left: -10px;
+  bottom: -20px;
+}
+.imt-fb-container.left .imt-fb-close-button {
+  left: auto;
+  right: -10px;
+}
+
+.imt-fb-close-content {
+  padding: 22px;
+  width: 320px;
+  pointer-events: all;
+}
+
+.imt-fb-close-title {
+  font-weight: 500;
+  color: var(--text-black-2);
+}
+
+.imt-fb-close-radio-content {
+  background-color: var(--background-light-green);
+  padding: 8px 20px;
+}
+
+.imt-fb-radio-sel,
+.imt-fb-radio-nor {
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.imt-fb-radio-sel {
+  border: 2px solid var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imt-fb-radio-sel div {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: var(--primary);
+}
+
+.imt-fb-radio-nor {
+  border: 2px solid var(--input-border-strong);
+}
+
+.imt-fb-primary-btn {
+  background-color: var(--primary);
+  width: 72px;
+  height: 32px;
+  color: white;
+  border-radius: 8px;
+  text-align: center;
+  line-height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.imt-fb-default-btn {
+  border: 1px solid var(--primary);
+  width: 72px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--primary);
+  line-height: 32px;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.imt-fb-guide-container {
+  width: 312px;
+  transform: translateY(-45%);
+}
+
+.imt-fb-guide-bg {
+  position: absolute;
+  left: 30px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: -1;
+  height: 100%;
+  width: 90%;
+}
+
+.imt-fb-guide-bg.left {
+  transform: scaleX(-1);
+}
+
+.imt-fb-guide-content {
+  margin: 16px -30px 80px 0px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.imt-fb-guide-content.left {
+  margin: 16px 21px 60px 32px;
+}
+
+.imt-fb-guide-img {
+  width: 220px;
+  height: 112px;
+}
+
+.imt-fb-guide-message {
+  font-size: 14px;
+  line-height: 28px;
+  color: #333333;
+  white-space: pre-wrap;
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.imt-manga-guide-message {
+  font-size: 16px;
+  line-height: 24px;
+  color: #333333;
+  text-align: center;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.imt-fb-guide-button {
+  margin-top: 16px;
+  line-height: 40px;
+  height: 40px;
+  padding: 0 20px;
+  width: unset;
+}
+
+.imt-fb-side {
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: all;
+  position: relative;
+}
+
+.imt-fb-side {
+  margin: 10px 0;
+}
+
+.imt-fb-side::before,
+.imt-manga-button::before,
+.imt-fb-round-button::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.imt-fb-side:hover::before,
+.imt-manga-button:hover::before,
+.imt-fb-round-button:hover::before {
+  background-color: var(--float-ball-more-button-hover-color);
+}
+
+.imt-fb-new-badge {
+  width: 26px;
+  height: 14px;
+  padding: 3px;
+  background-color: #f53f3f;
+  border-radius: 4px;
+  position: absolute;
+  top: -5px;
+  right: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imt-fb-side * {
+  pointer-events: all;
+}
+
+.imt-fb-pin-icon {
+  position: absolute;
+  left: -16px;
+  bottom: -12px;
+  opacity: 0;
+  cursor: pointer;
+}
+.imt-fb-container.left .imt-fb-pin-icon {
+  left: auto;
+  right: -16px;
+}
+
+.imt-fb-side:hover .imt-fb-pin-icon {
+  opacity: 1;
+}
+
+.imt-fb-more-button {
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+/* Sheet.css */
+.immersive-translate-sheet {
+  position: fixed;
+  transform: translateY(100%);
+  /* Start off screen */
+  left: 0;
+  right: 0;
+  background-color: var(--background-color);
+  transition: transform 0.3s ease-out;
+  /* Smooth slide transition */
+  box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
+  /* Ensure it's above other content */
+  bottom: 0;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  overflow: hidden;
+}
+
+.immersive-translate-sheet.visible {
+  transform: translateY(0);
+}
+
+.immersive-translate-sheet-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+.immersive-translate-sheet-backdrop.visible {
+  opacity: 1;
+}
+
+.popup-container-sheet {
+  max-width: 100vw;
+  width: 100vw;
+}
+
+.imt-no-events svg * {
+  pointer-events: none !important;
+}
+
+.imt-manga-button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: all;
+  margin: 0 0 10px 0;
+  background-color: var(--float-ball-more-button-background-color);
+  border-radius: 50%;
+  box-shadow: 0 2px 10px 0 rgba(0, 0, 0, 0.08);
+  right: 8px;
+}
+
+.imt-manga-feedback {
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.imt-fb-round-button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--float-ball-more-button-background-color);
+  border-radius: 50%;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.imt-fb-round-button > svg {
+  z-index: 1;
+}
+
+.imt-fb-upgrade-button {
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.imt-fb-power-user-card {
+  position: absolute;
+  bottom: -130px;
+  width: 266px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 2px 10px 24px 0 rgba(14, 18, 22, 0.08);
+  border: 1px solid rgba(250, 251, 251, 1);
+  pointer-events: all;
+  z-index: 2;
+  background: linear-gradient(172deg, rgba(255, 255, 255, 0.30) 4.36%, #FFF 35.98%), linear-gradient(0deg, rgba(255, 255, 255, 0.40) 0%, rgba(255, 255, 255, 0.40) 100%), radial-gradient(39.95% 47.41% at -0.53% 55.22%, #E0C4F7 0%, rgba(224, 196, 247, 0.00) 100%), radial-gradient(56.37% 54.27% at 86.17% 0%, #E0C4F6 0%, rgba(224, 196, 246, 0.00) 100%), radial-gradient(42.04% 37.43% at -0.53% 3.75%, #AED5FF 0%, rgba(174, 213, 255, 0.00) 100%), radial-gradient(66.88% 52.09% at 36.81% 19.55%, #757ED8 0%, #6B6AC0 100%), #FFF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.imt-fb-power-user-card.right {
+  right: 60px;
+}
+
+.imt-fb-power-user-card.right::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  top: 130px;
+  border-width: 10px 0 10px 10px;
+  border-style: solid;
+  border-color: transparent transparent transparent #fff;
+  filter: drop-shadow(2px 0 2px rgba(14, 18, 22, 0.06));
+}
+
+.imt-fb-power-user-card.left {
+  left: 60px;
+}
+
+.imt-fb-power-user-card.left::after {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 130px;
+  border-width: 10px 10px 10px 0;
+  border-style: solid;
+  border-color: transparent #fff transparent transparent;
+  filter: drop-shadow(-2px 0 2px rgba(14, 18, 22, 0.06));
+}
+
+.imt-fb-power-user-card-banner {
+  display: block;
+  width: 128px;
+  height: auto;
+  margin-top: 8px;
+  border-radius: 8px 8px 0 0;
+}
+
+.imt-fb-power-user-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 24px 0;
+  box-sizing: border-box;
+}
+
+.imt-fb-power-user-card-title {
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  text-align: center;
+}
+
+.imt-fb-power-user-card-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.imt-fb-power-user-card-body {
+  padding: 12px 24px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.imt-fb-power-user-card-desc {
+  color: #333;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
+}
+
+.imt-fb-power-user-card-primary {
+  margin-top: 16px;
+  height: 37px;
+  border-radius: 8px;
+  background: linear-gradient(110deg, #F497BC 17.37%, #EC4C8C 89.68%);
+  color: var(--ZX-FFFFFF, #FFF);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 21px; /* 150% */
+  display: flex;
+  padding: 8px;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex: 1 0 0;
+}
+
+.imt-manga-translated {
+  position: absolute;
+  left: 24px;
+  top: 20px;
+}
+
+.imt-float-ball-loading {
+  animation: imt-loading-animation 0.6s infinite linear !important;
+}
+
+.imt-manga-guide-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: -1;
+  width: 100%;
+  transform: translateY(-50%);
+}
+.imt-manga-guide-content {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  right: 0;
+  margin: 0 40px 0;
+}
+
+.img-manga-guide-button {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.img-manga-close {
+  position: absolute;
+  bottom: -200px;
+  width: 32px;
+  height: 32px;
+  left: 0;
+  right: 0;
+  margin: auto;
+  cursor: pointer;
+}
+
+.imt-fb-container.dragging .imt-manga-button,
+.imt-fb-container.dragging .btn-animate:not(.imt-fb-btn) {
+  display: none !important;
+}
+
+.imt-fb-container.dragging .imt-fb-btn {
+  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  cursor: move !important;
+}
+
+.imt-fb-container.dragging .imt-fb-btn div {
+  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+}
+
+.imt-fb-container.dragging .imt-fb-btn.left,
+.imt-fb-container.dragging .imt-fb-btn.right {
+  border-radius: 50% !important;
+}
+
+.imt-fb-container.dragging .imt-fb-btn.left div,
+.imt-fb-container.dragging .imt-fb-btn.right div {
+  border-radius: 50% !important;
+}
+
+.imt-fb-container.dragging .imt-fb-logo-img {
+  margin: 0 !important;
+}
+
+.imt-fb-container.dragging .imt-float-ball-translated {
+  right: 2px !important;
+  bottom: 2px !important;
+}
+
+@-webkit-keyframes imt-loading-animation {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+
+  to {
+    -webkit-transform: rotate(359deg);
+  }
+}
+
+@keyframes imt-loading-animation {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(359deg);
+  }
+}
+
+.imt-fb-icon {
+  color: #666666;
+}
+
+[data-theme="dark"] .imt-fb-icon {
+  color: #b3b3b3;
+}
+
+[data-theme="light"] .imt-fb-icon {
+  color: #666666;
+}
+
+/* 悬浮球设置弹窗样式 */
+.imt-fb-setting-wrapper {
+  border-radius: 12px;
+  box-shadow: 2px 10px 24px 0px rgba(0, 0, 0, 0.06);
+}
+
+.imt-fb-setting-content {
+  padding: 16px;
+  width: 350px;
+  pointer-events: all;
+}
+
+.imt-fb-setting-title {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-black-2);
+}
+
+.imt-fb-setting-preview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 24px 0;
+}
+
+.imt-fb-preview-wrapper {
+  display: flex;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.imt-fb-preview-item {
+  width: 99px;
+  height: 57px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  overflow: hidden;
+}
+
+.imt-fb-preview-item.light {
+  background-color: #f3f5f6;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.imt-fb-preview-item.dark {
+  background-color: #444;
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.imt-fb-preview-ball {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.imt-fb-preview-ball.light {
+  background-color: #fff;
+  border-top-left-radius: 36px;
+  border-bottom-left-radius: 36px;
+}
+
+.imt-fb-preview-ball.dark {
+  background-color: #111;
+  border-top-left-radius: 36px;
+  border-bottom-left-radius: 36px;
+}
+
+.imt-fb-preview-ball.full {
+  width: 41px;
+  justify-content: center;
+}
+
+.imt-fb-preview-ball.mini {
+  width: 41px;
+  justify-content: center;
+  transform: translateX(21px);
+}
+
+.imt-fb-preview-ball .imt-fb-preview-logo {
+  flex-shrink: 0;
+}
+
+/* 选项区域 */
+.imt-fb-setting-options {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.imt-fb-setting-option-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.imt-fb-setting-option-label {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  color: var(--text-black-2);
+}
+
+/* Toggle 开关样式 */
+.imt-fb-toggle {
+  width: 30px;
+  height: 18px;
+  background-color: var(--switch-background-color);
+  border-radius: 24px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.imt-fb-toggle.checked {
+  background-color: var(--primary);
+}
+
+.imt-fb-toggle.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.imt-fb-toggle-thumb {
+  width: 14px;
+  height: 14px;
+  background-color: var(--switch-color);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.08);
+}
+
+.imt-fb-toggle.checked .imt-fb-toggle-thumb {
+  transform: translateX(12px);
+}
+
+.imt-fb-setting-hide-options {
+  background-color: var(--background-light-green);
+  padding: 8px 20px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.imt-fb-setting-save-btn {
+  background-color: var(--primary);
+  color: white;
+  border-radius: 8px;
+  text-align: center;
+  line-height: 45px;
+  height: 45px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: opacity 0.2s ease;
+}
+
+.imt-fb-setting-save-btn:hover {
+  opacity: 0.9;
+}
+
+.imt-fb-setting-save-btn:active {
+  opacity: 0.8;
+}
+</style><div id="mount" style="display: block;"><div hidden="" id="immersive-translate-popup-overlay" class="immersive-translate-popup-overlay" style="z-index: 2147483647; background-color: rgba(0, 0, 0, 0.5);"><div class="immersive-translate-popup-wrapper" style="position: fixed; top: 50%; left: 50%; transform: translateX(-50%) translateY(-50%);"></div></div></div></template></div></html>
