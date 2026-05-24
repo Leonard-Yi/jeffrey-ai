@@ -437,7 +437,8 @@ export default function GraphCanvas({
         // Lerp towards target position for smooth movement
         const tx = (node as any)._tx;
         const ty = (node as any)._ty;
-        if (tx != null && ty != null) {
+        // Skip lerp for dragged nodes (fx set) — follow mouse directly
+        if (tx != null && ty != null && node.fx == null && node.fy == null) {
           node.x = lerp(node.x, tx, 0.6);
           node.y = lerp(node.y, ty, 0.6);
         }
