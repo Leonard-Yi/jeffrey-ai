@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**jeffrey-ai** is a TypeScript/Node.js relationship intelligence system. It uses an LLM (MiniMax via Anthropic-compatible API) with tool calling to extract structured social interaction data from unstructured Chinese-language conversational logs and stores it in a PostgreSQL knowledge graph.
+**jeffrey-ai** is a TypeScript/Node.js relationship intelligence system. It uses an LLM (DeepSeek via Anthropic-compatible API) with tool calling to extract structured social interaction data from unstructured Chinese-language conversational logs and stores it in a PostgreSQL knowledge graph.
 
 ## Server Modes
 
@@ -96,7 +96,7 @@ npx prisma studio         # Open Prisma GUI
 ### Data Flow
 ```
 Unstructured Chinese text input
-  → POST /api/analyze        (MiniMax LLM + tool calling → structured ExtractionPayload)
+  → POST /api/analyze        (DeepSeek LLM + tool calling → structured ExtractionPayload)
   → Prisma → PostgreSQL
 ```
 
@@ -107,8 +107,11 @@ Unstructured Chinese text input
 - **PersonTag** — denormalized flat index mirroring Person tags for fast clustering queries; rebuilt on every upsert
 
 ### LLM Extraction
-- **Primary**: MiniMax API via Anthropic-compatible endpoint (`https://api.minimaxi.com/anthropic/v1/messages`)
-  - Used in `/api/analyze`, `/api/suggestions/icebreaker`, `/api/persons/[id]/icebreaker`
+- **Primary**: DeepSeek API via Anthropic-compatible endpoint (`https://api.deepseek.com/anthropic/v1/messages`), model `deepseek-v4-flash`
+  - Used in `/api/analyze`, `/api/suggestions/icebreaker`, `/api/persons/[id]/icebreaker`, `/api/suggestions/icebreaker-stream`
+  - Enforces schema via tool calling: LLM calls `save_extraction` with payload matching `ExtractionPayloadSchema`
+- **Embeddings**: Jina AI (`jina-embeddings-v3`) via `https://api.jina.ai/v1/embeddings` — used for semantic search in `/api/search`
+- **NER (假名化)**: `@node-rs/jieba` with bundled dictionary — local Chinese entity detection, no API call
   - Enforces schema via tool calling: LLM calls `save_extraction` with payload matching `ExtractionPayloadSchema`
 - **Legacy (test scripts only)**: `src/services/llmExtractor.ts` (Qwen via DashScope) and `src/services/dbService.ts` — used by `src/test/testExtractor.ts` and `src/test/fullPipelineTest.ts`. Do not remove.
 
@@ -134,8 +137,10 @@ All data shapes are defined as Zod schemas. These schemas are converted to JSON 
 
 ## Environment Variables (`.env`)
 ```
-DASHSCOPE_API_KEY=   # Alibaba DashScope API key
-DATABASE_URL=        # PostgreSQL connection string
+DEEPSEEK_API_KEY=   # DeepSeek API key
+DEEPSEEK_MODEL=      # 默认 deepseek-v4-flash
+JINA_API_KEY=       # Jina AI embeddings API key
+DATABASE_URL=       # PostgreSQL connection string
 ```
 
 ## Key Design Decisions
@@ -161,11 +166,30 @@ vercel --prod
 仅 commit + push 不会触发部署。
 
 ### Vercel Deployment Checklist
+
+**⚠️ 每次部署前必须逐项检查：**
+
 1. 确保修复在 `master` 分支上
 2. `git push` 推送代码
-3. 运行 `vercel --prod` 手动部署
-4. 检查 Vercel Dashboard 确认部署完成，确保版本正确
-5. 清除浏览器缓存或用隐私模式验证（避免旧 JS 缓存）
+3. **环境变量**：新增了 `process.env.XXX`？→ `vercel env add XXX production`（`.env` 不会被部署！）
+4. **数据库迁移**：改了 `prisma/schema.prisma`？→ 用 Supabase 连接串跑 `npx prisma migrate deploy`（Vercel 构建不会跑迁移！）
+5. 运行 `vercel --prod` 手动部署
+6. 检查 Vercel Dashboard 确认部署完成
+7. 清除浏览器缓存或用隐私模式验证
+
+**部署后验证**：
+```bash
+# 快速验证 Vercel 能连上 Supabase
+curl -s -X POST https://jeffrey-ai.vercel.app/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"deploytest@test.com","password":"test123","name":"部署测试"}'
+# 预期: {"success":true,"message":"注册成功"}
+```
+
+**教训（2026-05-24）**：
+- `.env` 被 gitignore，新增环境变量必须单独 `vercel env add`。曾因 DEEPSEEK_API_KEY 和 JINA_API_KEY 只在本地 `.env` 加了但没同步到 Vercel，导致生产环境 LLM 和嵌入搜索全部不可用
+- Prisma 迁移只在本地的 `DATABASE_URL` 上跑，Vercel 构建只做 `prisma generate`（生成 client），不会跑 migration。曾因忘记对 Supabase 跑迁移导致 `keySalt` 列缺失，全站登录注册全部挂掉
+- **Supabase 免费方案 7 天无活动自动暂停**。已配置 `vercel.json` cron 每天 ping `/api/cron/keepalive` 保活。如果发生暂停，去 Supabase Dashboard → Resume，等几分钟 Pooler 恢复后再部署
 
 ## Common Pitfalls
 
@@ -187,15 +211,24 @@ vercel --prod
 - **Test isolation**: Merge operations soft-delete; reset test data in `beforeEach`
 
 ### Type Safety / Zod
-- MiniMax API returns `null` for empty fields — use `nullToUndefined()` normalizer before Zod validation
+- LLM API may return `null` for empty fields — use `nullToUndefined()` normalizer before Zod validation
 - Array fields from JSONB: always add `?? []` guard before `.join()` or `.map()`
 - Recursive Zod schemas can cause TypeScript infinite instantiation — use `@ts-ignore` as workaround
 
-### MiniMax API
-- **端点**: `https://api.minimaxi.com/anthropic/v1/messages`（注意是 `minimaxi.com`，不是 `minimax.chat`）
-- **Headers**: 需要同时传 `Authorization: Bearer` 和 `x-api-key`
+### DeepSeek API
+- **端点**: `https://api.deepseek.com/anthropic/v1/messages`（Anthropic 兼容格式）
+- **Headers**: 仅需 `Authorization: Bearer <key>`（不需要 x-api-key）
+- **模型**: `deepseek-v4-flash`（可通过 `DEEPSEEK_MODEL` 环境变量覆盖）
 - **Content 格式**: 返回的 `content` 是数组，`type === "tool_use"` 是工具调用，`type === "text"` 是文本，`type === "thinking"` 是思考过程（忽略）
-- **Null 值**: MiniMax 返回 `null` 而非 `undefined`，Zod 严格模式会拒绝 — 用 `nullToUndefined()` 归一化后再验证
+
+### Environment Variables (.env)
+```
+DEEPSEEK_API_KEY=       # DeepSeek API key (Anthropic-compatible endpoint)
+DEEPSEEK_MODEL=         # 默认 deepseek-v4-flash
+JINA_API_KEY=           # Jina AI embeddings API key
+DATABASE_URL=           # PostgreSQL connection string
+AUTH_SECRET=            # NextAuth JWT signing secret
+```
 
 ### Prisma
 - JSONB fields default to `null`, not `[]` — add `default([])` in schema or handle null in code
@@ -305,9 +338,7 @@ git worktree remove .claude/worktrees/feature/my-feature
 
 **Worktree 列表**：
 - 主目录 (`d:\Epstein.AI`) — master 分支
-- `.claude/worktrees/deploy-vercel` — worktree-deploy-vercel
-- `.claude/worktrees/fix+merge-bug` — worktree-fix+merge-bug
-- `.claude/worktrees/ralph-frontend-redesign` — ralph/frontend-redesign
+- （创建新功能时 `git worktree add .claude/worktrees/<名称> -b <分支名>`，完成后合并回 master 并清理）
 
 ---
 
