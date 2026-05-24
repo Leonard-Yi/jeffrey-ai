@@ -1,12 +1,6 @@
-import { useRef, useEffect, useCallback } from 'react';
-import {
-  forceSimulation,
-  forceLink,
-  forceManyBody,
-  forceCenter,
-  forceCollide,
-} from 'd3-force';
-import type { GraphNode, GraphLink } from '@/lib/graphService';
+// src/hooks/useForceSimulation.ts
+import { useRef, useEffect, useCallback } from "react";
+import type { GraphNode, GraphLink } from "@/lib/graphService";
 
 export interface SimNode extends GraphNode {
   x: number;
@@ -40,86 +34,124 @@ export function useForceSimulation(
   linksRef: React.MutableRefObject<GraphLink[]>,
   edgeLengthsRef: React.MutableRefObject<Map<string, number>>,
   canvasSize: { width: number; height: number },
-  options: ForceSimOptions = {}
+  options: ForceSimOptions = {},
 ) {
-  const simRef = useRef<ReturnType<typeof forceSimulation> | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const readyRef = useRef(false);
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
-  // 幂等检测
-  const lastInitRef = useRef<{ nodeCount: number; linkCount: number; canvasW: number; canvasH: number } | null>(null);
+  // 启动 Worker
+  useEffect(() => {
+    const worker = new Worker("/graphWorker.js");
+
+    worker.onmessage = (event: MessageEvent) => {
+      const data = event.data;
+
+      if (data.ready) {
+        readyRef.current = true;
+        return;
+      }
+
+      // 位置更新
+      const { ids, positions } = data;
+      if (!ids || !positions) return;
+
+      const posArray = new Float32Array(positions);
+      for (let i = 0; i < ids.length; i++) {
+        const node = nodesRef.current.find(n => n.id === ids[i]);
+        if (node) {
+          node.x = posArray[i * 2];
+          node.y = posArray[i * 2 + 1];
+        }
+      }
+    };
+
+    worker.onerror = (err) => {
+      console.error("[Jeffrey.AI] Graph worker error:", err);
+    };
+
+    workerRef.current = worker;
+
+    return () => {
+      worker.terminate();
+      workerRef.current = null;
+      readyRef.current = false;
+    };
+  }, [nodesRef]);
 
   const initSimulation = useCallback(() => {
-    if (!nodesRef.current.length) return;
+    const worker = workerRef.current;
+    if (!worker || !nodesRef.current.length) return;
     if (canvasSize.width === 0 || canvasSize.height === 0) return;
 
-    if (simRef.current) {
-      simRef.current.stop();
+    // 构建 nodes map → { id: [x, y] }
+    const nodeMap: Record<string, [number, number]> = {};
+    for (const n of nodesRef.current) {
+      nodeMap[n.id] = [n.x, n.y];
     }
 
-    const nodeById = new Map(nodesRef.current.map(n => [n.id, n]));
-    const resolvedLinks = linksRef.current
-      .filter(link => {
-        const srcId = typeof link.source === 'string' ? link.source : (link.source as any)?.id;
-        const tgtId = typeof link.target === 'string' ? link.target : (link.target as any)?.id;
-        return srcId && tgtId && nodeById.has(srcId) && nodeById.has(tgtId);
-      })
-      .map(link => ({
-        ...link,
-        source: nodeById.get(typeof link.source === 'string' ? link.source : (link.source as any)?.id)!,
-        target: nodeById.get(typeof link.target === 'string' ? link.target : (link.target as any)?.id)!,
-      }));
+    // 构建 links → [sourceId, targetId]
+    const linkPairs: [string, string][] = [];
+    const nodeIds = new Set(nodesRef.current.map(n => n.id));
+    for (const link of linksRef.current) {
+      const srcId = typeof link.source === "string" ? link.source : (link.source as any)?.id;
+      const tgtId = typeof link.target === "string" ? link.target : (link.target as any)?.id;
+      if (srcId && tgtId && nodeIds.has(srcId) && nodeIds.has(tgtId)) {
+        linkPairs.push([srcId, tgtId]);
+      }
+    }
 
-    const sim = forceSimulation<SimNode>(nodesRef.current)
-      .force('center', forceCenter(canvasSize.width / 2, canvasSize.height / 2).strength(opts.centerForce!))
-      .force('charge', forceManyBody<SimNode>().strength(-opts.repelForce!))
-      .force('collision', forceCollide<SimNode>().radius(d => Math.sqrt(d.val) * 10 + 20))
-      .force('link', forceLink<SimNode, SimNode>(resolvedLinks)
-        .distance(d => {
-          const srcId = (d.source as SimNode).id;
-          const tgtId = (d.target as SimNode).id;
-          const key = `${srcId}-${tgtId}`;
-          return edgeLengthsRef.current.get(key) ?? opts.linkDistanceBase!;
-        })
-        .strength(opts.linkForce!)
-      )
-      .velocityDecay(opts.damping!)
-      .alphaDecay(0.5);
-
-    simRef.current = sim;
-  }, [nodesRef, linksRef, edgeLengthsRef, canvasSize, opts]);
+    worker.postMessage({
+      nodes: nodeMap,
+      links: linkPairs,
+      centerX: canvasSize.width / 2,
+      centerY: canvasSize.height / 2,
+    });
+  }, [nodesRef, linksRef, canvasSize]);
 
   const tick = useCallback(() => {
-    if (!simRef.current) return;
-    const sim = simRef.current;
-    if (sim.alpha() <= 0) return;
-    for (let i = 0; i < (opts.ticksPerFrame ?? 1); i++) {
-      sim.tick();
-    }
-  }, [opts.ticksPerFrame]);
-
-  const stop = useCallback(() => {
-    simRef.current?.stop();
+    const worker = workerRef.current;
+    if (!worker || !readyRef.current) return;
+    worker.postMessage({ alpha: 0.3, run: true });
   }, []);
 
-  const fixNode = useCallback((nodeId: string, x: number, y: number) => {
-    const node = nodesRef.current.find(n => n.id === nodeId);
-    if (node) {
-      node.fx = x;
-      node.fy = y;
-    }
-  }, [nodesRef]);
+  const fixNode = useCallback(
+    (nodeId: string, x: number, y: number) => {
+      const node = nodesRef.current.find(n => n.id === nodeId);
+      if (node) {
+        node.fx = x;
+        node.fy = y;
+        workerRef.current?.postMessage({
+          forceNode: { id: nodeId, x, y },
+        });
+      }
+    },
+    [nodesRef],
+  );
 
-  const releaseNode = useCallback((nodeId: string) => {
-    const node = nodesRef.current.find(n => n.id === nodeId);
-    if (node) {
-      node.fx = null;
-      node.fy = null;
-    }
-  }, [nodesRef]);
+  const releaseNode = useCallback(
+    (nodeId: string) => {
+      const node = nodesRef.current.find(n => n.id === nodeId);
+      if (node) {
+        node.fx = null;
+        node.fy = null;
+        workerRef.current?.postMessage({
+          forceNode: { id: nodeId, x: 0, y: 0, release: true },
+        });
+      }
+    },
+    [nodesRef],
+  );
+
+  const stop = useCallback(() => {
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    readyRef.current = false;
+  }, []);
 
   useEffect(() => {
     return () => {
-      simRef.current?.stop();
+      workerRef.current?.terminate();
     };
   }, []);
 
