@@ -19,7 +19,9 @@ interface Entity {
 /** Extract named entities from Chinese text using jieba POS tagging. */
 function extractEntities(text: string): Entity[] {
   ensureJieba();
-  const jieba = require("@node-rs/jieba");
+  // Use variable-based require to prevent Turbopack from statically analyzing and bundling this native module
+  const moduleName = "@node-rs/jieba";
+  const jieba = require(moduleName);
   const tagged = jieba.tag(text) as Array<{ word: string; tag: string }>;
 
   const entities: Entity[] = [];
