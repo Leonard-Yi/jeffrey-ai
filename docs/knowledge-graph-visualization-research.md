@@ -665,3 +665,35 @@ const sim = forceSimulationGPU(nodes)
 4. **加密系统部署前应该跑「明文数据兼容性检查」**——遍历所有现有数据，对每个加密字段调用 `decryptField`，确保不会抛异常。这种 smoke test 可以在 1 分钟内发现上述所有问题，而不需要等到用户报告 "0 个联系人"。
 
 5. **Git worktree 隔离不完美**。加密实现虽在独立 worktree，但合并到 master 后影响了所有 API route。对破坏性变更（所有读路径都变），合并前必须确认旧数据兼容性。
+
+---
+
+## 调试经验记录 (2026-05-24) — PixiJS v8 图谱渲染重构
+
+### 背景
+
+将图谱从 Canvas 2D 重构为 PixiJS 8.x WebGL 渲染 + Web Worker 力导向。参考 Obsidian 的 `graph.js` 实现。
+
+### 遇到的 7 个 bug 及教训
+
+| # | 症状 | 根因 | 修复 |
+|---|---|---|---|
+| 1 | 节点显示为黑色方块堆叠 | PixiJS 8 的 `Graphics` API 完全重构。旧 API (`beginFill`/`drawCircle`/`lineStyle`) 不生效，仅文字 PIXI.Text 渲染了 | 改用 v8 新 API：`.circle()` / `.fill()` / `.stroke()` |
+| 2 | 节点文字可见但圆圈不可见，且堆在一角 | `app.init()` 是 async，React 不等待。所有 effects 在 app 就绪前跑完，后续 ref 变化不触发重跑。graphics 从未被创建 | 添加 `appReady` state，init 完成后 `setAppReady(true)`，所有 effects 依赖 `appReady` |
+| 3 | appReady 修好后仍空白 | 数据同步 effect 依赖 `[nodesRef, linksRef]`——React ref 对象恒等，effect 只跑一次（数据为空时），后续数据到了不再触发 | 加 `dataVersion` prop，graph/page.tsx 每次数据更新时 `setDataVersion(v => v + 1)` |
+| 4 | 节点可见但不分散（全部堆在左上角） | hanger 初始坐标和节点初始坐标双重偏移。旧 Canvas 2D 的节点在屏幕坐标（cx, cy），而 PixiJS hanger 又加了一次 pan 偏移 | hanger 初值设为 (0, 0) + scale 1，直接映射屏幕坐标 |
+| 5 | 无法拖拽节点 | Worker 每帧发回位置覆盖 `node.x`/`node.y`，`fixNode` 只设了 `fx`/`fy` 没更新渲染用的 `x`/`y`，且 `handleDragMove` 只改了主线程未通知 Worker | fixNode 同步更新 `node.x = x; node.y = y`；handleDragMove 改为调用 fixNode；Worker 位置回传跳过 `fx != null` 的节点 |
+| 6 | 页面崩溃（知识图谱加载失败） | `simDoneRef` 在多处被引用但忘了 `useRef(false)` 声明，`undefined.current` 抛 ReferenceError | 补上 `const simDoneRef = useRef(false)` |
+| 7 | 效果僵硬，无 Obsidian 灵动感 | 节点位置直接赋值无过渡；模拟结束后 tick 停止；damping 太高（0.99）导致节点瞬间冻结 | 位置 lerp(0.6)；持续 tick 不停止；damping 降到 0.6/0.05 |
+
+### 教训
+
+1. **PixiJS 主版本升级（v7 → v8）的 API 变化是破坏性的**。`beginFill`/`drawCircle`/`endFill`/`lineStyle` 全部被 `.circle()`/`.fill()`/`.stroke()` 取代。旧 API 在 v8 中可能静默失败（不报错也不渲染），非常难排查。
+
+2. **异步初始化 + React 生命周期是天然竞态**。任何需要 `await` 的初始化（PixiJS、WebGL context、Worker）都必须用 state 通知 React "就绪"，不能用 ref。Ref 变化不触发重渲染。
+
+3. **React ref 作为 useEffect 依赖是常见陷阱**。`useEffect(fn, [someRef])` —— `someRef` 对象恒等，effect 只跑一次。当 ref.current 后续变化时，effect 不会重跑。解决：用 version counter state 作为依赖。
+
+4. **Worker 和主线程的双向位置更新是冲突源**。两方都在改节点位置，必须有明确的优先级规则：拖拽时主线程优先（跳过 Worker 更新），松手后 Worker 接管。
+
+5. **Obsidian 灵动感来自持续模拟 + lerp**。三个关键参数：velocityDecay ~0.6（不瞬间停）、alphaDecay ~0.05（模拟长时间存活）、位置 lerp ~0.6-0.85（平滑过渡）。关闭"模拟结束即停止 tick"的逻辑——让节点永远有微小的自然漂移。
