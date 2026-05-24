@@ -1,9 +1,9 @@
-const EMBEDDING_API_URL = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding";
-const EMBEDDING_MODEL = "text-embedding-v4";
+const EMBEDDING_API_URL = "https://api.jina.ai/v1/embeddings";
+const EMBEDDING_MODEL = "jina-embeddings-v3";
 
 function getApiKey(): string {
-  const apiKey = process.env.DASHSCOPE_API_KEY;
-  if (!apiKey) throw new Error("Missing env var: DASHSCOPE_API_KEY");
+  const apiKey = process.env.JINA_API_KEY;
+  if (!apiKey) throw new Error("Missing env var: JINA_API_KEY");
   return apiKey;
 }
 
@@ -37,7 +37,7 @@ export function buildPersonSearchText(person: {
 }
 
 /**
- * Calls DashScope embedding API and returns the float array.
+ * Calls Jina AI embedding API and returns the float array.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   const apiKey = getApiKey();
@@ -50,24 +50,18 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     },
     body: JSON.stringify({
       model: EMBEDDING_MODEL,
-      input: {
-        texts: [text],
-      },
+      input: [text],
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`DashScope embedding API error: ${response.status} - ${errorText}`);
+    throw new Error(`Jina embedding API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
 
-  if (data.code && data.message) {
-    throw new Error(`DashScope embedding error: ${data.code} - ${data.message}`);
-  }
-
-  const embedding = data.output?.embeddings?.[0]?.embedding;
+  const embedding = data.data?.[0]?.embedding;
   if (!embedding || !Array.isArray(embedding)) {
     throw new Error(`Invalid embedding response: ${JSON.stringify(data)}`);
   }

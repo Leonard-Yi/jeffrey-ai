@@ -24,6 +24,21 @@ interface ExtractionData {
   coreMemories: string[];
 }
 
+/** Calculate relationship score boost based on interaction depth. */
+function calculateScoreBoost(data: {
+  sentiment?: string;
+  coreMemories?: string[];
+  actionItems?: Array<{ description: string }>;
+  contextType?: string;
+}): number {
+  let boost = 1; // Base: every recorded interaction counts
+  if (data.sentiment) boost += 1;
+  if ((data.coreMemories?.length ?? 0) > 0) boost += 2;
+  if ((data.actionItems?.length ?? 0) > 0) boost += 2;
+  if (data.contextType) boost += 1;
+  return boost; // Range: 1–7
+}
+
 async function upsertPerson(
   extracted: { name?: string; careers?: WeightedTag[]; interests?: WeightedTag[]; vibeTags?: string[] },
   interactionDate: Date,
@@ -40,15 +55,14 @@ async function upsertPerson(
     const mergedCareers = mergeTags(existing.careers as WeightedTag[], extracted.careers || []);
     const mergedInterests = mergeTags(existing.interests as WeightedTag[], extracted.interests || []);
     const mergedVibes = Array.from(new Set([...existing.vibeTags, ...(extracted.vibeTags || [])]));
-    const newScore = Math.min(100, existing.relationshipScore + 2);
 
+    // Score boost applied AFTER interaction creation (see saveExtractionToDb)
     await store.person.update({
       where: { id: existing.id },
       data: {
         careers: mergedCareers,
         interests: mergedInterests,
         vibeTags: mergedVibes,
-        relationshipScore: newScore,
         lastContactDate: interactionDate,
       },
     });
@@ -181,6 +195,22 @@ export async function saveExtractionToDb(data: ExtractionData, createInteraction
       },
     },
   });
+
+  // Apply relationship score boost based on interaction quality
+  const boost = calculateScoreBoost({
+    sentiment: data.sentiment,
+    coreMemories: data.coreMemories,
+    actionItems: data.actionItems,
+    contextType: data.contextType,
+  });
+  for (const personId of personIds) {
+    const person = await store.person.findUnique({ where: { id: personId }, select: { relationshipScore: true } });
+    if (person) {
+      const newScore = Math.min(100, person.relationshipScore + boost);
+      await store.person.update({ where: { id: personId }, data: { relationshipScore: newScore } });
+    }
+  }
+  console.log("[Jeffrey.AI] Applied score boost:", boost, "→", personIds.length, "persons");
 
   return { interactionId: interaction.id, personIds };
 }

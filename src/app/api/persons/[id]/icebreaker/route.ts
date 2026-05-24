@@ -24,6 +24,21 @@ function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
+/** Auto-infer icebreaker style from relationship score, days since contact, and career. */
+function inferStyle(
+  relationshipScore: number,
+  daysAgo: number,
+  careers: Array<{ name: string }>,
+): string {
+  const highValueKeywords = ["合伙人", "CEO", "投资", "创始人", "总裁", "董事", "VP"];
+  const isHighValue = careers.some(c => highValueKeywords.some(k => c.name.includes(k)));
+  if (isHighValue) return "务实";
+  if (relationshipScore > 60) return "老友";
+  if (daysAgo > 60) return "问候";
+  if (relationshipScore < 30) return "正式";
+  return "日常";
+}
+
 const SYSTEM_PROMPTS = {
   日常: `你是 Jeffrey.AI 破冰助手，帮用户准备发给联系人的微信开场白。风格：日常亲切，像朋友聊天。
 
@@ -127,17 +142,14 @@ export async function POST(
   try {
     const { id } = await params;
 
-    // 获取风格参数
-    let style = "日常";
+    // 获取风格参数 — 不传则自动推断
+    let style: string | undefined;
     try {
       const body = await request.json();
-      style = body.style || "日常";
+      style = body.style || undefined;
     } catch {}
-    const validStyles = ["日常", "正式", "务实", "问候", "老友"];
-    const selectedStyle = validStyles.includes(style) ? style : "日常";
-    const systemPrompt = SYSTEM_PROMPTS[selectedStyle as keyof typeof SYSTEM_PROMPTS];
 
-    // 获取人物信息（store auto-decrypts）
+    // Prepare person data first (needed for auto-inference)
     const person = await store.person.findUnique({
       where: { id, userId },
       include: {
@@ -148,6 +160,16 @@ export async function POST(
     if (!person) {
       return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
+
+    const daysAgo = getDaysSince(new Date(person.lastContactDate));
+    const careers = (person.careers as Array<{ name: string }>) || [];
+
+    // Auto-infer style if not provided
+    const validStyles = ["日常", "正式", "务实", "问候", "老友"];
+    if (!style || !validStyles.includes(style)) {
+      style = inferStyle(person.relationshipScore, daysAgo, careers);
+    }
+    const systemPrompt = SYSTEM_PROMPTS[style as keyof typeof SYSTEM_PROMPTS];
 
     // 获取最近一次互动
     const lastInteraction = await store.interaction.findFirst({
@@ -171,9 +193,7 @@ export async function POST(
     });
 
     // 构建用户上下文
-    const careers = (person.careers as Array<{ name: string }>) || [];
     const interests = (person.interests as Array<{ name: string }>) || [];
-    const daysAgo = getDaysSince(new Date(person.lastContactDate));
     const recentCoreMemories = lastInteraction
       ? (lastInteraction.coreMemories || [])
       : [];

@@ -45,6 +45,8 @@ export default function SuggestionsPage() {
   const [icebreakerLoading, setIcebreakerLoading] = useState(false);
   const [batchGenerating, setBatchGenerating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const [nudgeIcebreakers, setNudgeIcebreakers] = useState<Record<string, IcebreakerResponse | null>>({});
+  const [nudgeLoading, setNudgeLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch("/api/suggestions/reminders")
@@ -75,6 +77,26 @@ export default function SuggestionsPage() {
       .then((d: IcebreakerResponse) => { setIcebreaker(d); setIcebreakerLoading(false); })
       .catch(() => setIcebreakerLoading(false));
   }, [selectedPersonId, selectedStyle]);
+
+  const handleNudge = async (personId: string) => {
+    // Toggle off if already open
+    if (nudgeIcebreakers[personId]) {
+      setNudgeIcebreakers(prev => { const n = { ...prev }; delete n[personId]; return n; });
+      return;
+    }
+    // Already loading
+    if (nudgeLoading[personId]) return;
+    // Show cached
+    setNudgeLoading(prev => ({ ...prev, [personId]: true }));
+    try {
+      const res = await fetch(`/api/persons/${personId}/icebreaker`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.data) {
+        setNudgeIcebreakers(prev => ({ ...prev, [personId]: data.data }));
+      }
+    } catch { /* ignore */ }
+    setNudgeLoading(prev => ({ ...prev, [personId]: false }));
+  };
 
   const handleBatchGenerate = async () => {
     if (allPersons.length === 0) return;
@@ -135,19 +157,43 @@ export default function SuggestionsPage() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {staleContacts.slice(0, 5).map(c => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", backgroundColor: C.bgElevated, borderRadius: 9, border: `1px solid ${C.border}`, gap: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 14.5, fontWeight: 500, color: C.text, marginBottom: 2 }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{c.careers} · {c.lastContactDate} · 关系 {c.relationshipScore}</div>
+                <div key={c.id}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", backgroundColor: C.bgElevated, borderRadius: 9, border: `1px solid ${C.border}`, gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 14.5, fontWeight: 500, color: C.text, marginBottom: 2 }}>{c.name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>{c.careers} · {c.lastContactDate} · 关系 {c.relationshipScore}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      <span style={{ fontSize: 12, color: c.daysSinceContact > 60 ? C.error : C.warning, fontWeight: 500 }}>
+                        {c.daysSinceContact}天未联系
+                      </span>
+                      <button
+                        onClick={() => handleNudge(c.id)}
+                        style={{ padding: "5px 12px", backgroundColor: nudgeIcebreakers[c.id] ? C.success : C.primary, color: C.textInverse, borderRadius: 7, fontSize: 12, fontWeight: 500, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        {nudgeLoading[c.id] ? "..." : nudgeIcebreakers[c.id] ? "收起" : "戳他"}
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, color: c.daysSinceContact > 60 ? C.error : C.warning, fontWeight: 500 }}>
-                      {c.daysSinceContact}天未联系
-                    </span>
-                    <Link href={`/input?personId=${c.id}`} style={{ padding: "5px 12px", backgroundColor: C.primary, color: C.textInverse, borderRadius: 7, fontSize: 12, fontWeight: 500, textDecoration: "none", whiteSpace: "nowrap" }}>
-                      戳他
+                  {nudgeIcebreakers[c.id] && (
+                  <div style={{ padding: "12px 14px", marginTop: 4, backgroundColor: C.bg, borderRadius: 9, border: `1px solid ${C.border}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 8 }}>开场白：</div>
+                    {nudgeIcebreakers[c.id]!.openingLines.map((line, i) => (
+                      <div key={i} style={{ fontSize: 13.5, color: C.text, padding: "6px 0", borderBottom: i < nudgeIcebreakers[c.id]!.openingLines.length - 1 ? `1px solid ${C.border}` : "none", cursor: "pointer" }}
+                        onClick={() => navigator.clipboard.writeText(line)} title="点击复制">
+                        {line}
+                      </div>
+                    ))}
+                    {nudgeIcebreakers[c.id]!.suggestedTopics.length > 0 && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: C.textMuted }}>
+                        话题：{nudgeIcebreakers[c.id]!.suggestedTopics.join(" · ")}
+                      </div>
+                    )}
+                    <Link href={`/input`} style={{ display: "inline-block", marginTop: 10, padding: "4px 14px", backgroundColor: C.primary, color: C.textInverse, borderRadius: 6, fontSize: 12, fontWeight: 500, textDecoration: "none" }}>
+                      记录互动 →
                     </Link>
                   </div>
+                )}
                 </div>
               ))}
             </div>
