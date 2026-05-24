@@ -57,6 +57,18 @@ export async function POST(request: NextRequest) {
   }
   const store = createCryptoStore(prisma, keys.encKey);
 
+  // Check if key rotation is in progress (blocks writes)
+  const resolvingUser = await prisma.user.findUnique({
+    where: { id: keys.userId },
+    select: { keyRotationInProgress: true }
+  });
+  if (resolvingUser?.keyRotationInProgress) {
+    return NextResponse.json(
+      { error: "密钥更新中，请稍后再试" },
+      { status: 423 }
+    );
+  }
+
   try {
     console.log('[DEBUG] Resolve API called');
     const body = await request.json();

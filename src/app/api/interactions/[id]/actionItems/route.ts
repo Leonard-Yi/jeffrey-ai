@@ -19,6 +19,18 @@ export async function PATCH(
   }
   const store = createCryptoStore(prisma, keys.encKey);
 
+  // Check if key rotation is in progress (blocks writes)
+  const actionUser = await store.raw.user.findUnique({
+    where: { id: keys.userId },
+    select: { keyRotationInProgress: true }
+  });
+  if (actionUser?.keyRotationInProgress) {
+    return Response.json(
+      { error: "密钥更新中，请稍后再试" },
+      { status: 423 }
+    );
+  }
+
   try {
     const { id } = await context.params;
     const body = await request.json();

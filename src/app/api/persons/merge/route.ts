@@ -20,6 +20,18 @@ export async function POST(request: NextRequest) {
   }
   const store = createCryptoStore(prisma, keys.encKey);
 
+  // Check if key rotation is in progress (blocks writes)
+  const mergingUser = await store.raw.user.findUnique({
+    where: { id: keys.userId },
+    select: { keyRotationInProgress: true }
+  });
+  if (mergingUser?.keyRotationInProgress) {
+    return NextResponse.json(
+      { error: "密钥更新中，请稍后再试" },
+      { status: 423 }
+    );
+  }
+
   try {
     const body = await request.json();
     const parsed = MergeRequestSchema.safeParse(body);

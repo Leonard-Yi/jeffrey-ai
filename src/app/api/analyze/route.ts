@@ -217,6 +217,18 @@ export async function POST(request: Request) {
   const { encKey, pseudoKey, userId } = keys;
   const store = createCryptoStore(prisma, encKey);
 
+  // Check if key rotation is in progress (blocks writes)
+  const analyzingUser = await store.raw.user.findUnique({
+    where: { id: userId },
+    select: { keyRotationInProgress: true }
+  });
+  if (analyzingUser?.keyRotationInProgress) {
+    return Response.json(
+      { error: "密钥更新中，请稍后再试" },
+      { status: 423 }
+    );
+  }
+
   // Create pseudonymizer (loads pseudonym map into memory)
   const pseudo = await createPseudonymizer(userId, encKey, pseudoKey, store);
 
