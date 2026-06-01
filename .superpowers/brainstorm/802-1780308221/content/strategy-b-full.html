@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jeffrey.AI — 方案B完整体验</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --bg-elevated: #1a1a1a;
+    --bg-card: #1e1e1e;
+    --bg-hover: #252525;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.14);
+    --border-accent: rgba(180,150,100,0.3);
+    --primary: #c9a96e;
+    --primary-dim: rgba(201,169,110,0.15);
+    --text: #e8e4dd;
+    --text-secondary: #a09b8f;
+    --text-muted: #6b6560;
+    --accent: #d4a853;
+    --accent-light: rgba(212,168,83,0.12);
+    --success: #6ebf8b;
+    --success-bg: rgba(110,191,139,0.12);
+    --warning: #d4a853;
+    --warning-bg: rgba(212,168,83,0.12);
+    --error: #e0556a;
+    --error-bg: rgba(224,85,106,0.1);
+    --info: #7eb8da;
+    --info-bg: rgba(126,184,218,0.12);
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.5);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex; justify-content: center;
+    padding: 20px 16px 60px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .app {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 720px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0 4px;
+  }
+  .logo {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 16px; color: var(--primary);
+    box-shadow: var(--shadow-sm); flex-shrink: 0;
+  }
+  .header-title {
+    font-size: 15px; font-weight: 500; color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+  .header-subtitle {
+    font-size: 12px; color: var(--text-muted); margin-left: auto;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card-elevated {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-accent);
+  }
+  .card-warning-tint {
+    background: linear-gradient(135deg, rgba(212,168,83,0.06) 0%, rgba(201,169,110,0.03) 100%);
+    border: 1px solid var(--border-accent);
+  }
+
+  /* ── Greeting ── */
+  .greeting {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+  }
+  .greeting .avatar { width: 40px; height: 40px; flex-shrink: 0; }
+  .greeting p {
+    font-size: 13.5px; color: var(--text-secondary);
+    font-style: italic; line-height: 1.65;
+  }
+
+  /* ── Textarea ── */
+  .input-area textarea {
+    width: 100%; min-height: 140px; padding: 14px;
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.75; resize: vertical;
+  }
+  .input-area textarea::placeholder {
+    color: var(--text-muted); font-style: italic;
+  }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; gap: 10px; }
+  .btn {
+    padding: 11px 0; border-radius: var(--radius-md);
+    font-family: var(--font-body); font-size: 14px; font-weight: 500;
+    cursor: pointer; border: none; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+  }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--primary); color: #1a1a1a; flex: 3;
+    font-weight: 600;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #d4b878; transform: translateY(-1px);
+    box-shadow: 0 3px 12px rgba(201,169,110,0.25);
+  }
+  .btn-secondary {
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: 1px solid var(--border-strong); flex: 1;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--bg-hover);
+  }
+
+  /* ── Progress Bar ── */
+  .progress-bar {
+    height: 2px; background: var(--border);
+    border-radius: 1px; overflow: hidden;
+  }
+  .progress-bar .fill {
+    height: 100%; background: var(--primary);
+    border-radius: 1px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ── Analysis steps ── */
+  .analysis-steps {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    opacity: 0; transform: translateY(8px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 14px;
+  }
+  .step.visible { opacity: 1; transform: translateY(0); }
+  .step .step-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .step .step-body { flex: 1; }
+  .step .step-title { font-weight: 500; margin-bottom: 2px; }
+  .step .step-detail { font-size: 12.5px; color: var(--text-muted); }
+
+  .step-processing .step-icon { background: var(--accent-light); }
+  .step-success .step-icon { background: var(--success-bg); }
+  .step-warning .step-icon { background: var(--warning-bg); }
+
+  /* ── Step Indicator ── */
+  .step-indicator {
+    display: flex; align-items: center; gap: 0;
+    margin-bottom: 18px;
+  }
+  .step-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; flex-shrink: 0;
+    border: 2px solid var(--border-strong);
+    color: var(--text-muted);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .step-dot.active {
+    border-color: var(--primary); color: var(--primary);
+    background: var(--primary-dim);
+    box-shadow: 0 0 0 4px rgba(201,169,110,0.08);
+  }
+  .step-dot.done {
+    border-color: var(--success); color: var(--success);
+    background: var(--success-bg);
+  }
+  .step-dot.current-missing {
+    border-color: var(--warning); color: var(--warning);
+    background: var(--warning-bg);
+    animation: pulseWarning 1.8s ease-in-out infinite;
+  }
+  @keyframes pulseWarning {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,168,83,0); }
+    50% { box-shadow: 0 0 0 6px rgba(212,168,83,0.15); }
+  }
+  .step-line {
+    width: 32px; height: 2px; background: var(--border);
+    flex-shrink: 0; transition: background 0.35s;
+  }
+  .step-line.done { background: var(--success); }
+  .step-label-row {
+    display: flex; justify-content: space-between;
+    margin-top: 6px; font-size: 11px;
+  }
+  .step-label-row span {
+    text-align: center; color: var(--text-muted);
+    transition: color 0.35s;
+  }
+  .step-label-row span.active { color: var(--primary); font-weight: 500; }
+  .step-label-row span.done { color: var(--success); }
+
+  /* ── Round prompt card ── */
+  .round-card {
+    border: 1px solid var(--border-accent);
+    background: linear-gradient(135deg, rgba(212,168,83,0.06) 0%, rgba(201,169,110,0.03) 100%);
+  }
+  .round-card .jeffrey-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  }
+  .round-card .priority-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 600;
+  }
+  .priority-high { background: var(--error-bg); color: var(--error); border: 1px solid rgba(224,85,106,0.25); }
+  .priority-mid { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(212,168,83,0.25); }
+  .priority-low { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border-strong); }
+
+  .round-card .question {
+    font-size: 15px; color: var(--text);
+    font-style: italic; line-height: 1.75; margin-left: 42px;
+    padding: 12px 16px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+
+  .round-card .reply-row {
+    display: flex; gap: 8px; margin-left: 42px;
+  }
+  .round-card .reply-row input {
+    flex: 1; padding: 10px 14px;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border-strong);
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-body); font-size: 14px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .round-card .reply-row input:focus {
+    border-color: var(--primary);
+  }
+
+  .round-card .nav-row {
+    display: flex; gap: 8px; margin-left: 42px; margin-top: 10px;
+  }
+
+  /* ── Already-extracted preview ── */
+  .extracted-preview {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    margin-top: 12px;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 500; line-height: 1.4;
+  }
+  .tag-career { background: var(--info-bg); color: var(--info); border: 1px solid rgba(126,184,218,0.2); }
+  .tag-vibe { background: var(--success-bg); color: var(--success); border: 1px solid rgba(110,191,139,0.2); }
+  .tag-extracted {
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: 1px solid var(--border); font-size: 11.5px;
+  }
+
+  /* ── Final result ── */
+  .person-card {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+  }
+  .person-card h4 {
+    font-size: 15px; font-weight: 600; color: var(--text);
+    margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag-weight { opacity: 0.65; font-size: 11px; }
+
+  .debt-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+  .debt-badge {
+    padding: 2px 8px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 600; flex-shrink: 0;
+  }
+  .debt-me { background: var(--error-bg); color: var(--error); border: 1px solid rgba(224,85,106,0.2); }
+  .debt-them { background: var(--success-bg); color: var(--success); border: 1px solid rgba(110,191,139,0.2); }
+  .debt-both { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(212,168,83,0.2); }
+
+  .section-label {
+    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+
+  .completion-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 100px;
+    font-size: 13.5px; font-weight: 500;
+    background: var(--success-bg); color: var(--success);
+    border: 1px solid rgba(110,191,139,0.3);
+    width: fit-content;
+  }
+  .completion-badge .check-icon {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--success); display: flex;
+    align-items: center; justify-content: center;
+    color: #0f0f0f; font-size: 12px; font-weight: 700;
+  }
+
+  .jeffrey-final-comment {
+    font-size: 14.5px; color: var(--text); line-height: 1.75;
+    font-style: italic;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in {
+    animation: fadeInUp 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  .fade-in-d1 { animation-delay: 0.05s; }
+  .fade-in-d2 { animation-delay: 0.12s; }
+  .fade-in-d3 { animation-delay: 0.19s; }
+  .fade-in-d4 { animation-delay: 0.26s; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app" id="appRoot">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">J</div>
+    <span class="header-title">Jeffrey.AI</span>
+    <span class="header-subtitle">方案B · 分轮追问</span>
+  </div>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- PHASE 0: Input                           -->
+  <!-- ──────────────────────────────────────── -->
+  <div id="phase-input">
+    <div class="card greeting">
+      <div class="logo avatar">J</div>
+      <p>先生，今天见了谁？关系是资产，别让它在记忆里贬值。</p>
+    </div>
+
+    <div class="card input-area">
+      <textarea id="inputText" placeholder="今天见了谁？聊了什么？有什么新的发现或约定吗？">我今天见了一个做区块链的技术大佬，跟他约了下周的咖啡，要继续谈谈收购他那家公司的事情。</textarea>
+      <div class="progress-bar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn btn-secondary" onclick="resetAll()" id="btnClear">清空</button>
+      <button class="btn btn-primary" onclick="startAnalysis()" id="btnSubmit">
+        <span id="btnLabel">告诉 Jeffrey</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- PHASE 1: Analysis + Rounds               -->
+  <!-- ──────────────────────────────────────── -->
+  <div id="phase-analysis" class="hidden"></div>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- PHASE 2: Results                         -->
+  <!-- ──────────────────────────────────────── -->
+  <div id="phase-results" class="hidden"></div>
+</div>
+
+<script>
+  // ─── State ──────────────────────────────────
+  const missingFields = [
+    { key: 'name', label: '人物姓名', hint: '这位做区块链的技术大佬——他叫什么？总得有个称呼吧。', detail: '可以是全名、姓氏+职务（如"王总"）、或你平时怎么称呼他', priority: 'high', icon: '👤' },
+    { key: 'company', label: '公司名称', hint: '你提到「他那家公司」——公司叫什么名字？', detail: '知道公司名可以帮你追踪这笔收购的进展', priority: 'mid', icon: '🏢' },
+    { key: 'location', label: '见面地点', hint: '这次见面是在哪里？咖啡厅、办公室、还是线上？', detail: '地点信息可以帮助回忆互动场景', priority: 'low', icon: '📍' },
+  ];
+
+  const extractedFields = [
+    { label: '职业', value: '区块链 / 技术' },
+    { label: '日期', value: '2026年6月9日（周一）' },
+    { label: '行动项', value: '下周咖啡 + 收购谈判' },
+    { label: '情绪基调', value: '积极期待' },
+  ];
+
+  let state = {
+    currentQuestion: 0,
+    answers: {},       // { name: '王总', company: null, location: '线上' }
+    roundHistory: [],  // [{questionIndex, answer}]
+    isProcessing: false,
+  };
+
+  let animTimers = [];
+
+  // ─── Utility ────────────────────────────────
+  function clearTimers() {
+    animTimers.forEach(t => clearTimeout(t));
+    animTimers = [];
+  }
+
+  function resetAll() {
+    clearTimers();
+    state = { currentQuestion: 0, answers: {}, roundHistory: [], isProcessing: false };
+    document.getElementById('inputText').value = '我今天见了一个做区块链的技术大佬，跟他约了下周的咖啡，要继续谈谈收购他那家公司的事情。';
+    document.getElementById('phase-input').classList.remove('hidden');
+    document.getElementById('phase-analysis').classList.add('hidden');
+    document.getElementById('phase-analysis').innerHTML = '';
+    document.getElementById('phase-results').classList.add('hidden');
+    document.getElementById('phase-results').innerHTML = '';
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('btnLabel').textContent = '告诉 Jeffrey';
+    document.getElementById('btnClear').disabled = false;
+    document.getElementById('progressFill').style.width = '0%';
+  }
+
+  // ─── Phase 0 → 1: Start Analysis ───────────
+  function startAnalysis() {
+    const text = document.getElementById('inputText').value.trim();
+    if (!text) return;
+
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('btnLabel').textContent = 'Jeffrey 思考中...';
+    document.getElementById('btnClear').disabled = true;
+    document.getElementById('progressFill').style.width = '30%';
+
+    const area = document.getElementById('phase-analysis');
+    area.classList.remove('hidden');
+    area.innerHTML = '';
+
+    // Simulated analysis steps
+    const steps = [
+      { icon: '🔍', cls: 'step-processing', title: '解析文本 & 实体识别', detail: '分词、命名实体识别、语境分析', delay: 500 },
+      { icon: '🧠', cls: 'step-processing', title: 'LLM 提取结构化数据', detail: '人物、职业、日期、情绪、行动项...', delay: 1000 },
+      { icon: '⚠️', cls: 'step-warning', title: '检测到 3 个信息缺口', detail: '① 人物姓名（关键） ② 公司名称（重要） ③ 见面地点（补充）', delay: 800 },
+      { icon: '📋', cls: 'step-success', title: '部分字段已提取', detail: `职业=区块链 · 日期=6/9 · 行动项=咖啡+收购 · 情绪=积极`, delay: 500 },
+    ];
+
+    let cumulative = 0;
+    steps.forEach((s, i) => {
+      cumulative += s.delay;
+      const t = setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = `step ${s.cls}`;
+        el.innerHTML = `<div class="step-icon">${s.icon}</div><div class="step-body"><div class="step-title">${s.title}</div><div class="step-detail">${s.detail}</div></div>`;
+        area.appendChild(el);
+        requestAnimationFrame(() => { el.classList.add('visible'); });
+        document.getElementById('progressFill').style.width = `${30 + (i+1)/steps.length * 40}%`;
+
+        if (i === steps.length - 1) {
+          const t2 = setTimeout(() => {
+            document.getElementById('phase-input').classList.add('hidden');
+            showRound(0);
+          }, 400);
+          animTimers.push(t2);
+        }
+      }, cumulative);
+      animTimers.push(t);
+    });
+  }
+
+  // ─── Show a specific round ──────────────────
+  function showRound(index) {
+    clearTimers();
+    state.currentQuestion = index;
+    const f = missingFields[index];
+    const total = missingFields.length;
+    const isLast = index === total - 1;
+
+    document.getElementById('progressFill').style.width = `${70 + (index/total) * 30}%`;
+
+    const area = document.getElementById('phase-analysis');
+    area.classList.remove('hidden');
+
+    // Build step indicator
+    const stepHtml = missingFields.map((mf, i) => {
+      let dotClass = '';
+      if (i < index) dotClass = 'done';
+      else if (i === index) dotClass = 'current-missing';
+      let lineClass = i < index ? 'done' : '';
+      const dotContent = i < index ? '✓' : i + 1;
+      return `
+        ${i > 0 ? `<div class="step-line ${lineClass}"></div>` : ''}
+        <div class="step-dot ${dotClass}">${dotContent}</div>
+      `;
+    }).join('');
+
+    const labelsHtml = missingFields.map((mf, i) => {
+      let labelClass = '';
+      if (i < index) labelClass = 'done';
+      else if (i === index) labelClass = 'active';
+      return `<span class="${labelClass}">${mf.label}</span>`;
+    }).join('');
+
+    // Previous answers summary
+    let prevAnswersHtml = '';
+    if (index > 0) {
+      const prevItems = missingFields.slice(0, index).map(mf => {
+        const ans = state.answers[mf.key];
+        return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary)">
+          <span style="color:var(--success)">✓</span> ${mf.label}：${ans || '<span style="color:var(--text-muted)">已跳过</span>'}
+        </span>`;
+      }).join('&nbsp;&nbsp;');
+      prevAnswersHtml = `
+        <div style="margin-bottom:10px;padding:8px 12px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px">
+          ${prevItems}
+        </div>`;
+    }
+
+    area.innerHTML = `
+      <div class="card round-card fade-in">
+        <div class="jeffrey-row">
+          <div class="logo" style="width:30px;height:30px;font-size:13px">J</div>
+          <span style="font-size:13px;font-weight:600;color:var(--primary)">Jeffrey 追问</span>
+          <span class="priority-badge priority-${f.priority}">
+            ${f.priority === 'high' ? '🔴 关键' : f.priority === 'mid' ? '🟡 重要' : '⚪ 补充'}
+          </span>
+        </div>
+
+        <!-- Step indicator -->
+        <div style="display:flex;justify-content:center;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:0">${stepHtml}</div>
+        </div>
+        <div class="step-label-row" style="justify-content:space-around;max-width:280px;margin:0 auto 18px">
+          ${labelsHtml}
+        </div>
+
+        ${prevAnswersHtml}
+
+        <div class="question" style="margin-left:0">
+          <span style="display:block;font-weight:500;font-style:normal;margin-bottom:6px;color:var(--warning)">
+            ${f.icon} 第 ${index + 1} 问：${f.label}
+          </span>
+          ${f.hint}
+          <span style="display:block;font-size:12.5px;color:var(--text-muted);margin-top:6px;font-style:normal">${f.detail}</span>
+        </div>
+
+        <div class="reply-row" style="margin-left:0">
+          <input type="text"
+            id="roundInput"
+            placeholder="${f.priority === 'high' ? '输入名字或称呼...' : '输入或留空跳过...'}"
+            value="${state.answers[f.key] || ''}"
+            onkeydown="if(event.key==='Enter')submitRound()"
+            autofocus>
+          <button class="btn btn-primary" style="flex:0.5;border-radius:var(--radius-md)" onclick="submitRound()">
+            ${isLast ? '完成 ✓' : '继续 →'}
+          </button>
+        </div>
+
+        <div class="nav-row" style="margin-left:0">
+          ${index > 0 ? `
+            <button class="btn btn-secondary" style="flex:0.5;border-radius:var(--radius-md);font-size:13px" onclick="goBack()">
+              ← 返回修改
+            </button>` : ''}
+          <button class="btn btn-secondary" style="flex:0.5;border-radius:var(--radius-md);font-size:13px" onclick="skipRound()">
+            跳过
+          </button>
+          <span style="font-size:12px;color:var(--text-muted);align-self:center;margin-left:auto">${index + 1}/${total}</span>
+        </div>
+      </div>
+
+      <!-- Extracted fields preview -->
+      <div class="card fade-in" style="margin-top:14px">
+        <div class="section-label">系统已自动提取</div>
+        <div class="extracted-preview">
+          ${extractedFields.map(f => `<span class="tag tag-extracted">${f.label}: ${f.value}</span>`).join('')}
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => document.getElementById('roundInput')?.focus(), 200);
+  }
+
+  // ─── Round actions ──────────────────────────
+  function submitRound() {
+    if (state.isProcessing) return;
+    const val = document.getElementById('roundInput')?.value?.trim() || null;
+    const idx = state.currentQuestion;
+    state.answers[missingFields[idx].key] = val;
+    state.roundHistory.push({ questionIndex: idx, answer: val });
+
+    if (idx < missingFields.length - 1) {
+      showRound(idx + 1);
+    } else {
+      showFinalResult();
+    }
+  }
+
+  function skipRound() {
+    if (state.isProcessing) return;
+    const idx = state.currentQuestion;
+    state.answers[missingFields[idx].key] = null;
+    state.roundHistory.push({ questionIndex: idx, answer: null });
+
+    if (idx < missingFields.length - 1) {
+      showRound(idx + 1);
+    } else {
+      showFinalResult();
+    }
+  }
+
+  function goBack() {
+    if (state.isProcessing) return;
+    const prevIdx = state.currentQuestion - 1;
+    if (prevIdx < 0) return;
+    // Remove last history entry
+    if (state.roundHistory.length > 0 && state.roundHistory[state.roundHistory.length - 1].questionIndex === state.currentQuestion - 1) {
+      // Actually we just go back; don't clear answers
+    }
+    showRound(prevIdx);
+  }
+
+  // ─── Phase 2: Final Result ──────────────────
+  function showFinalResult() {
+    clearTimers();
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('phase-analysis').classList.add('hidden');
+    document.getElementById('phase-input').classList.add('hidden');
+
+    const name = state.answers['name'] || '某人';
+    const company = state.answers['company'];
+    const location = state.answers['location'];
+    const hasName = !!state.answers['name'];
+
+    // Jeffrey's comment logic (simplified version of the real thing)
+    const comments = hasName ? [
+      `${name}在这个圈子里有些分量。这种人主动维护一下，比躺在通讯录里强十倍。`,
+      `${name}？这类资源不常有。建议您主动出击，别等对方先想起来。`,
+      `${name}对您来说是块好拼图。要不要趁热度在，约一次？`,
+    ] : [
+      `${name}，已录入。但我得提醒您——没有名字的关系，就像没有锚的船。下次见到他，别忘了问名字。`,
+    ];
+    const comment = comments[Math.floor(Math.random() * comments.length)];
+
+    const resultsDiv = document.getElementById('phase-results');
+    resultsDiv.classList.remove('hidden');
+    resultsDiv.innerHTML = `
+      <div class="completion-badge fade-in">
+        <div class="check-icon">✓</div>
+        数据已完整保存到知识图谱
+      </div>
+
+      <!-- Jeffrey Comment -->
+      <div class="card card-elevated fade-in fade-in-d1" style="margin-top:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div class="logo" style="width:30px;height:30px;font-size:13px">J</div>
+          <span style="font-size:13px;font-weight:600;color:var(--primary)">Jeffrey 的点评</span>
+        </div>
+        <p class="jeffrey-final-comment">${comment}</p>
+      </div>
+
+      <!-- Person Card -->
+      <div class="card fade-in fade-in-d2" style="margin-top:14px">
+        <div class="section-label">已提取人物</div>
+        <div class="person-card">
+          <div class="logo" style="width:36px;height:36px;font-size:14px;background:${hasName ? 'var(--success-bg)' : 'var(--warning-bg)'};border-color:${hasName ? 'rgba(110,191,139,0.3)' : 'rgba(212,168,83,0.3)'}">
+            ${hasName ? '✓' : '?'}
+          </div>
+          <div style="flex:1">
+            <h4>
+              ${name}
+              ${!hasName ? '<span style="font-size:12px;color:var(--warning);font-weight:400">（待补充）</span>' : ''}
+            </h4>
+            <div class="tag-row">
+              <span class="tag tag-career">区块链 <span class="tag-weight">90%</span></span>
+              <span class="tag tag-career">技术 <span class="tag-weight">75%</span></span>
+              ${company ? `<span class="tag tag-career">${company}</span>` : ''}
+              <span class="tag tag-vibe">技术高手</span>
+              <span class="tag tag-vibe">有收购意向</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interaction Summary -->
+      <div class="card fade-in fade-in-d3" style="margin-top:14px">
+        <div class="section-label">互动记录</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:14px">
+          <div style="display:flex;gap:8px">
+            <span style="color:var(--text-muted);font-size:12px;min-width:60px">日期</span>
+            <span style="color:var(--text)">2026年6月9日（周一）</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="color:var(--text-muted);font-size:12px;min-width:60px">地点</span>
+            <span style="color:${location ? 'var(--text)' : 'var(--text-muted)'}">${location || '（未提供）'}</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="color:var(--text-muted);font-size:12px;min-width:60px">情绪</span>
+            <span style="color:var(--text)">积极期待</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="color:var(--text-muted);font-size:12px;min-width:60px">核心记忆</span>
+            <span style="color:var(--text);line-height:1.6">约了下周咖啡，继续谈收购${company ? ' ' + company : '他那家公司'}的事情</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Items -->
+      <div class="card fade-in fade-in-d4" style="margin-top:14px">
+        <div class="section-label">社交债务</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="debt-item">
+            <span class="debt-badge debt-me">我欠</span>
+            <span>下周赴约咖啡 — 准备收购方案</span>
+          </div>
+          <div class="debt-item">
+            <span class="debt-badge debt-both">双方</span>
+            <span>继续推进收购谈判</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Follow-up fields summary -->
+      <div class="card fade-in fade-in-d4" style="margin-top:14px;background:var(--bg-elevated)">
+        <div class="section-label">追问结果</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${missingFields.map(mf => {
+            const ans = state.answers[mf.key];
+            const isFilled = !!ans;
+            return `
+              <div style="display:flex;align-items:center;gap:10px;font-size:13.5px">
+                <span style="color:${isFilled ? 'var(--success)' : 'var(--text-muted)'};min-width:18px">${isFilled ? '✓' : '—'}</span>
+                <span style="color:var(--text-muted);min-width:60px">${mf.label}</span>
+                <span style="color:${isFilled ? 'var(--text)' : 'var(--text-muted)'};font-style:${isFilled ? 'normal' : 'italic'}">
+                  ${ans || '已跳过'}
+                </span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Action button -->
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="resetAll()" style="flex:1">
+          录入新的互动
+        </button>
+      </div>
+    `;
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

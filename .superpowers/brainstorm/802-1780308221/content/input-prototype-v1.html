@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jeffrey.AI — 录入体验原型</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --bg-elevated: #1a1a1a;
+    --bg-card: #1e1e1e;
+    --bg-hover: #252525;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.14);
+    --border-accent: rgba(180,150,100,0.3);
+    --primary: #c9a96e;
+    --primary-dim: rgba(201,169,110,0.15);
+    --text: #e8e4dd;
+    --text-secondary: #a09b8f;
+    --text-muted: #6b6560;
+    --accent: #d4a853;
+    --accent-light: rgba(212,168,83,0.12);
+    --success: #6ebf8b;
+    --success-bg: rgba(110,191,139,0.12);
+    --warning: #d4a853;
+    --warning-bg: rgba(212,168,83,0.12);
+    --error: #e0556a;
+    --error-bg: rgba(224,85,106,0.1);
+    --info: #7eb8da;
+    --info-bg: rgba(126,184,218,0.12);
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 20px 16px 60px;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .app {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 720px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0 4px;
+  }
+  .logo {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 16px; color: var(--primary);
+    box-shadow: var(--shadow-sm);
+  }
+  .header-title {
+    font-size: 15px; font-weight: 500; color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ── Greeting ── */
+  .greeting {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+  }
+  .greeting .avatar { width: 40px; height: 40px; flex-shrink: 0; }
+  .greeting p {
+    font-size: 13.5px; color: var(--text-secondary);
+    font-style: italic; line-height: 1.65;
+  }
+
+  /* ── Textarea ── */
+  .input-area textarea {
+    width: 100%; min-height: 140px; padding: 14px;
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.75; resize: vertical;
+  }
+  .input-area textarea::placeholder {
+    color: var(--text-muted); font-style: italic;
+  }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; gap: 10px; }
+  .btn {
+    padding: 11px 0; border-radius: var(--radius-md);
+    font-family: var(--font-body); font-size: 14px; font-weight: 500;
+    cursor: pointer; border: none; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--primary); color: #1a1a1a; flex: 3;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #d4b878; transform: translateY(-1px);
+    box-shadow: 0 3px 12px rgba(201,169,110,0.25);
+  }
+  .btn-secondary {
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: 1px solid var(--border-strong); flex: 1;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--bg-hover);
+  }
+  .btn-skip {
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--border); flex: 0.6;
+    font-size: 13px;
+  }
+  .btn-skip:hover:not(:disabled) {
+    color: var(--text-secondary); border-color: var(--border-strong);
+  }
+
+  .btn-animated {
+    position: relative; overflow: hidden;
+  }
+  .btn-animated .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #1a1a1a; animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* ── Analysis Animation ── */
+  .analysis-steps {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    opacity: 0; transform: translateY(8px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 14px;
+  }
+  .step.visible { opacity: 1; transform: translateY(0); }
+  .step .step-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .step .step-body { flex: 1; }
+  .step .step-title { font-weight: 500; margin-bottom: 2px; }
+  .step .step-detail { font-size: 12.5px; color: var(--text-muted); }
+
+  .step-processing .step-icon { background: var(--accent-light); }
+  .step-success .step-icon { background: var(--success-bg); }
+  .step-warning .step-icon { background: var(--warning-bg); }
+  .step-error .step-icon { background: var(--error-bg); }
+
+  /* ── Follow-up Card ── */
+  .followup-card {
+    background: linear-gradient(135deg, rgba(212,168,83,0.08) 0%, rgba(201,169,110,0.05) 100%);
+    border: 1px solid var(--border-accent);
+  }
+  .followup-card .jeffrey-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  }
+  .followup-card .question {
+    font-size: 15px; color: var(--text);
+    font-style: italic; line-height: 1.7; margin-left: 44px;
+    padding: 10px 14px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+  }
+  .followup-card .question .missing-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 600; font-style: normal;
+    background: var(--warning-bg); color: var(--warning);
+    margin-right: 6px; vertical-align: middle;
+  }
+
+  /* ── Result card ── */
+  .person-card {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+  }
+  .person-card .avatar-sm { width: 36px; height: 36px; flex-shrink: 0; }
+  .person-card h4 {
+    font-size: 15px; font-weight: 600; color: var(--text);
+    margin-bottom: 8px;
+  }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 500; line-height: 1.4;
+  }
+  .tag-career { background: var(--info-bg); color: var(--info); border: 1px solid rgba(126,184,218,0.2); }
+  .tag-interest { background: var(--accent-light); color: var(--primary); border: 1px solid rgba(201,169,110,0.2); }
+  .tag-vibe { background: var(--success-bg); color: var(--success); border: 1px solid rgba(110,191,139,0.2); }
+  .tag-weight { opacity: 0.65; font-size: 11px; }
+
+  /* ── Jeffrey comment ── */
+  .jeffrey-comment {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-accent);
+  }
+
+  /* ── Confetti / completion animation ── */
+  .completion-check {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 100px;
+    font-size: 13px; font-weight: 500;
+    background: var(--success-bg); color: var(--success);
+    border: 1px solid rgba(110,191,139,0.25);
+    width: fit-content; margin-top: 8px;
+  }
+  .check-icon {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--success); display: flex;
+    align-items: center; justify-content: center;
+  }
+  .check-icon::after {
+    content: '✓'; color: #0f0f0f; font-size: 11px; font-weight: 700;
+  }
+
+  /* ── Hidden / show transitions ── */
+  .hidden { display: none; }
+  .fade-in {
+    animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Section label */
+  .section-label {
+    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+
+  /* Debt items */
+  .debt-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+  }
+  .debt-badge {
+    padding: 2px 8px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 600; flex-shrink: 0;
+  }
+  .debt-me { background: var(--error-bg); color: var(--error); border: 1px solid rgba(224,85,106,0.2); }
+  .debt-them { background: var(--success-bg); color: var(--success); border: 1px solid rgba(110,191,139,0.2); }
+  .debt-both { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(212,168,83,0.2); }
+
+  /* Spinner */
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid rgba(201,169,110,0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* highlight animation for the name field */
+  .highlight-name {
+    animation: highlightGlow 1.8s ease-in-out infinite;
+  }
+  @keyframes highlightGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,168,83,0); }
+    50% { box-shadow: 0 0 0 4px rgba(212,168,83,0.2); }
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 2px; background: var(--border);
+    border-radius: 1px; overflow: hidden; margin-top: 8px;
+  }
+  .progress-bar .fill {
+    height: 100%; background: var(--primary);
+    border-radius: 1px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Mode toggle at top */
+  .mode-toggle {
+    display: flex; gap: 0; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); overflow: hidden;
+  }
+  .mode-toggle button {
+    padding: 6px 16px; font-size: 12.5px; font-weight: 500;
+    font-family: var(--font-body); cursor: pointer; border: none;
+    background: var(--bg-elevated); color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .mode-toggle button.active {
+    background: var(--primary-dim); color: var(--primary);
+  }
+  .mode-toggle button:not(:last-child) {
+    border-right: 1px solid var(--border-strong);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">J</div>
+    <span class="header-title">Jeffrey.AI · 录入分析</span>
+    <div style="flex:1"></div>
+    <div class="mode-toggle">
+      <button class="active" onclick="switchMode('improved')">改进后</button>
+      <button onclick="switchMode('current')">当前版本</button>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- Greeting -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="card greeting">
+    <div class="logo avatar">J</div>
+    <p>先生，今天见了谁？关系是资产，别让它在记忆里贬值。</p>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- Input Area -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="card input-area">
+    <textarea id="inputText" placeholder="今天见了谁？聊了什么？有什么新的发现或约定吗？">我今天见了一个做区块链的技术大佬，跟他约了下周的咖啡，要继续谈谈收购他那家公司的事情。</textarea>
+    <div class="progress-bar">
+      <div class="fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- Buttons -->
+  <!-- ──────────────────────────────────────────── -->
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="resetAll()" id="btnClear">清空</button>
+    <button class="btn btn-primary btn-animated" onclick="startAnalysis()" id="btnSubmit">
+      <span id="btnLabel">告诉 Jeffrey</span>
+      <span class="pulse-dot" id="btnPulse" style="display:none"></span>
+    </button>
+  </div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- Analysis Animation Area -->
+  <!-- ──────────────────────────────────────────── -->
+  <div id="analysisArea" class="hidden"></div>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- Results Container (populated dynamically) -->
+  <!-- ──────────────────────────────────────────── -->
+  <div id="resultsContainer"></div>
+</div>
+
+<script>
+  // ─── State ────────────────────────────────────
+  let mode = 'improved'; // 'improved' | 'current'
+  let analysisTimer = null;
+
+  function switchMode(m) {
+    mode = m;
+    document.querySelectorAll('.mode-toggle button').forEach(b => {
+      b.classList.toggle('active', b.textContent.trim().includes(m === 'improved' ? '改进后' : '当前版本'));
+    });
+    resetAll();
+    document.getElementById('inputText').value = '我今天见了一个做区块链的技术大佬，跟他约了下周的咖啡，要继续谈谈收购他那家公司的事情。';
+  }
+
+  // ─── Reset ────────────────────────────────────
+  function resetAll() {
+    if (analysisTimer) { clearTimeout(analysisTimer); analysisTimer = null; }
+    document.getElementById('analysisArea').innerHTML = '';
+    document.getElementById('analysisArea').classList.add('hidden');
+    document.getElementById('resultsContainer').innerHTML = '';
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('btnLabel').textContent = '告诉 Jeffrey';
+    document.getElementById('btnPulse').style.display = 'none';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('btnClear').disabled = false;
+  }
+
+  // ─── Start Analysis ──────────────────────────
+  function startAnalysis() {
+    const text = document.getElementById('inputText').value.trim();
+    if (!text) return;
+
+    // Disable button
+    const btn = document.getElementById('btnSubmit');
+    btn.disabled = true;
+    document.getElementById('btnLabel').textContent = 'Jeffrey 思考中...';
+    document.getElementById('btnPulse').style.display = 'inline-block';
+    document.getElementById('btnClear').disabled = true;
+    document.getElementById('resultsContainer').innerHTML = '';
+
+    const area = document.getElementById('analysisArea');
+    area.classList.remove('hidden');
+    area.innerHTML = '';
+
+    if (mode === 'current') {
+      runCurrentVersion(area);
+    } else {
+      runImprovedVersion(area);
+    }
+  }
+
+  // ─── Current Version (broken flow) ───────────
+  function runCurrentVersion(area) {
+    const steps = [
+      { icon: '🔍', cls: 'step-processing', title: '正在解析文本...', detail: '分词、实体识别、语境分析', delay: 800 },
+      { icon: '🤖', cls: 'step-processing', title: 'LLM 提取中...', detail: '调用 DeepSeek 模型进行结构化提取', delay: 1400 },
+      { icon: '⚠️', cls: 'step-warning', title: '人物姓名：某人', detail: '未检测到具体姓名，已使用默认名称', delay: 600 },
+      { icon: '✅', cls: 'step-success', title: '提取完成', detail: '职业=区块链 · 日期=6月9日 · 情绪=积极期待', delay: 400 },
+    ];
+
+    let cumulative = 0;
+    steps.forEach((s, i) => {
+      cumulative += s.delay;
+      analysisTimer = setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = `step ${s.cls}`;
+        el.innerHTML = `<div class="step-icon">${s.icon}</div><div class="step-body"><div class="step-title">${s.title}</div><div class="step-detail">${s.detail}</div></div>`;
+        area.appendChild(el);
+        requestAnimationFrame(() => { el.classList.add('visible'); });
+        document.getElementById('progressFill').style.width = `${(i+1)/steps.length * 100}%`;
+
+        if (i === steps.length - 1) {
+          analysisTimer = setTimeout(() => showCurrentResult(), 500);
+        }
+      }, cumulative);
+    });
+  }
+
+  function showCurrentResult() {
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('btnLabel').textContent = '告诉 Jeffrey';
+    document.getElementById('btnPulse').style.display = 'none';
+    document.getElementById('btnClear').disabled = false;
+    document.getElementById('progressFill').style.width = '100%';
+
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = `
+      <div class="card jeffrey-comment fade-in">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div class="logo" style="width:32px;height:32px;font-size:14px">J</div>
+          <span style="font-size:13px;font-weight:600;color:var(--primary)">Jeffrey 的点评</span>
+        </div>
+        <p style="font-size:14.5px;color:var(--text);line-height:1.75">某人，已记录在案。</p>
+      </div>
+
+      <div class="card fade-in" style="margin-top:14px">
+        <div class="section-label">已提取人物</div>
+        <div class="person-card">
+          <div class="logo avatar-sm">J</div>
+          <div style="flex:1">
+            <h4>某人</h4>
+            <div class="tag-row">
+              <span class="tag tag-career">区块链 <span class="tag-weight">90%</span></span>
+              <span class="tag tag-career">技术 <span class="tag-weight">75%</span></span>
+              <span class="tag tag-vibe">技术高手</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fade-in" style="margin-top:14px;background:rgba(224,85,106,0.04);border:1px solid rgba(224,85,106,0.15);">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">⚠️</span>
+          <div>
+            <div style="font-size:14px;font-weight:500;color:var(--error);margin-bottom:4px">当前版本的问题</div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+              名字保存为「某人」，没有追问。<br>
+              用户可能完全不知道这个人的信息其实丢失了。<br>
+              下次再看到「某人」时，已经想不起来是谁了。
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ─── Improved Version ────────────────────────
+  function runImprovedVersion(area) {
+    const steps = [
+      { icon: '🔍', cls: 'step-processing', title: '正在解析文本...', detail: '分词、实体识别、语境分析', delay: 600 },
+      { icon: '🧠', cls: 'step-processing', title: 'LLM 提取结构化数据...', detail: '识别：人物、职业、日期、情绪、行动项', delay: 1200 },
+      { icon: '👤', cls: 'step-warning', title: '⚠️ 检测到模糊指代', detail: '文中未出现具体姓名——「一个做区块链的技术大佬」无法精确定位到人', delay: 700 },
+      { icon: '📋', cls: 'step-success', title: '部分字段已提取', detail: '职业=区块链 · 日期=6月9日(周一) · 行动项=谈收购 · 情绪=积极', delay: 500 },
+    ];
+
+    let cumulative = 0;
+    steps.forEach((s, i) => {
+      cumulative += s.delay;
+      analysisTimer = setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = `step ${s.cls}`;
+        el.innerHTML = `<div class="step-icon">${s.icon}</div><div class="step-body"><div class="step-title">${s.title}</div><div class="step-detail">${s.detail}</div></div>`;
+        area.appendChild(el);
+        requestAnimationFrame(() => { el.classList.add('visible'); });
+        document.getElementById('progressFill').style.width = `${(i+1)/steps.length * 70}%`;
+
+        if (i === steps.length - 1) {
+          analysisTimer = setTimeout(() => showFollowUp(), 600);
+        }
+      }, cumulative);
+    });
+  }
+
+  function showFollowUp() {
+    document.getElementById('progressFill').style.width = '85%';
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('btnLabel').textContent = '等待回复...';
+    document.getElementById('btnPulse').style.display = 'inline-block';
+
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = `
+      <div class="card followup-card fade-in highlight-name">
+        <div class="jeffrey-row">
+          <div class="logo" style="width:32px;height:32px;font-size:14px">J</div>
+          <span style="font-size:13px;font-weight:600;color:var(--warning);letter-spacing:0.01em">Jeffrey 追问</span>
+        </div>
+        <div class="question">
+          <span class="missing-badge">缺少姓名</span>
+          这位做区块链的技术大佬——<strong>他叫什么名字？</strong><br>
+          <span style="font-size:13px;color:var(--text-muted);margin-top:4px;display:inline-block">有了名字我才好建档，否则下次看到「某人」就想不起来是谁了。</span>
+        </div>
+        <div style="margin-left:44px;margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:8px">
+            <input id="nameReply" type="text" placeholder="输入他的名字..."
+              style="flex:1;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border-strong);
+                background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;
+                outline:none;transition:border-color 0.2s"
+              onfocus="this.style.borderColor='var(--primary)'"
+              onblur="this.style.borderColor='var(--border-strong)'"
+              onkeydown="if(event.key==='Enter')resolveName()"
+              autofocus>
+            <button class="btn btn-primary" style="flex:0.5;border-radius:8px" onclick="resolveName()">
+              确认
+            </button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-skip" style="font-size:12.5px;padding:7px 0" onclick="skipName()">
+              暂时跳过，稍后补充
+            </button>
+            <span style="font-size:11.5px;color:var(--text-muted);align-self:center">你可以随时回来补充</span>
+          </div>
+          <!-- Quick suggestions -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+            <span style="font-size:11.5px;color:var(--text-muted);align-self:center">快速选择：</span>
+            <button class="btn btn-secondary" style="font-size:11.5px;padding:4px 10px;border-radius:100px;flex:unset" onclick="document.getElementById('nameReply').value='王总';resolveName()">王总</button>
+            <button class="btn btn-secondary" style="font-size:11.5px;padding:4px 10px;border-radius:100px;flex:unset" onclick="document.getElementById('nameReply').value='张总';resolveName()">张总</button>
+            <button class="btn btn-secondary" style="font-size:11.5px;padding:4px 10px;border-radius:100px;flex:unset" onclick="document.getElementById('nameReply').value='李总';resolveName()">李总</button>
+            <button class="btn btn-secondary" style="font-size:11.5px;padding:4px 10px;border-radius:100px;flex:unset" onclick="document.getElementById('nameReply').value='刘工';resolveName()">刘工</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview of what we already extracted -->
+      <div class="card fade-in" style="margin-top:14px">
+        <div class="section-label">已提取的字段（等待姓名确认）</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span class="tag tag-career">区块链</span>
+          <span class="tag tag-career">技术</span>
+          <span class="tag tag-vibe">技术高手</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:12px;border:1px solid var(--border);color:var(--text-secondary)">
+            📅 6月9日（周一）
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:12px;border:1px solid var(--border);color:var(--text-secondary)">
+            ☕ 约了下周咖啡
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:12px;border:1px solid var(--border);color:var(--text-secondary)">
+            💼 继续谈收购
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:12px;border:1px solid var(--border);color:var(--text-secondary)">
+            😊 情绪：积极期待
+          </span>
+        </div>
+      </div>
+    `;
+  }
+
+  function resolveName() {
+    const name = document.getElementById('nameReply')?.value?.trim();
+    if (!name) return;
+    if (analysisTimer) clearTimeout(analysisTimer);
+    showCompleteResult(name);
+  }
+
+  function skipName() {
+    if (analysisTimer) clearTimeout(analysisTimer);
+    showCompleteResult('某人');
+  }
+
+  function showCompleteResult(name) {
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('btnLabel').textContent = '告诉 Jeffrey';
+    document.getElementById('btnPulse').style.display = 'none';
+    document.getElementById('btnClear').disabled = false;
+
+    const area = document.getElementById('analysisArea');
+    // Add final step
+    const finalStep = document.createElement('div');
+    finalStep.className = 'step step-success';
+    finalStep.innerHTML = `<div class="step-icon">✓</div><div class="step-body"><div class="step-title">全部信息已提取并保存</div><div class="step-detail">数据已写入知识图谱 · 加密存储 · 可搜索</div></div>`;
+    area.appendChild(finalStep);
+    requestAnimationFrame(() => { finalStep.classList.add('visible'); });
+
+    const isRealName = name !== '某人';
+    const jeffreyComments = isRealName ? [
+      `${name}在这个圈子里有些分量。这种人主动维护一下，比躺在通讯录里强十倍。`,
+      `${name}？这类资源不常有。建议您主动出击，别等对方先想起来。`,
+      `${name}对您来说是块好拼图。要不要趁热度在，约一次？`,
+    ] : [
+      `${name}，已录入。但我得提醒您——没有名字的关系，就像没有锚的船。`,
+      `${name}已记录。但先生，下次见到他，别忘了问名字。`,
+    ];
+    const comment = jeffreyComments[Math.floor(Math.random() * jeffreyComments.length)];
+
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = `
+      <!-- Complete badge -->
+      <div class="completion-check fade-in">
+        <div class="check-icon"></div>
+        数据已完整保存到知识图谱
+      </div>
+
+      <!-- Jeffrey Comment -->
+      <div class="card jeffrey-comment fade-in" style="margin-top:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div class="logo" style="width:32px;height:32px;font-size:14px">J</div>
+          <span style="font-size:13px;font-weight:600;color:var(--primary)">Jeffrey 的点评</span>
+        </div>
+        <p style="font-size:14.5px;color:var(--text);line-height:1.75">${comment}</p>
+      </div>
+
+      <!-- Extracted Person -->
+      <div class="card fade-in" style="margin-top:14px">
+        <div class="section-label">已提取人物</div>
+        <div class="person-card">
+          <div class="logo avatar-sm" style="background:${isRealName ? 'var(--success-bg)' : 'var(--warning-bg)'};border-color:${isRealName ? 'rgba(110,191,139,0.3)' : 'rgba(212,168,83,0.3)'}">
+            <span style="font-size:13px">${isRealName ? '✓' : '?'}</span>
+          </div>
+          <div style="flex:1">
+            <h4>${name} ${!isRealName ? '<span style="font-size:11.5px;color:var(--warning);font-weight:400">（待补充）</span>' : ''}</h4>
+            <div class="tag-row">
+              <span class="tag tag-career">区块链 <span class="tag-weight">90%</span></span>
+              <span class="tag tag-career">技术 <span class="tag-weight">75%</span></span>
+              <span class="tag tag-vibe">技术高手</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interaction Summary -->
+      <div class="card fade-in" style="margin-top:14px">
+        <div class="section-label">互动记录</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-secondary)">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:var(--text-muted);font-size:12px;min-width:60px">日期</span>
+            <span>2026-06-09 (周一)</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:var(--text-muted);font-size:12px;min-width:60px">地点</span>
+            <span style="color:var(--text-muted);font-style:italic">未提及</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:var(--text-muted);font-size:12px;min-width:60px">情绪</span>
+            <span>积极期待</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:var(--text-muted);font-size:12px;min-width:60px">核心记忆</span>
+            <span style="line-height:1.6">约了下周咖啡，继续谈收购他那家公司</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Items -->
+      <div class="card fade-in" style="margin-top:14px">
+        <div class="section-label">社交债务</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="debt-item">
+            <span class="debt-badge debt-me">我欠</span>
+            <span style="font-size:13.5px;color:var(--text)">下周赴约咖啡 — 准备收购方案</span>
+          </div>
+          <div class="debt-item">
+            <span class="debt-badge debt-both">双方</span>
+            <span style="font-size:13.5px;color:var(--text)">继续推进收购谈判</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+</script>
+</body>
+</html>

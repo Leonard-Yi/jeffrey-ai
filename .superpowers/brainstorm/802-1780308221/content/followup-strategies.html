@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>追问策略对比</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --bg-elevated: #1a1a1a;
+    --bg-card: #1e1e1e;
+    --bg-hover: #252525;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.14);
+    --border-accent: rgba(180,150,100,0.3);
+    --primary: #c9a96e;
+    --primary-dim: rgba(201,169,110,0.15);
+    --text: #e8e4dd;
+    --text-secondary: #a09b8f;
+    --text-muted: #6b6560;
+    --accent: #d4a853;
+    --accent-light: rgba(212,168,83,0.12);
+    --success: #6ebf8b;
+    --success-bg: rgba(110,191,139,0.12);
+    --warning: #d4a853;
+    --warning-bg: rgba(212,168,83,0.12);
+    --error: #e0556a;
+    --error-bg: rgba(224,85,106,0.1);
+    --info: #7eb8da;
+    --info-bg: rgba(126,184,218,0.12);
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px 16px 60px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .page {
+    position: relative; z-index: 1;
+    max-width: 1200px; margin: 0 auto;
+  }
+
+  .page-title {
+    font-size: 18px; font-weight: 600; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .page-subtitle {
+    font-size: 13px; color: var(--text-muted); margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  @media (max-width: 1000px) {
+    .comparison-grid { grid-template-columns: 1fr; }
+  }
+
+  .column {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .column-header {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+  .column-header h3 {
+    font-size: 14.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .column-header .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 100px;
+    font-weight: 500;
+  }
+  .badge-recommended { background: var(--success-bg); color: var(--success); }
+  .badge-strict { background: var(--warning-bg); color: var(--warning); }
+  .badge-balanced { background: var(--info-bg); color: var(--info); }
+  .column-header .desc {
+    font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.5;
+  }
+  .column-body {
+    padding: 14px 18px; flex: 1;
+    display: flex; flex-direction: column; gap: 12px;
+    overflow-y: auto; max-height: 600px;
+  }
+
+  /* ── Shared UI Elements ── */
+  .card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+  }
+
+  .logo-sm {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--bg-card); border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 12px; color: var(--primary);
+    flex-shrink: 0;
+  }
+
+  /* Missing items list */
+  .missing-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--bg-card);
+    border-radius: var(--radius-sm); border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .missing-item.priority-high {
+    border-left: 3px solid var(--error);
+  }
+  .missing-item.priority-mid {
+    border-left: 3px solid var(--warning);
+  }
+  .missing-item.priority-low {
+    border-left: 3px solid var(--text-muted);
+  }
+  .missing-label {
+    font-size: 13px; flex: 1; min-width: 0;
+  }
+  .missing-label .field-name {
+    font-weight: 500; color: var(--text);
+  }
+  .missing-label .field-hint {
+    font-size: 11.5px; color: var(--text-muted); display: block; margin-top: 1px;
+  }
+  .priority-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .priority-dot.high { background: var(--error); }
+  .priority-dot.mid { background: var(--warning); }
+  .priority-dot.low { background: var(--text-muted); }
+
+  .missing-item input {
+    flex: 1; padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-body); font-size: 13px;
+    outline: none; transition: border-color 0.15s;
+    min-width: 0;
+  }
+  .missing-item input:focus {
+    border-color: var(--primary);
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    font-family: var(--font-body); font-size: 13px; font-weight: 500;
+    cursor: pointer; border: none; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-primary {
+    background: var(--primary); color: #1a1a1a;
+  }
+  .btn-primary:hover {
+    background: #d4b878;
+  }
+  .btn-secondary {
+    background: var(--bg-card); color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
+  }
+  .btn-secondary:hover {
+    background: var(--bg-hover);
+  }
+  .btn-text {
+    background: transparent; color: var(--text-muted); font-size: 12px;
+  }
+  .btn-text:hover { color: var(--text-secondary); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Step indicator */
+  .step-indicator {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 12px;
+    font-size: 12px; color: var(--text-muted);
+  }
+  .step-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600;
+    border: 2px solid var(--border-strong);
+    color: var(--text-muted); flex-shrink: 0;
+  }
+  .step-dot.active {
+    border-color: var(--primary); color: var(--primary);
+    background: var(--primary-dim);
+  }
+  .step-dot.done {
+    border-color: var(--success); color: var(--success);
+    background: var(--success-bg);
+  }
+  .step-line {
+    width: 20px; height: 1px; background: var(--border); flex-shrink: 0;
+  }
+
+  /* Completion toast */
+  .toast {
+    padding: 10px 14px; border-radius: var(--radius-sm);
+    font-size: 13px; display: flex; align-items: center; gap: 8px;
+    animation: fadeIn 0.3s ease;
+  }
+  .toast-success {
+    background: var(--success-bg); color: var(--success);
+    border: 1px solid rgba(110,191,139,0.2);
+  }
+  .toast-warning {
+    background: var(--warning-bg); color: var(--warning);
+    border: 1px solid rgba(212,168,83,0.2);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Question bubble */
+  .question-bubble {
+    padding: 10px 14px; background: var(--bg-card);
+    border-radius: var(--radius-md); border: 1px solid var(--border-accent);
+    font-size: 13.5px; color: var(--text); line-height: 1.7;
+    font-style: italic;
+  }
+
+  /* Tag */
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 100px;
+    font-size: 11px; font-weight: 500;
+  }
+  .tag-extracted {
+    background: var(--success-bg); color: var(--success);
+    border: 1px solid rgba(110,191,139,0.2);
+  }
+  .tag-missing {
+    background: var(--error-bg); color: var(--error);
+    border: 1px solid rgba(224,85,106,0.2);
+  }
+
+  /* Reset button */
+  .reset-btn {
+    font-size: 11px; color: var(--text-muted); cursor: pointer;
+    background: none; border: none; font-family: var(--font-body);
+    padding: 4px 8px; border-radius: 4px;
+  }
+  .reset-btn:hover { color: var(--text-secondary); background: var(--bg-hover); }
+
+  /* Pulse animation */
+  @keyframes pulse-border {
+    0%, 100% { border-color: var(--border-accent); }
+    50% { border-color: var(--primary); }
+  }
+  .animate-pulse {
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+
+  .state-area { min-height: 400px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-title">
+    <div class="logo-sm" style="width:32px;height:32px;font-size:14px">J</div>
+    追问策略对比
+  </div>
+  <p class="page-subtitle">
+    输入文本：「我今天见了一个做区块链的技术大佬，跟他约了下周的咖啡，要继续谈谈收购他那家公司的事情。」<br>
+    系统已提取部分字段，但检测到 <strong>3 个缺失项</strong>：人物姓名、公司名称、见面地点。<br>
+    下面三种策略展示了不同的追问方式。<span style="color:var(--text-muted)">每个方案都可以独立交互体验。</span>
+  </p>
+
+  <div class="comparison-grid">
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Strategy A: One-shot list + skippable  -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="column">
+      <div class="column-header">
+        <h3>
+          <span class="badge badge-recommended">推荐</span>
+          方案A：一次性列表
+        </h3>
+        <p class="desc">列出所有缺失项，用户自由填写。可全部填、填部分、或全部跳过。跳过的标记为「不完整」但照常保存。</p>
+      </div>
+      <div class="column-body" id="colA">
+        <!-- Dynamic content -->
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Strategy B: Round-by-round mandatory   -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="column">
+      <div class="column-header">
+        <h3>
+          <span class="badge badge-strict">严格</span>
+          方案B：分轮追问
+        </h3>
+        <p class="desc">按优先级逐轮追问。每轮必须回答或明确点「不知道」才能继续。确保关键信息不遗漏。</p>
+      </div>
+      <div class="column-body" id="colB">
+        <!-- Dynamic content -->
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Strategy C: Hybrid                      -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="column">
+      <div class="column-header">
+        <h3>
+          <span class="badge badge-balanced">平衡</span>
+          方案C：混合策略
+        </h3>
+        <p class="desc">第一轮展示全部缺失项。用户回答后，如果关键字段（人名）仍缺失，再追问一轮；次要字段跳过就算了。</p>
+      </div>
+      <div class="column-body" id="colC">
+        <!-- Dynamic content -->
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ─── Shared state for each column ────────────
+  const states = {
+    A: { step: 0, answers: {} },
+    B: { step: 0, answers: {}, currentQuestion: 0 },
+    C: { step: 0, answers: {}, firstRoundDone: false },
+  };
+
+  const missingFields = [
+    { key: 'name', label: '人物姓名', hint: '「一个做区块链的技术大佬」是谁？', priority: 'high', icon: '👤' },
+    { key: 'company', label: '公司名称', hint: '「他那家公司」叫什么名字？', priority: 'mid', icon: '🏢' },
+    { key: 'location', label: '见面地点', hint: '这次见面在哪里？', priority: 'low', icon: '📍' },
+  ];
+
+  // Already extracted fields (shown alongside)
+  const extractedFields = [
+    { label: '职业', value: '区块链 / 技术' },
+    { label: '日期', value: '6月9日（周一）' },
+    { label: '行动项', value: '咖啡 + 收购谈判' },
+    { label: '情绪', value: '积极期待' },
+  ];
+
+  function priorityClass(p) {
+    if (p === 'high') return 'priority-high';
+    if (p === 'mid') return 'priority-mid';
+    return 'priority-low';
+  }
+
+  function priorityDotClass(p) {
+    return p === 'high' ? 'high' : p === 'mid' ? 'mid' : 'low';
+  }
+
+  // ─── Render Strategy A: One-shot list ────────
+  function renderA() {
+    const col = document.getElementById('colA');
+    const s = states.A;
+
+    if (s.step === 0) {
+      col.innerHTML = `
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">
+          Jeffrey 整理了以下信息，请补充缺失的字段：
+        </div>
+
+        <!-- Already extracted -->
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+          ${extractedFields.map(f => `<span class="tag tag-extracted">${f.label}: ${f.value}</span>`).join('')}
+        </div>
+
+        <!-- Missing items -->
+        ${missingFields.map(f => `
+          <div class="missing-item ${priorityClass(f.priority)}">
+            <div class="priority-dot ${priorityDotClass(f.priority)}"></div>
+            <span style="font-size:16px;flex-shrink:0">${f.icon}</span>
+            <div class="missing-label">
+              <span class="field-name">${f.label}</span>
+              <span class="field-hint">${f.hint}</span>
+            </div>
+            <input type="text" placeholder="输入或留空跳过..." id="A_${f.key}"
+              onkeydown="if(event.key==='Enter')submitA()">
+          </div>
+        `).join('')}
+
+        <div class="btn-row" style="margin-top:4px">
+          <button class="btn btn-primary" onclick="submitA()" style="flex:1">
+            保存并继续
+          </button>
+          <button class="btn btn-text" onclick="skipAllA()">
+            全部跳过
+          </button>
+        </div>
+      `;
+      // Auto-focus first input
+      setTimeout(() => document.getElementById('A_name')?.focus(), 100);
+    } else if (s.step === 1) {
+      const filled = Object.entries(s.answers).filter(([,v]) => v);
+      const skipped = missingFields.filter(f => !s.answers[f.key]);
+      col.innerHTML = `
+        <div class="toast ${filled.length >= 2 ? 'toast-success' : 'toast-warning'}">
+          <span>${filled.length >= 2 ? '✓' : '⚠'}</span>
+          <span>
+            ${filled.length === 3 ? '全部信息已保存' :
+              filled.length === 0 ? '所有字段均跳过，记录标记为不完整' :
+              `已保存 ${filled.length} 个字段，${skipped.length} 个留空`}
+          </span>
+        </div>
+        ${filled.length > 0 ? `
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+          已填写：${filled.map(([k]) => missingFields.find(f=>f.key===k)?.label).join('、')}
+        </div>` : ''}
+        ${skipped.length > 0 ? `
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">
+          已跳过：${skipped.map(f => f.label).join('、')}
+        </div>` : ''}
+        <button class="reset-btn" onclick="states.A={step:0,answers:{}};renderA()" style="margin-top:10px">⟳ 重新体验</button>
+      `;
+    }
+  }
+
+  function submitA() {
+    const s = states.A;
+    missingFields.forEach(f => {
+      const val = document.getElementById(`A_${f.key}`)?.value?.trim();
+      s.answers[f.key] = val || null;
+    });
+    s.step = 1;
+    renderA();
+  }
+
+  function skipAllA() {
+    const s = states.A;
+    missingFields.forEach(f => { s.answers[f.key] = null; });
+    s.step = 1;
+    renderA();
+  }
+
+  // ─── Render Strategy B: Round-by-round ───────
+  function renderB() {
+    const col = document.getElementById('colB');
+    const s = states.B;
+    const total = missingFields.length;
+    const current = s.currentQuestion;
+    const f = missingFields[current];
+
+    col.innerHTML = `
+      <!-- Step indicator -->
+      <div class="step-indicator">
+        ${missingFields.map((mf, i) => `
+          ${i > 0 ? '<div class="step-line"></div>' : ''}
+          <div class="step-dot ${i < current ? 'done' : i === current ? 'active' : ''}">
+            ${i < current ? '✓' : i+1}
+          </div>
+        `).join('')}
+        <span style="margin-left:auto;font-size:11px">${current + 1}/${total}</span>
+      </div>
+
+      <!-- Already extracted -->
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+        ${extractedFields.map(ef => `<span class="tag tag-extracted">${ef.label}: ${ef.value}</span>`).join('')}
+      </div>
+
+      ${current > 0 ? `
+      <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px">
+        已完成：${missingFields.slice(0, current).map(mf => {
+          const ans = s.answers[mf.key];
+          return `${mf.label}=${ans || '不知道'}`;
+        }).join('、')}
+      </div>` : ''}
+
+      <!-- Current question -->
+      <div class="question-bubble animate-pulse">
+        <span style="font-weight:500;color:var(--warning);display:block;margin-bottom:4px;font-style:normal">
+          ${f.priority === 'high' ? '🔴 关键信息' : f.priority === 'mid' ? '🟡 重要信息' : '⚪ 补充信息'}
+        </span>
+        ${f.hint}
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <input type="text" placeholder="输入${f.label}..."
+          id="B_input"
+          style="flex:1;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border-strong);
+            background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;
+            outline:none"
+          onfocus="this.style.borderColor='var(--primary)'"
+          onblur="this.style.borderColor='var(--border-strong)'"
+          onkeydown="if(event.key==='Enter')submitB()">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitB()" style="flex:1">
+          ${current < total - 1 ? '下一项 →' : '完成'}
+        </button>
+        <button class="btn btn-text" onclick="dontKnowB()">
+          不知道 / 跳过
+        </button>
+      </div>
+    `;
+
+    setTimeout(() => document.getElementById('B_input')?.focus(), 100);
+  }
+
+  function submitB() {
+    const s = states.B;
+    const val = document.getElementById('B_input')?.value?.trim();
+    s.answers[missingFields[s.currentQuestion].key] = val || '<跳过>';
+
+    if (s.currentQuestion < missingFields.length - 1) {
+      s.currentQuestion++;
+      renderB();
+    } else {
+      showBComplete();
+    }
+  }
+
+  function dontKnowB() {
+    const s = states.B;
+    s.answers[missingFields[s.currentQuestion].key] = '<不知道>';
+    if (s.currentQuestion < missingFields.length - 1) {
+      s.currentQuestion++;
+      renderB();
+    } else {
+      showBComplete();
+    }
+  }
+
+  function showBComplete() {
+    const col = document.getElementById('colB');
+    const s = states.B;
+    const answered = Object.entries(s.answers).filter(([,v]) => v !== '<跳过>' && v !== '<不知道>');
+    col.innerHTML = `
+      <div class="step-indicator">
+        ${missingFields.map((mf, i) => `
+          ${i > 0 ? '<div class="step-line"></div>' : ''}
+          <div class="step-dot done">✓</div>
+        `).join('')}
+        <span style="margin-left:auto;font-size:11px">3/3</span>
+      </div>
+      <div class="toast toast-success">
+        <span>✓</span>
+        <span>${answered.length} 个字段已确认，${3 - answered.length} 个标记为未知</span>
+      </div>
+      ${missingFields.map(mf => `
+        <div style="font-size:13px;color:var(--text-secondary);display:flex;gap:8px">
+          <span style="color:var(--text-muted);min-width:60px">${mf.label}</span>
+          <span style="color:${s.answers[mf.key] === '<跳过>' || s.answers[mf.key] === '<不知道>' ? 'var(--text-muted)' : 'var(--text)'}">
+            ${s.answers[mf.key]}
+          </span>
+        </div>
+      `).join('')}
+      <button class="reset-btn" onclick="states.B={step:0,answers:{},currentQuestion:0};renderB()" style="margin-top:10px">⟳ 重新体验</button>
+    `;
+  }
+
+  // ─── Render Strategy C: Hybrid ───────────────
+  function renderC() {
+    const col = document.getElementById('colC');
+    const s = states.C;
+
+    if (!s.firstRoundDone) {
+      // Round 1: Show all missing items
+      col.innerHTML = `
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">
+          第一轮：请补充以下信息（至少填写人名）：
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+          ${extractedFields.map(f => `<span class="tag tag-extracted">${f.label}: ${f.value}</span>`).join('')}
+        </div>
+
+        ${missingFields.map(f => `
+          <div class="missing-item ${priorityClass(f.priority)}">
+            <div class="priority-dot ${priorityDotClass(f.priority)}"></div>
+            <span style="font-size:16px;flex-shrink:0">${f.icon}</span>
+            <div class="missing-label">
+              <span class="field-name">${f.label}</span>
+              <span class="field-hint">${f.hint}</span>
+            </div>
+            <input type="text" placeholder="${f.priority === 'high' ? '必填' : '选填'}" id="C_${f.key}"
+              onkeydown="if(event.key==='Enter')submitC()">
+          </div>
+        `).join('')}
+
+        <div class="btn-row" style="margin-top:4px">
+          <button class="btn btn-primary" onclick="submitC()" style="flex:1">
+            提交
+          </button>
+          <button class="btn btn-text" onclick="skipAllC()">
+            全部跳过
+          </button>
+        </div>
+      `;
+      setTimeout(() => document.getElementById('C_name')?.focus(), 100);
+    } else {
+      // After first round: check if critical info still missing
+      const nameAnswer = s.answers['name'];
+      const nameMissing = !nameAnswer;
+      const otherFilled = Object.entries(s.answers).filter(([k, v]) => k !== 'name' && v);
+      const otherSkipped = Object.entries(s.answers).filter(([k, v]) => k !== 'name' && !v);
+
+      if (nameMissing) {
+        // Round 2: insist on name
+        col.innerHTML = `
+          <div class="toast toast-warning" style="margin-bottom:10px">
+            <span>⚠</span>
+            <span>人名是建档的核心字段。没有名字，这条记录以后很难检索到。</span>
+          </div>
+          ${otherFilled.length > 0 ? `
+          <div style="font-size:12px;color:var(--success);margin-bottom:8px">
+            ✓ 已确认：${otherFilled.map(([k]) => missingFields.find(f=>f.key===k)?.label).join('、')}
+          </div>` : ''}
+          <div class="question-bubble animate-pulse" style="margin-bottom:10px">
+            最后确认一下：<strong>这位做区块链的技术大佬，总得有个称呼吧？</strong><br>
+            <span style="font-size:12px;color:var(--text-muted)">可以是全名、姓氏+职务（如"王总"）、或你平时怎么称呼他</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input type="text" placeholder="他的名字或称呼..."
+              id="C_name_round2"
+              style="flex:1;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border-strong);
+                background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;
+                outline:none"
+              onfocus="this.style.borderColor='var(--primary)'"
+              onblur="this.style.borderColor='var(--border-strong)'"
+              onkeydown="if(event.key==='Enter')finalizeC()">
+            <button class="btn btn-primary" onclick="finalizeC()">确认</button>
+          </div>
+          <button class="btn btn-text" onclick="finalizeC()" style="margin-top:4px">
+            实在不知道，就存「某人」
+          </button>
+        `;
+        setTimeout(() => document.getElementById('C_name_round2')?.focus(), 100);
+      } else {
+        // Everything good
+        showCComplete();
+      }
+    }
+  }
+
+  function submitC() {
+    const s = states.C;
+    missingFields.forEach(f => {
+      const val = document.getElementById(`C_${f.key}`)?.value?.trim();
+      s.answers[f.key] = val || null;
+    });
+    s.firstRoundDone = true;
+    renderC();
+  }
+
+  function skipAllC() {
+    const s = states.C;
+    missingFields.forEach(f => { s.answers[f.key] = null; });
+    s.firstRoundDone = true;
+    renderC();
+  }
+
+  function finalizeC() {
+    const s = states.C;
+    const val = document.getElementById('C_name_round2')?.value?.trim();
+    if (val) s.answers['name'] = val;
+    showCComplete();
+  }
+
+  function showCComplete() {
+    const col = document.getElementById('colC');
+    const s = states.C;
+    const filled = Object.entries(s.answers).filter(([,v]) => v);
+    col.innerHTML = `
+      <div class="toast toast-success">
+        <span>✓</span>
+        <span>${filled.length >= 3 ? '全部字段已保存' : `${filled.length} 个字段已保存`}</span>
+      </div>
+      ${missingFields.map(mf => `
+        <div style="font-size:13px;color:var(--text-secondary);display:flex;gap:8px">
+          <span style="color:var(--text-muted);min-width:60px">${mf.label}</span>
+          <span style="color:${s.answers[mf.key] ? 'var(--text)' : 'var(--text-muted)'}">
+            ${s.answers[mf.key] || '（留空）'}
+          </span>
+        </div>
+      `).join('')}
+      <button class="reset-btn" onclick="states.C={step:0,answers:{},firstRoundDone:false};renderC()" style="margin-top:10px">⟳ 重新体验</button>
+    `;
+  }
+
+  // ─── Init ────────────────────────────────────
+  renderA();
+  renderB();
+  renderC();
+</script>
+</body>
+</html>
