@@ -34,3 +34,6 @@ tmp/
 temp/
 *.tmp
 .env*.local
+
+# Claude worktrees
+.claude/worktrees/
