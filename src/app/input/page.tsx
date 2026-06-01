@@ -11,6 +11,10 @@ import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import { getRandomInputQuote } from '@/lib/jeffrey-quotes';
+import { parseSSEStream } from '@/lib/sse-utils';
+import RoundPrompt from '@/components/RoundPrompt';
+import ExtractionPreview from '@/components/ExtractionPreview';
+import AnalysisProgress, { type ProgressStep } from '@/components/AnalysisProgress';
 
 interface SpeechRecognitionInstance {
   continuous: boolean;
@@ -38,6 +42,12 @@ interface ActionItem {
   resolved: boolean;
 }
 
+interface MissingField {
+  field: string;
+  priority: 'high' | 'mid' | 'low';
+  question: string;
+}
+
 interface ExtractionResponse {
   status: 'complete' | 'pending' | 'ambiguous';
   jeffreyComment: string;
@@ -46,6 +56,9 @@ interface ExtractionResponse {
   followUpQuestion?: string;
   actionItems: ActionItem[];
   ambiguousPersons?: Person[];
+  missingFields: MissingField[];
+  date: string | null;
+  sentiment: string | null;
 }
 
 interface RecentEntry {
@@ -174,6 +187,16 @@ const JeffreyInputPage = () => {
   const [dialogueComplete, setDialogueComplete] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [processingSeconds, setProcessingSeconds] = useState(0);
+  // 分轮追问状态
+  const [missingFields, setMissingFields] = useState<MissingField[]>([]);
+  const [currentRound, setCurrentRound] = useState(0);
+  const [roundAnswers, setRoundAnswers] = useState<Record<string, string | null>>({});
+  const [roundHistory, setRoundHistory] = useState<Array<{ field: string; answer: string | null }>>([]);
+  // 从API返回的原始字段值（用于预览）
+  const [extractedDate, setExtractedDate] = useState<string | null>(null);
+  const [extractedSentiment, setExtractedSentiment] = useState<string | null>(null);
+  // SSE 驱动的分析进度步骤
+  const [analysisSteps, setAnalysisSteps] = useState<ProgressStep[]>([]);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   const { data: session } = useSession();
@@ -280,40 +303,68 @@ const JeffreyInputPage = () => {
     handleSubmitWithText(pendingText, false);
   };
 
-  const fetchWithRetry = async (url: string, options: RequestInit, retries = 2): Promise<Response> => {
-    for (let i = 0; i <= retries; i++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000);
-        const res = await fetch(url, { ...options, signal: controller.signal });
-        clearTimeout(timeoutId);
-        return res;
-      } catch (err) {
-        if (i === retries) throw err;
-        await new Promise(r => setTimeout(r, 2000));
-        setErrorMessage(`请求失败，第 ${i + 1} 次重试中...`);
-      }
+  /** SSE 流式 fetch：消费 /api/analyze 的 SSE 事件流 */
+  const fetchSSEAnalyze = async (textToSubmit: string): Promise<ExtractionResponse> => {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ text: textToSubmit }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API error ${response.status}: ${errorText.slice(0, 100)}`);
     }
-    throw new Error('Max retries exceeded');
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Response body is not readable');
+
+    try {
+      for await (const event of parseSSEStream(reader)) {
+        switch (event.type) {
+          case 'progress':
+            setAnalysisSteps(prev => {
+              const existing = prev.find(s => s.title === event.message);
+              if (existing) {
+                return prev.map(s =>
+                  s.title === event.message
+                    ? { ...s, status: 'done' as const }
+                    : s
+                );
+              }
+              const updated = prev.map(s => ({ ...s, status: 'done' as const }));
+              return [...updated, {
+                icon: event.step === 'parsing' ? '🔍' : event.step === 'extracting' ? '🧠' : event.step === 'quality_check' ? '⚠️' : '📋',
+                title: event.message,
+                detail: event.detail,
+                status: 'active' as const,
+              }];
+            });
+            break;
+          case 'result':
+            return event.data as unknown as ExtractionResponse;
+          case 'error':
+            throw new Error(event.message);
+        }
+      }
+      throw new Error('Stream ended without result event');
+    } finally {
+      reader.releaseLock();
+    }
   };
 
   const handleSubmitWithText = async (textToSubmit: string, isFollowUp = false) => {
     if (!textToSubmit.trim()) return;
     setIsProcessing(true);
     setErrorMessage('');
+    setAnalysisSteps([]);
+
     const userMsg: ChatMessage = { role: 'user', content: textToSubmit, timestamp: new Date().toLocaleString('zh-CN') };
     if (isFollowUp) setConversationHistory(p => [...p, userMsg]);
+
     try {
-      const res = await fetchWithRetry('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: JSON.stringify({ text: textToSubmit }),
-      });
-      const data: ExtractionResponse = await res.json();
-      if (!res.ok) {
-        setErrorMessage('分析失败，请重试');
-        return;
-      }
+      const data = await fetchSSEAnalyze(textToSubmit);
+
       setJeffreyComment(data.jeffreyComment);
       setPersons(data.persons);
       setPersonIds(data.personIds || []);
@@ -321,31 +372,52 @@ const JeffreyInputPage = () => {
       setActionItems(data.actionItems);
       setStatus(data.status);
       setAmbiguousPersons(data.ambiguousPersons || []);
+      setMissingFields(data.missingFields || []);
+      setExtractedDate(data.date || null);
+      setExtractedSentiment(data.sentiment || null);
+
+      if (data.missingFields && data.missingFields.length > 0) {
+        setCurrentRound(0);
+        setRoundAnswers({});
+        setRoundHistory([]);
+      }
+
       if (data.status === 'complete') {
         const jeffreyMsg: ChatMessage = { role: 'jeffrey', content: data.jeffreyComment || '信息已保存。', timestamp: new Date().toLocaleString('zh-CN') };
         setConversationHistory(p => [...p, jeffreyMsg]);
         if (!isFollowUp) {
-          const entry: RecentEntry = { id: Date.now().toString(), text: textToSubmit.slice(0, 60) + (textToSubmit.length > 60 ? '...' : ''), timestamp: new Date().toLocaleString(), status: data.status, relativeTime: '刚刚', createdAt: Date.now() };
+          const entry: RecentEntry = {
+            id: Date.now().toString(),
+            text: textToSubmit.slice(0, 60) + (textToSubmit.length > 60 ? '...' : ''),
+            timestamp: new Date().toLocaleString(),
+            status: data.status,
+            relativeTime: '刚刚',
+            createdAt: Date.now(),
+          };
           const updated = [entry, ...recentEntries.slice(0, 4)];
           setRecentEntries(updated);
           localStorage.setItem(getStorageKey(), JSON.stringify(updated));
           setDialogueComplete(true);
-        } else { setDialogueComplete(true); }
+        } else {
+          setDialogueComplete(true);
+        }
+      } else if (data.status === 'pending' && data.missingFields && data.missingFields.length > 0) {
+        setDialogueComplete(false);
       } else if (data.status === 'pending' && data.followUpQuestion) {
-        setConversationHistory(p => [...p, { role: 'jeffrey', content: data.followUpQuestion, timestamp: new Date().toLocaleString('zh-CN') }]);
+        setConversationHistory(p => [...p, { role: 'jeffrey', content: data.followUpQuestion!, timestamp: new Date().toLocaleString('zh-CN') }]);
         setDialogueComplete(false);
       }
     } catch (err) {
       if (err instanceof Error) {
-        if (err.name === 'AbortError') {
-          setErrorMessage('请求超时（超过45秒），请检查网络后重试');
-        } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+        if (err.message.includes('API error')) {
+          setErrorMessage(err.message);
+        } else if (err.message.includes('not readable') || err.message.includes('NetworkError')) {
           setErrorMessage('网络连接失败，请检查网络后重试');
         } else {
-          setErrorMessage(`请求出错：${err.message}`);
+          setErrorMessage(`分析失败：${err.message}`);
         }
       } else {
-        setErrorMessage('网络请求失败，请重试');
+        setErrorMessage('分析失败，请重试');
       }
     } finally {
       setIsProcessing(false);
@@ -388,11 +460,94 @@ const JeffreyInputPage = () => {
     }
   };
 
+  /** 从已提取的数据中生成预览字段 */
+  const getExtractedPreview = (): Array<{ label: string; value: string }> => {
+    const previews: Array<{ label: string; value: string }> = [];
+    if (persons.length > 0) {
+      const p = persons[0];
+      if (p.careers.length > 0) previews.push({ label: '职业', value: p.careers.map(c => c.name).join(' / ') });
+      if (p.vibeTags.length > 0) previews.push({ label: '氛围', value: p.vibeTags.join('、') });
+    }
+    if (extractedDate) previews.push({ label: '日期', value: extractedDate.split('T')[0] });
+    if (extractedSentiment) previews.push({ label: '情绪', value: extractedSentiment });
+    if (actionItems.length > 0) previews.push({ label: '行动项', value: actionItems.map(a => a.description).join('、') });
+    return previews;
+  };
+
+  /** 确认当前轮的回答 */
+  const handleRoundConfirm = async (answer: string | null) => {
+    const field = missingFields[currentRound].field;
+    const newAnswers = { ...roundAnswers, [field]: answer };
+    const newHistory = [...roundHistory, { field, answer }];
+    setRoundAnswers(newAnswers);
+    setRoundHistory(newHistory);
+
+    if (currentRound < missingFields.length - 1) {
+      setCurrentRound(currentRound + 1);
+    } else {
+      const contextParts: string[] = [];
+      for (const h of newHistory) {
+        if (h.answer) {
+          const label = missingFields.find(f => f.field === h.field)?.question || h.field;
+          contextParts.push(`${label}\n回答: ${h.answer}`);
+        }
+      }
+      const accumulatedText = originalInputText
+        ? `${originalInputText}\n\n[追问回复]\n${contextParts.join('\n')}`
+        : `${inputText}\n\n[追问回复]\n${contextParts.join('\n')}`;
+      await handleSubmitWithText(accumulatedText, true);
+    }
+  };
+
+  /** 跳过当前轮 */
+  const handleRoundSkip = () => {
+    const field = missingFields[currentRound].field;
+    const newAnswers = { ...roundAnswers, [field]: null };
+    const newHistory = [...roundHistory, { field, answer: null }];
+    setRoundAnswers(newAnswers);
+    setRoundHistory(newHistory);
+
+    if (currentRound < missingFields.length - 1) {
+      setCurrentRound(currentRound + 1);
+    } else {
+      const accumulatedText = originalInputText || inputText;
+      handleSubmitWithText(accumulatedText, true);
+    }
+  };
+
+  /** 返回上一轮 */
+  const handleRoundBack = () => {
+    if (currentRound > 0) {
+      setRoundHistory(prev => prev.slice(0, -1));
+      setCurrentRound(currentRound - 1);
+    }
+  };
+
+  /** 跳过全部追问 */
+  const handleSkipAllRounds = () => {
+    setMissingFields([]);
+    setCurrentRound(0);
+    setDialogueComplete(true);
+    setStatus('complete');
+    setConversationHistory(p => [...p, {
+      role: 'jeffrey' as const,
+      content: '好的，信息已记录。如需补充随时告诉我。',
+      timestamp: new Date().toLocaleString('zh-CN'),
+    }]);
+  };
+
   const handleClear = () => {
     setInputText(''); setOriginalInputText(''); setJeffreyComment(''); setPersons([]); setPersonIds([]);
     setFollowUpQuestion(''); setActionItems([]); setStatus(null); setFollowUpReply('');
     setAmbiguousPersons([]); setShowResolutionPrompt(false); setNameResolutions([]); setPendingText('');
     setConversationHistory([]); setDialogueComplete(false); setIsProcessing(false);
+    setMissingFields([]);
+    setCurrentRound(0);
+    setRoundAnswers({});
+    setRoundHistory([]);
+    setExtractedDate(null);
+    setExtractedSentiment(null);
+    setAnalysisSteps([]);
   };
 
   // Icebreaker pre-gen timer
@@ -713,8 +868,57 @@ const JeffreyInputPage = () => {
             />
           )}
 
-          {/* Follow-up Question */}
-          {status === 'pending' && followUpQuestion && !dialogueComplete && (
+          {/* SSE Analysis Progress */}
+          {analysisSteps.length > 0 && status === null && (
+            <div style={{ marginTop: 14 }}>
+              <AnalysisProgress steps={analysisSteps} isStreaming={isProcessing} />
+            </div>
+          )}
+
+          {/* Multi-round Follow-up (new) */}
+          {status === 'pending' && missingFields.length > 0 && !dialogueComplete && (
+            <>
+              <RoundPrompt
+                allFields={missingFields.map(f => ({
+                  field: f.field,
+                  priority: f.priority,
+                  question: f.question,
+                }))}
+                currentIndex={currentRound}
+                defaultValue={roundAnswers[missingFields[currentRound]?.field] || undefined}
+                isLast={currentRound === missingFields.length - 1}
+                showBack={currentRound > 0}
+                disabled={isProcessing}
+                onConfirm={handleRoundConfirm}
+                onSkip={handleRoundSkip}
+                onBack={handleRoundBack}
+              />
+              {persons.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <ExtractionPreview fields={getExtractedPreview()} />
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                <button
+                  onClick={handleSkipAllRounds}
+                  disabled={isProcessing}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: C.textMuted,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  全部跳过，稍后补充
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Follow-up Question (legacy fallback) */}
+          {status === 'pending' && followUpQuestion && !dialogueComplete && missingFields.length === 0 && (
             <Card>
               <SectionLabel>Jeffrey 的追问</SectionLabel>
               <p style={{ fontSize: 14.5, color: C.textSecondary, fontStyle: 'italic', marginBottom: 14, lineHeight: 1.7 }}>

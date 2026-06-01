@@ -30,6 +30,7 @@ export const tokens = {
   primary: "#f59e0b",            // Warm amber
   primaryHover: "#fbbf24",        // Bright amber
   primaryDeep: "#d97706",         // Deep amber
+  primaryDim: "rgba(245, 158, 11, 0.08)",  // Amber dim wash
   accent: "#059669",              // Emerald green
   accentLight: "rgba(5, 150, 105, 0.08)",  // Accent wash
 

@@ -108,3 +108,18 @@ export const InteractionSchema = z.object({
 });
 
 export type Interaction = z.infer<typeof InteractionSchema>;
+
+// ─────────────────────────────────────────────
+// Extraction quality — missing field tracking
+// ─────────────────────────────────────────────
+
+export const MissingFieldSchema = z.object({
+  /** Which field is missing or vague */
+  field: z.enum(["name", "company", "location", "career", "sentiment", "actionItems", "date"]),
+  /** How critical this field is */
+  priority: z.enum(["high", "mid", "low"]),
+  /** Natural Chinese question asking the user for this specific field */
+  question: z.string().min(1),
+});
+
+export type MissingField = z.infer<typeof MissingFieldSchema>;
