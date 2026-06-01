@@ -444,12 +444,6 @@ export default function SecurityPage() {
                   All sensitive columns are AES-256-GCM ciphertext
                 </span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#ff7b72", flexShrink: 0 }} />
-                <span style={{ fontSize: "11px", color: "#8b949e", fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" }}>
-                  id / userId / date are unencrypted (needed for indexing)
-                </span>
-              </div>
             </div>
           </div>
 
