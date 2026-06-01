@@ -10,34 +10,30 @@ const ResolveRequestSchema = z.object({
 });
 
 /**
- * Extracts potential person names from Chinese text.
- * Uses trigger patterns like "和X" to find names.
+ * Extracts person names from Chinese text using jieba NER.
+ * Only returns tokens tagged as "nr" (person name) by jieba's POS tagger.
+ * This is the same approach used by pseudonymizer.ts — no regex guessing.
  */
 function extractNames(text: string): string[] {
-  // Extract 2-char Chinese names after common triggers
-  const triggerPattern = /(?:和|与|同|跟|和 |、)([一-龥]{2})/g;
-  const matches: string[] = [];
+  try {
+    const { Jieba } = require("@node-rs/jieba");
+    const { dict } = require("@node-rs/jieba/dict");
+    const jieba = new Jieba();
+    jieba.loadDict(dict);
 
-  const triggerMatches = text.matchAll(triggerPattern);
-  for (const m of triggerMatches) {
-    if (m[1]) matches.push(m[1]);
+    const tagged = jieba.tag(text) as Array<{ word: string; tag: string }>;
+    // nr = person name, nrt = transliterated person name
+    const names = tagged
+      .filter(item => item.tag === "nr" || item.tag === "nrt")
+      .map(item => item.word)
+      .filter(name => name.length >= 2); // exclude single-char "names"
+
+    // Deduplicate
+    return [...new Set(names)];
+  } catch {
+    // If jieba fails, return empty — no names is better than garbage names
+    return [];
   }
-
-  // Also try to find 2-char Chinese substrings that look like names (no trigger word)
-  // This is a fallback - only use names that are common person name patterns
-  const namePattern = /([一-龥]{2})/g;
-  const seen = new Set(matches);
-  for (const m of text.matchAll(namePattern)) {
-    const name = m[1];
-    // Skip common words that aren't names
-    const skipWords = ['今天', '昨天', '明天', '前年', '去年', '明年', '什么', '怎么', '哪个', '哪里', '为什么', '大约', '可能', '如果', '然后', '因为', '所以', '但是', '而且', '或者'];
-    if (name && !skipWords.includes(name) && !seen.has(name)) {
-      seen.add(name);
-      matches.push(name);
-    }
-  }
-
-  return [...new Set(matches)];
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

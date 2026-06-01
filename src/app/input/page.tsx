@@ -470,7 +470,7 @@ const JeffreyInputPage = () => {
 
         <main style={{ maxWidth: 620, margin: '0 auto', padding: '16px 20px' }}>
           {/* ═══════════════════════════════════ */}
-          {/* OVERLAYS (above current phase)     */}
+          {/* NAME RESOLUTION (full-screen)      */}
           {/* ═══════════════════════════════════ */}
           {showResolutionPrompt && nameResolutions.length > 0 && (
             <NameResolutionPrompt
@@ -481,6 +481,9 @@ const JeffreyInputPage = () => {
             />
           )}
 
+          {/* ═══════════════════════════════════ */}
+          {/* AMBIGUOUS (full-screen)            */}
+          {/* ═══════════════════════════════════ */}
           {resultStatus === 'ambiguous' && ambiguousPersons.length > 0 && (
             <AmbiguousPrompt
               ambiguousPersons={ambiguousPersons as Array<{ name: string; ambiguousWith: string[]; careers: Array<{ name: string; weight: number }>; interests: Array<{ name: string; weight: number }>; vibeTags: string[] }>}
@@ -498,6 +501,11 @@ const JeffreyInputPage = () => {
             />
           )}
 
+          {/* ═══════════════════════════════════ */}
+          {/* Only show phases when no overlay   */}
+          {/* ═══════════════════════════════════ */}
+          {!showResolutionPrompt && resultStatus !== 'ambiguous' && (
+          <>
           {/* ═══════════════════════════════════ */}
           {/* PHASE: INPUT                        */}
           {/* ═══════════════════════════════════ */}
@@ -829,6 +837,8 @@ const JeffreyInputPage = () => {
                 录入新的互动
               </Button>
             </div>
+          )}
+          </>
           )}
 
           {/* Recording pulse keyframes */}
