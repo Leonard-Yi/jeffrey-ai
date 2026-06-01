@@ -405,6 +405,29 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
         );
       }
     }
+
+    // 如果 LLM 已有 missingFields，但服务端发现了额外的缺失项 → 合并
+    if (data.status === "pending" && data.missingFields && data.missingFields.length > 0) {
+      const existingFields = new Set(data.missingFields.map((f) => f.field));
+      const extraIssues = qualityCheck.issues.filter((i) => !existingFields.has(i.field));
+      if (extraIssues.length > 0) {
+        data.missingFields = [
+          ...data.missingFields,
+          ...extraIssues.map((issue) => ({
+            field: issue.field,
+            priority: issue.priority,
+            question: issue.question,
+          })),
+        ].sort((a, b) => {
+          const order = { high: 0, mid: 1, low: 2 };
+          return order[a.priority] - order[b.priority];
+        });
+        console.log(
+          "[Jeffrey.AI] Merged extra missingFields from server-side:",
+          extraIssues.map((i) => i.field).join(", "),
+        );
+      }
+    }
 ```
 
 - [ ] **Step 2: 在返回的 JSON 中加入 missingFields**
@@ -419,6 +442,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
       personIds,
       followUpQuestion: data.followUpQuestion,
       missingFields: data.missingFields || [],
+      date: data.date || null,
+      sentiment: data.sentiment || null,
       actionItems: data.actionItems,
       ambiguousPersons: data.status === "ambiguous"
         ? data.persons.filter((p) => p.ambiguous)
@@ -453,7 +478,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```typescript
 "use client";
 
-import { tokens as C } from "@/lib/design-tokens";
+import { C } from "@/lib/design-tokens";
 
 export interface StepInfo {
   label: string;
@@ -462,11 +487,10 @@ export interface StepInfo {
 
 interface StepIndicatorProps {
   steps: StepInfo[];
-  currentLabel?: string;
 }
 
 /** 分轮追问步骤指示器：①→②→③，当前步骤脉冲动画 */
-export default function StepIndicator({ steps, currentLabel }: StepIndicatorProps) {
+export default function StepIndicator({ steps }: StepIndicatorProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
@@ -557,14 +581,12 @@ export default function StepIndicator({ steps, currentLabel }: StepIndicatorProp
           </span>
         ))}
       </div>
-      {currentLabel && (
-        <style>{`
-          @keyframes stepPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,110,0); }
-            50% { box-shadow: 0 0 0 6px rgba(201,169,110,0.15); }
-          }
-        `}</style>
-      )}
+      <style>{`
+        @keyframes stepPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+          50% { box-shadow: 0 0 0 6px rgba(245,158,11,0.15); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -597,7 +619,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```typescript
 "use client";
 
-import { tokens as C } from "@/lib/design-tokens";
+import { C } from "@/lib/design-tokens";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 
 interface ExtractedField {
@@ -677,7 +699,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 "use client";
 
 import { useEffect, useRef } from "react";
-import { tokens as C } from "@/lib/design-tokens";
+import { C } from "@/lib/design-tokens";
 import { Button } from "@/components/ui/Button";
 import StepIndicator, { type StepInfo } from "./StepIndicator";
 
@@ -699,6 +721,8 @@ interface RoundPromptProps {
   isLast: boolean;
   /** Whether showing the back button */
   showBack: boolean;
+  /** Disable all interactive elements (during API call) */
+  disabled?: boolean;
   /** Called when user confirms their answer */
   onConfirm: (answer: string | null) => void;
   /** Called when user skips */
@@ -719,6 +743,7 @@ export default function RoundPrompt({
   defaultValue = "",
   isLast,
   showBack,
+  disabled = false,
   onConfirm,
   onSkip,
   onBack,
@@ -794,7 +819,7 @@ export default function RoundPrompt({
       </div>
 
       {/* Step indicator */}
-      <StepIndicator steps={steps} currentLabel={currentField.field} />
+      <StepIndicator steps={steps} />
 
       {/* Question */}
       <div
@@ -826,6 +851,7 @@ export default function RoundPrompt({
         <input
           ref={inputRef}
           type="text"
+          disabled={disabled}
           placeholder={currentField.priority === "high" ? "输入回答..." : "输入或留空跳过..."}
           defaultValue={defaultValue}
           onKeyDown={handleKeyDown}
@@ -847,6 +873,7 @@ export default function RoundPrompt({
         />
         <Button
           variant="primary"
+          disabled={disabled}
           onClick={() => {
             const val = inputRef.current?.value?.trim() || null;
             onConfirm(val);
@@ -862,6 +889,7 @@ export default function RoundPrompt({
         {showBack && (
           <Button
             variant="secondary"
+            disabled={disabled}
             onClick={onBack}
             style={{ flex: "0 0 auto", borderRadius: C.radiusMd, fontSize: 13 }}
           >
@@ -870,6 +898,7 @@ export default function RoundPrompt({
         )}
         <Button
           variant="secondary"
+          disabled={disabled}
           onClick={onSkip}
           style={{ flex: "0 0 auto", borderRadius: C.radiusMd, fontSize: 13 }}
         >
@@ -923,6 +952,8 @@ interface MissingField {
 
 ```typescript
   missingFields: MissingField[];
+  date: string | null;
+  sentiment: string | null;
 ```
 
 - [ ] **Step 2: 新增分轮追问状态**
@@ -935,6 +966,9 @@ interface MissingField {
   const [currentRound, setCurrentRound] = useState(0);
   const [roundAnswers, setRoundAnswers] = useState<Record<string, string | null>>({});
   const [roundHistory, setRoundHistory] = useState<Array<{ field: string; answer: string | null }>>([]);
+  // 从API返回的原始字段值（用于预览）
+  const [extractedDate, setExtractedDate] = useState<string | null>(null);
+  const [extractedSentiment, setExtractedSentiment] = useState<string | null>(null);
 ```
 
 - [ ] **Step 3: 更新 ExtractionResponse 类型引用**
@@ -977,6 +1011,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
       setAmbiguousPersons(data.ambiguousPersons || []);
       // 新增：分轮追问数据
       setMissingFields(data.missingFields || []);
+      setExtractedDate(data.date || null);
+      setExtractedSentiment(data.sentiment || null);
       if (data.missingFields && data.missingFields.length > 0) {
         setCurrentRound(0);
         setRoundAnswers({});
@@ -1053,19 +1089,17 @@ import ExtractionPreview from '@/components/ExtractionPreview';
 在 `handleClear` 函数之前，添加分轮追问的回调函数：
 
 ```typescript
-  /** 从 missingFields 提取已识别字段用于预览 */
+  /** 从已提取的数据中生成预览字段 */
   const getExtractedPreview = (): Array<{ label: string; value: string }> => {
     const previews: Array<{ label: string; value: string }> = [];
     if (persons.length > 0) {
       const p = persons[0];
       if (p.careers.length > 0) previews.push({ label: '职业', value: p.careers.map(c => c.name).join(' / ') });
+      if (p.vibeTags.length > 0) previews.push({ label: '氛围', value: p.vibeTags.join('、') });
     }
+    if (extractedDate) previews.push({ label: '日期', value: extractedDate.split('T')[0] });
+    if (extractedSentiment) previews.push({ label: '情绪', value: extractedSentiment });
     if (actionItems.length > 0) previews.push({ label: '行动项', value: actionItems.map(a => a.description).join('、') });
-    if (jeffreyComment) {
-      // Extract date from existing data context — just mark as extracted
-      previews.push({ label: '日期', value: '已识别' });
-      previews.push({ label: '情绪', value: '已提取' });
-    }
     return previews;
   };
 
@@ -1154,6 +1188,7 @@ import ExtractionPreview from '@/components/ExtractionPreview';
                 defaultValue={roundAnswers[missingFields[currentRound]?.field] || undefined}
                 isLast={currentRound === missingFields.length - 1}
                 showBack={currentRound > 0}
+                disabled={isProcessing}
                 onConfirm={handleRoundConfirm}
                 onSkip={handleRoundSkip}
                 onBack={handleRoundBack}
@@ -1216,6 +1251,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
     setCurrentRound(0);
     setRoundAnswers({});
     setRoundHistory([]);
+    setExtractedDate(null);
+    setExtractedSentiment(null);
 ```
 
 - [ ] **Step 2: 更新 ExtractionResponse 接口的 typecheck**
@@ -1249,7 +1286,19 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 **Files:** 无新建，验证现有功能
 
-- [ ] **Step 1: Build**
+- [ ] **Step 1: 运行现有测试确保无回归**
+
+```bash
+# 测试 LLM 提取器（不依赖 DB，不依赖 route.ts 改动）
+npm run test:extract 2>&1
+
+# 全流程测试（依赖 DB 运行）
+npm run test:pipeline 2>&1
+```
+
+预期：两个测试均通过。这些测试使用 `legacy/llmExtractor.ts`（Qwen），不直接测试 route.ts，但验证没有破坏性副作用。
+
+- [ ] **Step 2: Build**
 
 ```bash
 cd d:/Epstein.AI && taskkill //F //IM node.exe 2>/dev/null; npm run build 2>&1
