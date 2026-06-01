@@ -4,9 +4,9 @@
 
 **Goal:** 实现分轮追问体验：用户录入文本后，系统检测模糊指代和缺失字段，按优先级逐轮追问（人名→公司→地点），支持返回修改和跳过。
 
-**Architecture:** 三层改动——(1) System Prompt 重写 + Zod Schema 扩展，让 LLM 输出 missingFields；(2) 服务端双重校验（黑名单+增强完备性检查），兜底 LLM 可能的遗漏；(3) 前端新增 StepIndicator/RoundPrompt/ExtractionPreview 三个组件，实现分轮追问状态机。
+**Architecture:** 四层改动——(1) System Prompt 重写 + Zod Schema 扩展，让 LLM 输出 missingFields；(2) 服务端双重校验（黑名单+增强完备性检查），兜底 LLM 可能的遗漏；(3) POST /api/analyze 改为 SSE 流式响应，前端实时消费进度事件；(4) 前端新增 StepIndicator/RoundPrompt/ExtractionPreview 三个组件 + 流式分析动画 + 分轮追问状态机。
 
-**Tech Stack:** TypeScript, Next.js 16 (App Router), React 19, Zod, DeepSeek API
+**Tech Stack:** TypeScript, Next.js 16 (App Router), React 19, Zod, DeepSeek API, Server-Sent Events (ReadableStream)
 
 ---
 
@@ -15,12 +15,16 @@
 | 文件 | 操作 | 职责 |
 |---|---|---|
 | `src/schemas/core.ts` | 修改 | 新增 `MissingFieldSchema` 和 `MissingField` 类型 |
-| `src/app/api/analyze/route.ts` | 修改 | 重写 System Prompt、Schema 扩展、质量校验、POST 逻辑 |
+| `src/app/api/analyze/route.ts` | 修改 | 重写 System Prompt、Schema 扩展、质量校验、**SSE 流式 POST** |
+| `src/lib/sse-utils.ts` | 新建 | SSE 事件序列化工具（服务端 `sendEvent` + 客户端 `parseSSEStream`）|
 | `src/components/StepIndicator.tsx` | 新建 | 步骤指示器（①→②→③），当前步骤脉冲动画 |
-| `src/components/RoundPrompt.tsx` | 新建 | 单轮追问卡片：优先级标签 + 问题 + 输入框 + 返回/跳过/确认 |
+| `src/components/RoundPrompt.tsx` | 新建 | 单轮追问卡片：优先级标签 + 问题 + 输入框 + **快速建议按钮** + 返回/跳过/确认 |
 | `src/components/ExtractionPreview.tsx` | 新建 | 已提取字段预览标签组 |
-| `src/app/input/page.tsx` | 修改 | 分轮追问状态机、对话历史渲染、新组件集成 |
+| `src/components/AnalysisProgress.tsx` | 新建 | SSE 驱动的分析进度动画（逐步展示解析→提取→检测→完成）|
+| `src/app/input/page.tsx` | 修改 | 分轮追问状态机、**SSE 流消费**、对话历史渲染、新组件集成 |
 | `src/test/testExtractor.ts` | 不改 | 该文件使用 `legacy/llmExtractor.ts`（Qwen），不涉及本次改动 |
+
+> **语音追问**：现有语音录入走同一个 `/api/analyze` 端点。文本路径修好后，语音路径自动受益，无需额外处理。
 
 ---
 
@@ -360,7 +364,396 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 4: 更新 POST 处理器使用新校验
+### Task 4: 创建 SSE 工具库
+
+**Files:**
+- Create: `src/lib/sse-utils.ts`
+
+- [ ] **Step 1: 创建 SSE 工具文件**
+
+```typescript
+// src/lib/sse-utils.ts
+// Server-Sent Events 工具 — 服务端序列化 + 客户端解析
+
+const encoder = new TextEncoder();
+
+/** SSE 事件类型 */
+export type SSEEvent =
+  | { type: "progress"; step: string; message: string; detail?: string }
+  | { type: "result"; data: Record<string, unknown> }
+  | { type: "error"; message: string };
+
+/** 服务端：将 SSEEvent 编码为 SSE 格式的 Uint8Array */
+export function encodeSSE(event: SSEEvent): Uint8Array {
+  const eventLine = `event: ${event.type}\n`;
+  const dataLine = `data: ${JSON.stringify(
+    event.type === "result" ? event.data :
+    event.type === "error" ? { message: event.message } :
+    { step: event.step, message: event.message, detail: event.detail }
+  )}\n\n`;
+  return encoder.encode(eventLine + dataLine);
+}
+
+/** 客户端：从 ReadableStream 中迭代 SSE 事件 */
+export async function* parseSSEStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): AsyncGenerator<SSEEvent, void, undefined> {
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let currentEvent = "";
+  let currentData = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || ""; // 保留不完整的行
+
+    for (const line of lines) {
+      if (line.startsWith("event: ")) {
+        currentEvent = line.slice(7).trim();
+      } else if (line.startsWith("data: ")) {
+        currentData = line.slice(6);
+      } else if (line === "" && currentEvent && currentData) {
+        // 空行 = 事件结束
+        try {
+          const parsed = JSON.parse(currentData);
+          if (currentEvent === "progress") {
+            yield { type: "progress", ...parsed } as SSEEvent;
+          } else if (currentEvent === "result") {
+            yield { type: "result", data: parsed };
+          } else if (currentEvent === "error") {
+            yield { type: "error", message: parsed.message || "未知错误" };
+          }
+        } catch {
+          // 跳过无法解析的事件
+        }
+        currentEvent = "";
+        currentData = "";
+      }
+    }
+  }
+}
+```
+
+- [ ] **Step 2: Typecheck 验证**
+
+```bash
+npx tsc --noEmit --pretty 2>&1 | head -20
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/lib/sse-utils.ts
+git commit -m "feat(sse): add SSE encode/parse utility library
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 5: 将 POST 处理器改为 SSE 流式响应
+
+**Files:**
+- Modify: `src/app/api/analyze/route.ts:212-565`（POST handler + 响应返回）
+
+- [ ] **Step 1: 导入 SSE 工具**
+
+在 route.ts 顶部添加：
+
+```typescript
+import { encodeSSE } from "@/lib/sse-utils";
+```
+
+- [ ] **Step 2: 重写 POST handler 返回 SSE 流**
+
+将 POST handler 的核心逻辑（从 `const apiResponse = await fetch(...)` 到 `return Response.json({...})`）替换为 `ReadableStream` 响应。保留所有前置逻辑（密钥检查、text 解析、日期标准化、假名化）。
+
+以下是完整的 SSE 流式响应逻辑（替换从 `const controller = new AbortController()` 到函数末尾的部分）：
+
+```typescript
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+
+        function emit(event: Parameters<typeof encodeSSE>[0]) {
+          controller.enqueue(encodeSSE(event));
+        }
+
+        try {
+          // ── Step 1: NER & pseudonymize complete ──
+          emit({
+            type: "progress",
+            step: "parsing",
+            message: "解析文本 & 实体识别",
+            detail: "分词、命名实体识别、语境分析",
+          });
+
+          // 假名化已经完成（在前面）
+          const pseudoDone = !!pseudo;
+
+          // ── Step 2: Call LLM ──
+          emit({
+            type: "progress",
+            step: "extracting",
+            message: "LLM 提取结构化数据...",
+            detail: "调用 DeepSeek 模型进行结构化提取",
+          });
+
+          const apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${getApiKey()}`,
+            },
+            body: JSON.stringify({
+              model: getModel(),
+              system: SYSTEM_PROMPT,
+              messages: [{ role: "user", content: sanitizedText }],
+              tools: [extractionTool],
+              temperature: 0.3,
+              max_tokens: 4000,
+            }),
+            signal: AbortSignal.timeout(30000),
+          });
+
+          if (!apiResponse.ok) {
+            emit({ type: "error", message: `AI服务暂时不可用 (${apiResponse.status})，请重试` });
+            controller.close();
+            return;
+          }
+
+          const apiData = await apiResponse.json();
+
+          // 解析 LLM 返回（与原逻辑相同）
+          const toolUseBlock = apiData.content?.find((c: { type: string }) => c.type === "tool_use");
+          const textBlock = apiData.content?.find((c: { type: string }) => c.type === "text");
+
+          let rawJson: unknown;
+          if (toolUseBlock) {
+            rawJson = toolUseBlock.input || {};
+          } else if (textBlock?.text) {
+            const textContent = textBlock.text;
+            const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
+                              textContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              rawJson = JSON.parse(jsonMatch[jsonMatch.length - 1]);
+            } else {
+              emit({ type: "error", message: "AI未能正确提取信息，请重试或简化输入" });
+              controller.close();
+              return;
+            }
+          } else {
+            emit({ type: "error", message: "AI返回空响应，请重试" });
+            controller.close();
+            return;
+          }
+
+          // Depseudonymize
+          const rawJsonStr = JSON.stringify(rawJson);
+          const depseudonymizedStr = await pseudo.depseudonymize(rawJsonStr);
+          rawJson = JSON.parse(depseudonymizedStr);
+
+          // Zod validation
+          const result = ExtractionPayloadSchema.safeParse(nullToUndefined(rawJson));
+          if (!result.success) {
+            console.error("[Jeffrey.AI] Zod validation failed:", JSON.stringify(result.error.flatten()));
+            emit({ type: "error", message: "AI返回格式不完整，请重试或简化输入" });
+            controller.close();
+            return;
+          }
+
+          const data = result.data;
+
+          // ── Step 3: Quality check ──
+          const qualityCheck = validateExtractionQuality(data, normalizedText);
+
+          // LLM 判定 complete 但服务端发现模糊姓名 → 强制 pending
+          if (!qualityCheck.valid && data.status === "complete") {
+            data.status = "pending";
+            data.missingFields = qualityCheck.issues.map((issue) => ({
+              field: issue.field,
+              priority: issue.priority,
+              question: issue.question,
+            }));
+            if (!data.followUpQuestion && qualityCheck.issues.length > 0) {
+              data.followUpQuestion = qualityCheck.issues[0].question;
+            }
+          }
+
+          // LLM pending 但 missingFields 为空 → 填充
+          if (data.status === "pending" && (!data.missingFields || data.missingFields.length === 0)) {
+            if (qualityCheck.issues.length > 0) {
+              data.missingFields = qualityCheck.issues.map((issue) => ({
+                field: issue.field,
+                priority: issue.priority,
+                question: issue.question,
+              }));
+            }
+          }
+
+          // 合并服务端额外发现的缺失项
+          if (data.status === "pending" && data.missingFields && data.missingFields.length > 0) {
+            const existingFields = new Set(data.missingFields.map((f) => f.field));
+            const extraIssues = qualityCheck.issues.filter((i) => !existingFields.has(i.field));
+            if (extraIssues.length > 0) {
+              data.missingFields = [
+                ...data.missingFields,
+                ...extraIssues.map((issue) => ({
+                  field: issue.field,
+                  priority: issue.priority,
+                  question: issue.question,
+                })),
+              ].sort((a, b) => {
+                const order = { high: 0, mid: 1, low: 2 };
+                return order[a.priority] - order[b.priority];
+              });
+            }
+          }
+
+          const missingCount = data.missingFields?.length || 0;
+
+          emit({
+            type: "progress",
+            step: "quality_check",
+            message: missingCount > 0
+              ? `检测到 ${missingCount} 个信息缺口`
+              : "所有字段完整",
+            detail: missingCount > 0
+              ? data.missingFields!.map(f => `${f.field}(${f.priority})`).join("、")
+              : "无缺失项",
+          });
+
+          // ── Step 4: DB save (for pending persons) ──
+          let personIds: string[] = [];
+          if (data.status === "complete") {
+            try {
+              const saveResult = await saveExtractionToDb(data, true, userId, store, pseudoKey, encKey);
+              personIds = saveResult.personIds;
+            } catch (dbError) {
+              console.error("[Jeffrey.AI] DB save failed:", dbError);
+            }
+          } else if (data.status === "pending" && data.persons && data.persons.length > 0) {
+            try {
+              const saveResult = await saveExtractionToDb({
+                persons: data.persons,
+                date: data.date,
+                location: undefined,
+                contextType: undefined,
+                sentiment: undefined,
+                actionItems: [],
+                coreMemories: [],
+              } as any, true, userId, store, pseudoKey, encKey);
+              personIds = saveResult.personIds;
+            } catch (dbError) {
+              console.error("[Jeffrey.AI] DB save (pending) failed:", dbError);
+            }
+          }
+
+          // ── Step 5: Jeffrey comment ──
+          const personNames = data.persons.map(p => p.name).join('、');
+          const hasAnxiety = data.persons.some(p =>
+            p.vibeTags.some(v => v.includes('焦虑') || v.includes('压力'))
+          );
+          const meOwedCount = data.actionItems.filter(a => a.ownedBy === 'me').length;
+          const themOwedCount = data.actionItems.filter(a => a.ownedBy === 'them').length;
+          const allCareers = data.persons.flatMap(p => p.careers.map(c => c.name));
+          const allInterests = data.persons.flatMap(p => p.interests.map(i => i.name));
+          const hasHighValueCareer = allCareers.some(c =>
+            ['投资', '金融', '科技', '创始人', 'CEO', '合伙人', '律师', '医生', '教授'].some(k => c.includes(k))
+          );
+          const hasCareers = allCareers.length > 0;
+
+          let jeffreyComment = "";
+          if (data.persons.length === 0) {
+            jeffreyComment = "先生，您告诉我这么多，却没提到任何人的名字。是在考验我的记忆力吗？";
+          } else {
+            const mood = getJeffreyMood({ hasAnxiety, hasHighValueCareer, hasCareers, meOwedCount, themOwedCount });
+            jeffreyComment = getJeffreyOpening(mood, personNames, meOwedCount, themOwedCount);
+            if (meOwedCount > 0 && themOwedCount > 0) {
+              jeffreyComment += ` 这次互动双方都有承诺要履行——这种"互相亏欠"的状态，其实是最稳固的关系。`;
+            } else if (meOwedCount > 0 && mood !== 'sarcastic') {
+              jeffreyComment += ` 您有${meOwedCount}件事要做。先生，欠人情是要还的，建议您尽快处理。`;
+            } else if (themOwedCount > 0 && mood !== 'sarcastic') {
+              jeffreyComment += ` 对方欠您${themOwedCount}件事。这种人情的债，往往比金钱更值得记住。`;
+            }
+            if (allInterests.length > 0 && (mood === 'neutral' || mood === 'appreciative')) {
+              jeffreyComment += ` 对了，${personNames}对${allInterests[0]}感兴趣——这是个不错的切入点。`;
+            }
+          }
+
+          emit({
+            type: "progress",
+            step: "done",
+            message: "分析完成",
+            detail: data.status === "complete" ? "所有字段已提取" : `${missingCount} 个字段待补充`,
+          });
+
+          // ── Final result event ──
+          emit({
+            type: "result",
+            data: {
+              status: data.status,
+              jeffreyComment,
+              persons: data.persons,
+              personIds,
+              followUpQuestion: data.followUpQuestion,
+              missingFields: data.missingFields || [],
+              date: data.date || null,
+              sentiment: data.sentiment || null,
+              actionItems: data.actionItems,
+              ambiguousPersons: data.status === "ambiguous"
+                ? data.persons.filter((p) => p.ambiguous)
+                : undefined,
+            },
+          });
+
+          controller.close();
+        } catch (error) {
+          console.error("[Jeffrey.AI] SSE stream error:", error);
+          try {
+            emit({ type: "error", message: "Internal server error" });
+          } catch {}
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no", // 禁用 nginx 缓冲
+      },
+    });
+```
+
+**重要**：原有的 `Response.json({ error: ... })` 错误响应（加密密钥未就绪、text 缺失等）保留在 SSE 流之前。流式响应仅替代核心分析逻辑。原有的 `describeCompleteness` 函数已被 `validateExtractionQuality` 替代，不再需要。
+
+- [ ] **Step 3: Typecheck 验证**
+
+```bash
+npx tsc --noEmit --pretty 2>&1 | head -30
+```
+
+预期：`encodeSSE` 从 `@/lib/sse-utils` 正确导入。`AbortSignal.timeout` 是 Node 18+ 的标准 API。可能有类型细节需要调整。
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/app/api/analyze/route.ts
+git commit -m "feat(analyze): convert POST handler to SSE streaming response
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 6: 创建 StepIndicator 组件
 
 **Files:**
 - Modify: `src/app/api/analyze/route.ts:454-467`（POST 处理器中的校验区块）
@@ -468,7 +861,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 5: 创建 StepIndicator 组件
+### Task 6: 创建 StepIndicator 组件
 
 **Files:**
 - Create: `src/components/StepIndicator.tsx`
@@ -609,7 +1002,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 6: 创建 ExtractionPreview 组件
+### Task 7: 创建 ExtractionPreview 组件
 
 **Files:**
 - Create: `src/components/ExtractionPreview.tsx`
@@ -688,7 +1081,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 7: 创建 RoundPrompt 组件
+### Task 8: 创建 RoundPrompt 组件（含快速建议）
 
 **Files:**
 - Create: `src/components/RoundPrompt.tsx`
@@ -884,6 +1277,44 @@ export default function RoundPrompt({
         </Button>
       </div>
 
+      {/* Quick suggestions (for name field only) */}
+      {currentField.field === "name" && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+          <span style={{ fontSize: 11.5, color: C.textMuted, alignSelf: "center" }}>快速选择：</span>
+          {["王总", "张总", "李总", "刘工", "陈老师"].map((suggestion) => (
+            <button
+              key={suggestion}
+              disabled={disabled}
+              onClick={() => onConfirm(suggestion)}
+              style={{
+                padding: "4px 10px",
+                borderRadius: 100,
+                fontSize: 11.5,
+                fontWeight: 500,
+                fontFamily: "var(--font-body)",
+                cursor: disabled ? "not-allowed" : "pointer",
+                background: C.bgElevated,
+                color: C.textSecondary,
+                border: `1px solid ${C.borderStrong}`,
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                if (!disabled) {
+                  e.currentTarget.style.borderColor = C.primary;
+                  e.currentTarget.style.color = C.primary;
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = C.borderStrong;
+                e.currentTarget.style.color = C.textSecondary;
+              }}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Navigation row */}
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         {showBack && (
@@ -930,7 +1361,143 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 8: 改造 input/page.tsx — 类型定义和状态扩展
+### Task 9: 创建 AnalysisProgress 组件（SSE 驱动）
+
+**Files:**
+- Create: `src/components/AnalysisProgress.tsx`
+
+- [ ] **Step 1: 创建 SSE 驱动的分析进度动画组件**
+
+```typescript
+"use client";
+
+import { useEffect, useState } from "react";
+import { C } from "@/lib/design-tokens";
+
+export interface ProgressStep {
+  icon: string;
+  title: string;
+  detail?: string;
+  status: "waiting" | "active" | "done";
+}
+
+interface AnalysisProgressProps {
+  /** 从 SSE 流中收集的进度步骤 */
+  steps: ProgressStep[];
+  /** 是否仍在等待更多事件 */
+  isStreaming: boolean;
+}
+
+/** SSE 驱动的分析进度动画：逐步展示解析→提取→检测→完成 */
+export default function AnalysisProgress({ steps, isStreaming }: AnalysisProgressProps) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {steps.map((step, i) => (
+        <div
+          key={i}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 16px",
+            borderRadius: C.radiusMd,
+            background: step.status === "active"
+              ? `linear-gradient(135deg, rgba(212,168,83,0.08) 0%, rgba(201,169,110,0.04) 100%)`
+              : C.bgElevated,
+            border: `1px solid ${
+              step.status === "active"
+                ? C.borderAccent
+                : step.status === "done"
+                  ? `rgba(110,191,139,0.2)`
+                  : C.border
+            }`,
+            opacity: step.status === "waiting" ? 0 : 1,
+            transform: step.status === "waiting" ? "translateY(8px)" : "translateY(0)",
+            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              fontSize: 16,
+              background:
+                step.status === "active"
+                  ? C.accentLight
+                  : step.status === "done"
+                    ? C.successBg
+                    : "transparent",
+              border: `1.5px solid ${
+                step.status === "active"
+                  ? C.primary
+                  : step.status === "done"
+                    ? C.success
+                    : C.border
+              }`,
+              animation: step.status === "active" ? "spinPulse 1.5s ease-in-out infinite" : "none",
+            }}
+          >
+            {step.status === "done" ? "✓" : step.icon}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500, marginBottom: 2, color: C.text }}>
+              {step.title}
+              {step.status === "active" && isStreaming && (
+                <span style={{
+                  display: "inline-block",
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: C.primary,
+                  marginLeft: 8,
+                  animation: "blink 0.8s ease-in-out infinite",
+                }} />
+              )}
+            </div>
+            {step.detail && (
+              <div style={{ fontSize: 12.5, color: C.textMuted }}>{step.detail}</div>
+            )}
+          </div>
+        </div>
+      ))}
+      <style>{`
+        @keyframes spinPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+          50% { box-shadow: 0 0 0 5px rgba(245,158,11,0.12); }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: Typecheck 验证**
+
+```bash
+npx tsc --noEmit --pretty 2>&1 | head -20
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/components/AnalysisProgress.tsx
+git commit -m "feat(ui): add SSE-driven AnalysisProgress component for real-time extraction feedback
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 10: 改造 input/page.tsx — 类型定义和状态扩展
 
 **Files:**
 - Modify: `src/app/input/page.tsx:26-49`（接口定义区）
@@ -969,6 +1536,8 @@ interface MissingField {
   // 从API返回的原始字段值（用于预览）
   const [extractedDate, setExtractedDate] = useState<string | null>(null);
   const [extractedSentiment, setExtractedSentiment] = useState<string | null>(null);
+  // SSE 驱动的分析进度步骤
+  const [analysisSteps, setAnalysisSteps] = useState<ProgressStep[]>([]);
 ```
 
 - [ ] **Step 3: 更新 ExtractionResponse 类型引用**
@@ -992,16 +1561,86 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 9: 改造 input/page.tsx — 分析结果处理逻辑
+### Task 11: 改造 input/page.tsx — SSE 流消费 + 分析结果处理
 
 **Files:**
 - Modify: `src/app/input/page.tsx:300-353`（`handleSubmitWithText` 函数）
 
-- [ ] **Step 1: 更新 handleSubmitWithText 处理 missingFields**
+- [ ] **Step 1: 将 fetchWithRetry 替换为 SSE 流式 fetch**
 
-找到 `handleSubmitWithText` 函数（约 L300-L353），在设置 API 返回值状态的位置（约 L317-L324），替换为：
+删除现有的 `fetchWithRetry` 函数（约 L283-L298），替换为 SSE 流式 fetch：
 
 ```typescript
+  /** SSE 流式 fetch：消费 /api/analyze 的 SSE 事件流 */
+  const fetchSSEAnalyze = async (textToSubmit: string): Promise<ExtractionResponse> => {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ text: textToSubmit }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API error ${response.status}: ${errorText.slice(0, 100)}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Response body is not readable');
+
+    try {
+      for await (const event of parseSSEStream(reader)) {
+        switch (event.type) {
+          case 'progress':
+            setAnalysisSteps(prev => {
+              const existing = prev.find(s => s.title === event.message);
+              if (existing) {
+                return prev.map(s =>
+                  s.title === event.message
+                    ? { ...s, status: 'done' as const }
+                    : s
+                );
+              }
+              // Mark previous step as done
+              const updated = prev.map(s => ({ ...s, status: 'done' as const }));
+              return [...updated, {
+                icon: event.step === 'parsing' ? '🔍' : event.step === 'extracting' ? '🧠' : event.step === 'quality_check' ? '⚠️' : '📋',
+                title: event.message,
+                detail: event.detail,
+                status: 'active' as const,
+              }];
+            });
+            break;
+          case 'result':
+            return event.data as unknown as ExtractionResponse;
+          case 'error':
+            throw new Error(event.message);
+        }
+      }
+      throw new Error('Stream ended without result event');
+    } finally {
+      reader.releaseLock();
+    }
+  };
+```
+
+- [ ] **Step 2: 重写 handleSubmitWithText 使用 SSE**
+
+替换 `handleSubmitWithText` 函数体，使用 `fetchSSEAnalyze` 并处理分析步骤动画：
+
+```typescript
+  const handleSubmitWithText = async (textToSubmit: string, isFollowUp = false) => {
+    if (!textToSubmit.trim()) return;
+    setIsProcessing(true);
+    setErrorMessage('');
+    setAnalysisSteps([]); // 重置分析步骤
+
+    const userMsg: ChatMessage = { role: 'user', content: textToSubmit, timestamp: new Date().toLocaleString('zh-CN') };
+    if (isFollowUp) setConversationHistory(p => [...p, userMsg]);
+
+    try {
+      const data = await fetchSSEAnalyze(textToSubmit);
+
+      // 处理最终结果
       setJeffreyComment(data.jeffreyComment);
       setPersons(data.persons);
       setPersonIds(data.personIds || []);
@@ -1009,20 +1648,16 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
       setActionItems(data.actionItems);
       setStatus(data.status);
       setAmbiguousPersons(data.ambiguousPersons || []);
-      // 新增：分轮追问数据
       setMissingFields(data.missingFields || []);
       setExtractedDate(data.date || null);
       setExtractedSentiment(data.sentiment || null);
+
       if (data.missingFields && data.missingFields.length > 0) {
         setCurrentRound(0);
         setRoundAnswers({});
         setRoundHistory([]);
       }
-```
 
-然后将状态处理逻辑（约 L324-L337）替换为：
-
-```typescript
       if (data.status === 'complete') {
         const jeffreyMsg: ChatMessage = { role: 'jeffrey', content: data.jeffreyComment || '信息已保存。', timestamp: new Date().toLocaleString('zh-CN') };
         setConversationHistory(p => [...p, jeffreyMsg]);
@@ -1043,13 +1678,27 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
           setDialogueComplete(true);
         }
       } else if (data.status === 'pending' && data.missingFields && data.missingFields.length > 0) {
-        // 新版分轮追问路径
         setDialogueComplete(false);
       } else if (data.status === 'pending' && data.followUpQuestion) {
-        // 旧版兼容：单个追问
         setConversationHistory(p => [...p, { role: 'jeffrey', content: data.followUpQuestion!, timestamp: new Date().toLocaleString('zh-CN') }]);
         setDialogueComplete(false);
       }
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.message.includes('API error')) {
+          setErrorMessage(err.message);
+        } else if (err.message.includes('not readable') || err.message.includes('NetworkError')) {
+          setErrorMessage('网络连接失败，请检查网络后重试');
+        } else {
+          setErrorMessage(`分析失败：${err.message}`);
+        }
+      } else {
+        setErrorMessage('分析失败，请重试');
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 ```
 
 - [ ] **Step 2: Typecheck 验证**
@@ -1069,7 +1718,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: 改造 input/page.tsx — 渲染分轮追问 UI
+### Task 12: 改造 input/page.tsx — 渲染分轮追问 UI
 
 **Files:**
 - Modify: `src/app/input/page.tsx` — 在 JSX 渲染区域中添加分轮追问 UI
@@ -1079,9 +1728,11 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 在文件顶部导入区添加：
 
 ```typescript
+import { parseSSEStream } from '@/lib/sse-utils';
 import StepIndicator, { type StepInfo } from '@/components/StepIndicator';
 import RoundPrompt, { type MissingFieldQuestion } from '@/components/RoundPrompt';
 import ExtractionPreview from '@/components/ExtractionPreview';
+import AnalysisProgress, { type ProgressStep } from '@/components/AnalysisProgress';
 ```
 
 - [ ] **Step 2: 新增分轮追问处理函数**
@@ -1175,6 +1826,13 @@ import ExtractionPreview from '@/components/ExtractionPreview';
 找到现有的 Follow-up Question 渲染区块（约 L717-L784），在 `<Card>` 之前插入分轮追问渲染：
 
 ```tsx
+          {/* SSE Analysis Progress */}
+          {analysisSteps.length > 0 && status === null && (
+            <div className="fade-in" style={{ marginTop: 14 }}>
+              <AnalysisProgress steps={analysisSteps} isStreaming={isProcessing} />
+            </div>
+          )}
+
           {/* Multi-round Follow-up (new) */}
           {status === 'pending' && missingFields.length > 0 && !dialogueComplete && (
             <>
@@ -1237,7 +1895,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 11: 清理和边界情况处理
+### Task 13: 清理和边界情况处理
 
 **Files:**
 - Modify: `src/app/input/page.tsx:391-396`（`handleClear` 函数）
@@ -1253,6 +1911,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
     setRoundHistory([]);
     setExtractedDate(null);
     setExtractedSentiment(null);
+    setAnalysisSteps([]);
 ```
 
 - [ ] **Step 2: 更新 ExtractionResponse 接口的 typecheck**
@@ -1282,7 +1941,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 12: 端到端验证
+### Task 14: 端到端验证
 
 **Files:** 无新建，验证现有功能
 
@@ -1345,7 +2004,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 13: 最终 Typecheck
+### Task 15: 最终 Typecheck
 
 - [ ] **Step 1: 运行完整 typecheck**
 
@@ -1366,13 +2025,18 @@ git status && git log --oneline -5
 ## 实现顺序
 
 ```
-Task 1 (schema) → Task 2 (prompt) → Task 3 (validation) → Task 4 (POST handler)
+Task 1 (schema) → Task 2 (prompt) → Task 3 (validation) → Task 4 (SSE utils)
                                                               ↓
-Task 5 (StepIndicator) → Task 6 (ExtractionPreview) → Task 7 (RoundPrompt)
+                                                      Task 5 (SSE POST handler)
                                                               ↓
-                  Task 8 (types) → Task 9 (logic) → Task 10 (render)
+Task 6 (StepIndicator) ─┐
+Task 7 (ExtractionPreview) ┤ 三个组件可并行
+Task 8 (RoundPrompt) ────┘
+Task 9 (AnalysisProgress) ─┘
                                                               ↓
-                                            Task 11 (cleanup) → Task 12 (e2e) → Task 13 (final check)
+                  Task 10 (types+state) → Task 11 (SSE consumer) → Task 12 (render)
+                                                                       ↓
+                                                Task 13 (cleanup) → Task 14 (e2e) → Task 15 (final check)
 ```
 
-后端 Tasks 1-4 可以串行，前端 Tasks 5-7（组件创建）可以并行，Tasks 8-10 依赖前端组件完成。
+后端 Tasks 1-5 串行。前端 Tasks 6-9（4 个组件）可并行创建。Tasks 10-12 依赖前端组件完成。Tasks 14-15 是验证关卡。
