@@ -1,7 +1,7 @@
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { saveExtractionToDb, backfillLegacyEncryption } from "./db";
-import { WeightedTagSchema, ActionItemSchema } from "@/schemas/core";
+import { WeightedTagSchema, ActionItemSchema, MissingFieldSchema } from "@/schemas/core";
 import { createCryptoStore } from "@/lib/cryptoStore";
 import { getEncryptionKeys } from "@/lib/getKeys";
 import { prisma } from "@/lib/db";
@@ -30,6 +30,7 @@ const ExtractionPayloadSchema = z.object({
   coreMemories: z.array(z.string()).default([]),
   status: z.enum(["complete", "pending", "ambiguous"]),
   followUpQuestion: z.string().optional(),
+  missingFields: z.array(MissingFieldSchema).optional().default([]),
 });
 
 // ==================== Jeffrey 点评分层系统 ====================
@@ -108,9 +109,12 @@ const SYSTEM_PROMPT = `
 ## 提取规则
 
 ### 人物姓名 (name)
-- 必须提取真实姓名或具体称呼（如"老王"、"张总"、"李老师"、"小王"等）
-- 不要使用职业或描述性词汇作为姓名（不能用"算法专家"、"投资人"等）
-- 如果文中没有明确姓名，使用文中提到的称呼（如"老王"）或"某人"
+- 必须提取真实姓名或具体可指代的称呼（如"老王"、"张总"、"李老师"、"小王"等）。
+- **严禁使用泛指或描述性短语作为姓名**。以下情况必须将 status 设为 "pending" 并在 missingFields 中报告：
+  - "某人"、"那个人"、"一个XX的人"、"这位大佬"等无具体指向的称呼
+  - 只用代词（"他"、"她"）而无上下文中的具体姓名
+  - 用职业描述代替姓名（如"一个投资人"、"那个做AI的"）
+- 只有在文中确实没有姓名且用户也未提供任何可用的称呼时，才使用"某人"，且**必须**标记为 pending。
 
 ### 人物标签 (careers / interests)
 - 采用 { name: string, weight: number } 格式，weight 范围 0.0 ~ 1.0。
@@ -135,58 +139,55 @@ const SYSTEM_PROMPT = `
 ### 日期与地点
 - **直接提取用户输入中的日期**，不要自行解释或转换。
 - 日期格式：YYYY-MM-DDTHH:mm:ss+08:00（如2026-04-05T12:00:00+08:00）
-- 如果用户说"今天"，实际上文已经被替换为具体日期，直接提取即可。
-- **日期是必须提取的字段**，如果用户没有提及具体时间，请明确在 followUpQuestion 中询问。
+- 如果用户说"今天"，上文已被替换为具体日期，直接提取即可。
+- **日期是必须提取的字段**，如果用户没有提及具体时间，在 missingFields 中报告。
+- **公司/组织名称**：如果文中提到"他那家公司"、"他们公司"等模糊指代，在 missingFields 中报告。
 
 ## 完备性判断
 
-**status = "complete"**：同时满足：
-1. 至少一位人物拥有 career 标签
-2. sentiment 字段非空
-3. actionItems 数组非空
-4. **date 字段非空**（这次互动是什么时候？）
+**status = "complete"** 必须同时满足：
+1. **所有人物拥有具体可指代的姓名**（不是泛指、"某人"、或描述性短语）
+2. 至少一位人物拥有 career 标签
+3. sentiment 字段非空
+4. actionItems 数组非空
+5. **date 字段非空**（这次互动是什么时候？）
 
-**status = "pending"**：任一条件不满足时，在 followUpQuestion 填写追问。
-- 如果缺少日期，追问示例："这是什么时候的事？今天还是前几天？"
-- 如果缺少 career，追问示例："老王这次聊了很多，他现在主要的工作方向是什么？"
-- 如果缺少 actionItem，追问示例："这次聊完有没有什么约定或者你想跟进的事情？"
+**status = "pending"**：以上任一条件不满足时：
+- 将 status 设为 "pending"
+- 在 **missingFields** 数组中列出所有不满足的字段
+- 每个 missingField 包含：
+  - field: 字段名（"name" | "company" | "location" | "career" | "sentiment" | "actionItems" | "date"）
+  - priority: 优先级（"high"=姓名/日期, "mid"=公司/career/sentiment, "low"=地点/其他）
+  - question: 一句自然的中文追问，提及上下文信息
+- **重要约束**：missingFields 按 priority 排序（high → mid → low）
+- 仍然填写 followUpQuestion（向后兼容），内容为第一个（最高优先级）missingField 的 question
 
-**重要约束**：followUpQuestion 每次只问 1 个问题，选择最影响记录质量的缺失项，不要一次列举多个问题。
+**question 示例**（好的追问）：
+- 姓名缺失："这位做区块链的——他叫什么名字？总得有个称呼吧。"
+- 公司缺失："你提到「他那家公司」——公司叫什么名字？"
+- career 缺失："他现在主要的工作方向是什么？"
+- 日期缺失："这是什么时候的事？今天还是前几天？"
 
-## 同名检测（自动识别）
+**question 反例**（不好的追问——太模板化）：
+- "请补充缺少的信息"
+- "还需要更多数据"
+- "信息不完整，请补充"
+
+### 同名检测（自动识别）
 
 若在同一次输入中发现多个姓名可能指向同一人（如"老王"和"王总"），必须：
-
 1. 在该人物对象中设置 ambiguous: true
-2. 在 ambiguousWith 数组中填入疑似重复的已有姓名（如 ["老王"]）
-3. 在 followUpQuestion 中询问："你指的是之前录入的老王吗？"
-4. 将 status 设为 "ambiguous"
-
-**判断标准**：姓氏相同 + 昵称/敬称模式（如"老X"="X总"），且文中语境暗示是同一人。
-
-**示例场景**：
-输入："今天和王总（老王的大学同学）一起见了小李"
-输出：
-// 例
-{
-  "persons": [
-    { "name": "王总", "ambiguous": true, "ambiguousWith": ["老王"], "careers": [...] },
-    { "name": "小李", "careers": [...] }
-  ],
-  "status": "ambiguous",
-  "followUpQuestion": "你指的是之前录入的老王吗？"
-}
-// 例 结束
+2. 在 ambiguousWith 数组中填入疑似重复的已有姓名
+3. 将 status 设为 "ambiguous"
+4. 在 followUpQuestion 中询问："你指的是之前录入的老王吗？"
 
 注意：
 - ambiguous 只在提取到"可能是同一人"时触发，不要过度猜测
-- 如果用户明确说明是不同人（如"老王是父亲，王总是儿子"），不要标记 ambiguous
-- ambiguous 和 pending 可以共存（信息不完整时也设为 pending）
+- 如果用户明确说明是不同人，不要标记 ambiguous
 
 ## 重要提示
 - 你必须调用 save_extraction 工具，将所有提取结果作为参数传入。不要输出任何纯文本。
 - 用户输入的是中文，请确保正确解析 UTF-8 编码的文本。
-- 如果信息不完整，请先返回 JSON（即使 status 为 "pending"），让用户补充信息。
 `.trim();
 
 function getApiKey(): string {
