@@ -244,7 +244,11 @@ const JeffreyInputPage = () => {
         setRoundHistory([]);
       }
 
-      if (data.status === 'complete') {
+      if (isFollowUp) {
+        // After collecting follow-up answers, always go to result.
+        // Never loop back to followup — one round of questions is enough.
+        setPhase('result');
+      } else if (data.status === 'complete') {
         setPhase('result');
       } else if (data.status === 'pending' && data.missingFields && data.missingFields.length > 0) {
         setPhase('followup');
@@ -347,16 +351,24 @@ const JeffreyInputPage = () => {
     if (currentRound < missingFields.length - 1) {
       setCurrentRound(currentRound + 1);
     } else {
-      const contextParts: string[] = [];
+      // Build clear, declarative supplement text (not Q&A format)
+      const fieldLabels: Record<string, string> = {
+        name: '人物姓名', company: '公司名称', location: '见面地点',
+        career: '职业方向', sentiment: '互动情绪', actionItems: '待办事项', date: '互动日期',
+      };
+      const supplements: string[] = [];
       for (const h of newHistory) {
         if (h.answer) {
-          const label = missingFields.find(f => f.field === h.field)?.question || h.field;
-          contextParts.push(`${label}\n回答: ${h.answer}`);
+          const label = fieldLabels[h.field] || h.field;
+          supplements.push(`- ${label}：${h.answer}`);
         }
       }
+      const supplementText = supplements.length > 0
+        ? `\n\n[已确认的补充信息]\n${supplements.join('\n')}`
+        : '';
       const accumulatedText = originalInputText
-        ? `${originalInputText}\n\n[追问回复]\n${contextParts.join('\n')}`
-        : `${inputText}\n\n[追问回复]\n${contextParts.join('\n')}`;
+        ? `${originalInputText}${supplementText}`
+        : `${inputText}${supplementText}`;
       await handleSubmitWithText(accumulatedText, true);
     }
   };
@@ -457,6 +469,35 @@ const JeffreyInputPage = () => {
         <Header />
 
         <main style={{ maxWidth: 620, margin: '0 auto', padding: '16px 20px' }}>
+          {/* ═══════════════════════════════════ */}
+          {/* OVERLAYS (above current phase)     */}
+          {/* ═══════════════════════════════════ */}
+          {showResolutionPrompt && nameResolutions.length > 0 && (
+            <NameResolutionPrompt
+              resolutions={nameResolutions}
+              allPersons={existingPersons}
+              onConfirm={handleResolutionConfirm}
+              onSkip={handleResolutionSkip}
+            />
+          )}
+
+          {resultStatus === 'ambiguous' && ambiguousPersons.length > 0 && (
+            <AmbiguousPrompt
+              ambiguousPersons={ambiguousPersons as Array<{ name: string; ambiguousWith: string[]; careers: Array<{ name: string; weight: number }>; interests: Array<{ name: string; weight: number }>; vibeTags: string[] }>}
+              existingPersons={existingPersons}
+              onConfirmMerge={async (name, existingId, ambiguousName) => {
+                setAmbiguousPersons([]);
+                setResultStatus(null);
+                await handleSubmitWithText(`是的，${name}就是之前录入的${ambiguousName}，请合并。`, true);
+              }}
+              onCreateNew={name => {
+                setAmbiguousPersons([]);
+                setResultStatus(null);
+                handleSubmitWithText(`用户确认：${name}不是之前录入的同一人，是新创建的条目。`, true);
+              }}
+            />
+          )}
+
           {/* ═══════════════════════════════════ */}
           {/* PHASE: INPUT                        */}
           {/* ═══════════════════════════════════ */}
@@ -594,6 +635,21 @@ const JeffreyInputPage = () => {
           {/* ═══════════════════════════════════ */}
           {phase === 'followup' && missingFields.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {isProcessing && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 16px', borderRadius: C.radiusMd,
+                  background: C.bgCard, border: `1px solid ${C.borderAccent}`,
+                  fontSize: 14, color: C.textSecondary,
+                }}>
+                  <div style={{
+                    width: 18, height: 18, border: `2px solid ${C.primaryDim}`,
+                    borderTopColor: C.primary, borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                  }} />
+                  正在保存...
+                </div>
+              )}
               <RoundPrompt
                 allFields={missingFields.map(f => ({
                   field: f.field,
@@ -773,35 +829,6 @@ const JeffreyInputPage = () => {
                 录入新的互动
               </Button>
             </div>
-          )}
-
-          {/* ═══════════════════════════════════ */}
-          {/* OVERLAYS                          */}
-          {/* ═══════════════════════════════════ */}
-          {showResolutionPrompt && nameResolutions.length > 0 && (
-            <NameResolutionPrompt
-              resolutions={nameResolutions}
-              allPersons={existingPersons}
-              onConfirm={handleResolutionConfirm}
-              onSkip={handleResolutionSkip}
-            />
-          )}
-
-          {resultStatus === 'ambiguous' && ambiguousPersons.length > 0 && (
-            <AmbiguousPrompt
-              ambiguousPersons={ambiguousPersons as Array<{ name: string; ambiguousWith: string[]; careers: Array<{ name: string; weight: number }>; interests: Array<{ name: string; weight: number }>; vibeTags: string[] }>}
-              existingPersons={existingPersons}
-              onConfirmMerge={async (name, existingId, ambiguousName) => {
-                setAmbiguousPersons([]);
-                setResultStatus(null);
-                await handleSubmitWithText(`是的，${name}就是之前录入的${ambiguousName}，请合并。`, true);
-              }}
-              onCreateNew={name => {
-                setAmbiguousPersons([]);
-                setResultStatus(null);
-                handleSubmitWithText(`用户确认：${name}不是之前录入的同一人，是新创建的条目。`, true);
-              }}
-            />
           )}
 
           {/* Recording pulse keyframes */}
