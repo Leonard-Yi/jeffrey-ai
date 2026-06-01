@@ -84,21 +84,111 @@ function getJeffreyOpening(mood: JeffreyMood, name: string, meOwedCount: number,
 
 // ==================== 结束 ====================
 
-// 完备性检查函数
-function describeCompleteness(data: z.infer<typeof ExtractionPayloadSchema>): string | null {
-  const missing: string[] = [];
+// ==================== 服务端质量校验 ====================
 
+/** 模糊人名模式：匹配泛指、描述性短语、单字代词等 */
+const VAGUE_NAME_PATTERNS: RegExp[] = [
+  /^某人$/,
+  /^那个人$/,
+  /^这位(.{1,6})$/,
+  /^那位(.{1,6})$/,
+  /^一个.{0,10}的$/,
+  /^某个(.{1,6})$/,
+  /^他$/,
+  /^她$/,
+  /^这个(人|家伙|哥们|朋友)$/,
+  /^那位$/,
+  /^这位$/,
+];
+
+function isNameVague(name: string): boolean {
+  if (!name || name.trim().length === 0) return true;
+  const trimmed = name.trim();
+  return VAGUE_NAME_PATTERNS.some((p) => p.test(trimmed));
+}
+
+// ==================== 增强版完备性检查 ====================
+
+interface QualityIssue {
+  field: string;
+  priority: "high" | "mid" | "low";
+  question: string;
+}
+
+function validateExtractionQuality(
+  data: z.infer<typeof ExtractionPayloadSchema>,
+  originalText: string,
+): { valid: boolean; issues: QualityIssue[] } {
+  const issues: QualityIssue[] = [];
+
+  // 1. 检查人物姓名质量（最高优先级）
+  for (const person of data.persons) {
+    if (isNameVague(person.name)) {
+      const contextClue = extractContextClue(originalText, person.name);
+      issues.push({
+        field: "name",
+        priority: "high",
+        question: contextClue
+          ? `文中提到${contextClue}——具体怎么称呼他？总得有个名字吧。`
+          : `这位是？总得有个名字或称呼吧。`,
+      });
+      break;
+    }
+  }
+
+  // 2. 检查 career 标签
   const hasCareer = data.persons.some((p) => (p.careers || []).length > 0);
-  if (!hasCareer) missing.push("至少一位人物的职业/专长标签（careers）");
+  if (!hasCareer) {
+    issues.push({
+      field: "career",
+      priority: "mid",
+      question: data.persons.length > 0
+        ? `${data.persons[0].name}现在主要做什么方向？有没有什么专长？`
+        : "这次聊的人主要做什么方向？",
+    });
+  }
 
-  if (!(data.sentiment || "").trim()) missing.push("这次互动的情绪基调（sentiment）");
+  // 3. 检查 sentiment
+  if (!(data.sentiment || "").trim()) {
+    issues.push({
+      field: "sentiment",
+      priority: "mid",
+      question: "这次互动的整体感觉怎么样？轻松愉快还是有点紧张？",
+    });
+  }
 
-  if ((data.actionItems || []).length === 0)
-    missing.push("待办事项或社交债务（actionItems）");
+  // 4. 检查 actionItems
+  if ((data.actionItems || []).length === 0) {
+    issues.push({
+      field: "actionItems",
+      priority: "mid",
+      question: "这次聊完有没有什么约定或想跟进的事情？",
+    });
+  }
 
-  if (!data.date) missing.push("这次互动的时间（date）");
+  // 5. 检查 date
+  if (!data.date) {
+    issues.push({
+      field: "date",
+      priority: "high",
+      question: "这是什么时候的事？今天还是前几天？",
+    });
+  }
 
-  return missing.length > 0 ? missing.join("；") : null;
+  return { valid: issues.length === 0, issues };
+}
+
+/** 从原文中提取上下文线索，用于生成自然的追问 */
+function extractContextClue(text: string, fallbackName: string): string | null {
+  const patterns = [
+    /一个(做|搞|弄).{2,10}的/,
+    /那位?(做|搞|弄).{2,10}的/,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[0];
+  }
+  return null;
 }
 
 const SYSTEM_PROMPT = `
@@ -455,14 +545,14 @@ export async function POST(request: Request) {
     const data = result.data;
 
     // 服务器端完备性检查：LLM 若标记 complete 但缺字段，强制改为 pending
-    const missing = describeCompleteness(data);
-    if (missing && data.status === "complete") {
-      console.warn("[Jeffrey.AI] LLM marked complete but missing fields, forcing pending:", missing);
+    const qualityResult = validateExtractionQuality(data, text);
+    if (!qualityResult.valid && data.status === "complete") {
+      const issueFields = qualityResult.issues.map(i => i.field).join('；');
+      console.warn("[Jeffrey.AI] LLM marked complete but missing fields, forcing pending:", issueFields);
       data.status = "pending";
-      if (!data.followUpQuestion) {
-        // 取第一个缺失项作为追问内容
-        const firstMissing = missing.split('；')[0];
-        data.followUpQuestion = `还需要补充：${firstMissing}`;
+      if (!data.followUpQuestion && qualityResult.issues.length > 0) {
+        const firstIssue = qualityResult.issues[0];
+        data.followUpQuestion = firstIssue.question;
       }
     }
 
