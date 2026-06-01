@@ -7,6 +7,7 @@ import { getEncryptionKeys } from "@/lib/getKeys";
 import { prisma } from "@/lib/db";
 import { createPseudonymizer } from "@/lib/pseudonymizer";
 import { safeLog } from "@/lib/safeLog";
+import { encodeSSE } from "@/lib/sse-utils";
 
 // 复用 schemas/core 的基础类型
 const ExtractedPersonSchema = z.object({
@@ -425,226 +426,287 @@ export async function POST(request: Request) {
     const { sanitizedText } = await pseudo.pseudonymize(normalizedText);
     safeLog("Normalized text (pseudonymized)", sanitizedText);
 
-    // 添加超时控制
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+    const stream = new ReadableStream({
+      async start(controller) {
+        function emit(event: Parameters<typeof encodeSSE>[0]) {
+          controller.enqueue(encodeSSE(event));
+        }
 
-    console.log("[Jeffrey.AI] Calling DeepSeek API with model:", getModel());
-    console.log("[Jeffrey.AI] API endpoint: https://api.deepseek.com/anthropic/v1/messages");
+        try {
+          // Step 1: NER & pseudonymize complete
+          emit({
+            type: "progress",
+            step: "parsing",
+            message: "解析文本 & 实体识别",
+            detail: "分词、命名实体识别、语境分析",
+          });
 
-    let apiResponse;
-    try {
-      apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${getApiKey()}`,
-        },
-        body: JSON.stringify({
-          model: getModel(),
-          system: SYSTEM_PROMPT,
-          messages: [
-            { role: "user", content: sanitizedText },
-          ],
-          tools: [extractionTool],
-          temperature: 0.3,
-          max_tokens: 4000,
-        }),
-        signal: controller.signal,
-      });
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
-        console.error("[Jeffrey.AI] DeepSeek API timeout after 30 seconds");
-        return Response.json(
-          { error: "AI响应超时，请重试", status: "error" },
-          { status: 504 }
-        );
-      }
-      throw fetchError;
-    }
+          // Step 2: Call LLM
+          emit({
+            type: "progress",
+            step: "extracting",
+            message: "LLM 提取结构化数据...",
+            detail: "调用 DeepSeek 模型进行结构化提取",
+          });
 
-    clearTimeout(timeoutId);
-    console.log("[Jeffrey.AI] DeepSeek API response status:", apiResponse.status);
+          const apiResponse = await fetch("https://api.deepseek.com/anthropic/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${getApiKey()}`,
+            },
+            body: JSON.stringify({
+              model: getModel(),
+              system: SYSTEM_PROMPT,
+              messages: [{ role: "user", content: sanitizedText }],
+              tools: [extractionTool],
+              temperature: 0.3,
+              max_tokens: 4000,
+            }),
+            signal: AbortSignal.timeout(30000),
+          });
 
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text();
-      console.error(`[Jeffrey.AI] DeepSeek API error: ${apiResponse.status} - ${errorText.slice(0, 200)}`);
-      return Response.json(
-        { error: `AI服务暂时不可用 (${apiResponse.status})，请重试`, status: "error" },
-        { status: 502 }
-      );
-    }
+          if (!apiResponse.ok) {
+            emit({ type: "error", message: `AI服务暂时不可用 (${apiResponse.status})，请重试` });
+            controller.close();
+            return;
+          }
 
-    const apiData = await apiResponse.json();
-    console.log("[Jeffrey.AI] DeepSeek raw response:", JSON.stringify(apiData, null, 2).slice(0, 3000));
+          const apiData = await apiResponse.json();
 
-    // Anthropic-compatible response: content array with tool_use/text blocks
-    const toolUseBlock = apiData.content?.find((c: { type: string }) => c.type === "tool_use");
-    const textBlock = apiData.content?.find((c: { type: string }) => c.type === "text");
+          // Parse LLM response
+          const toolUseBlock = apiData.content?.find((c: { type: string }) => c.type === "tool_use");
+          const textBlock = apiData.content?.find((c: { type: string }) => c.type === "text");
 
-    let rawJson: unknown;
+          let rawJson: unknown;
+          if (toolUseBlock) {
+            rawJson = toolUseBlock.input || {};
+          } else if (textBlock?.text) {
+            const textContent = textBlock.text;
+            const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
+                              textContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              rawJson = JSON.parse(jsonMatch[jsonMatch.length - 1]);
+            } else {
+              emit({ type: "error", message: "AI未能正确提取信息，请重试或简化输入" });
+              controller.close();
+              return;
+            }
+          } else {
+            emit({ type: "error", message: "AI返回空响应，请重试" });
+            controller.close();
+            return;
+          }
 
-    if (toolUseBlock) {
-      rawJson = toolUseBlock.input || {};
-    } else if (textBlock?.text) {
-      const textContent = textBlock.text;
-      const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
-                        textContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        rawJson = JSON.parse(jsonMatch[jsonMatch.length - 1]);
-      } else {
-        console.error("[Jeffrey.AI] LLM did not call tool and returned non-JSON text:", textContent.slice(0, 200));
-        return Response.json(
-          { error: "AI未能正确提取信息，请重试或简化输入", status: "error" },
-          { status: 500 }
-        );
-      }
-    } else {
-      throw new Error("LLM returned empty response: " + JSON.stringify(apiData));
-    }
+          // Depseudonymize
+          const rawJsonStr = JSON.stringify(rawJson);
+          const depseudonymizedStr = await pseudo.depseudonymize(rawJsonStr);
+          rawJson = JSON.parse(depseudonymizedStr);
 
-    // Depseudonymize LLM output
-    const rawJsonStr = JSON.stringify(rawJson);
-    const depseudonymizedStr = await pseudo.depseudonymize(rawJsonStr);
-    rawJson = JSON.parse(depseudonymizedStr);
+          // Leak check
+          const leaks = pseudo.checkLeaks(JSON.stringify(rawJson));
+          if (leaks.length > 0) {
+            console.warn("[Jeffrey.AI] ENTITY LEAK DETECTED:", leaks.length, "entities leaked in LLM output");
+          }
 
-    // Check for leaks
-    const leaks = pseudo.checkLeaks(JSON.stringify(rawJson));
-    if (leaks.length > 0) {
-      console.warn("[Jeffrey.AI] ENTITY LEAK DETECTED:", leaks.length, "entities leaked in LLM output");
-    }
+          // nullToUndefined normalizer
+          function nullToUndefined(obj: unknown): unknown {
+            if (obj === null) return undefined;
+            if (Array.isArray(obj)) return obj.map(nullToUndefined);
+            if (obj && typeof obj === "object") {
+              return Object.fromEntries(
+                Object.entries(obj as Record<string, unknown>).map(
+                  ([k, v]) => [k, nullToUndefined(v)]
+                )
+              );
+            }
+            return obj;
+          }
 
-    // MiniMax may return null instead of undefined — normalize before Zod validation
-    function nullToUndefined(obj: unknown): unknown {
-      if (obj === null) return undefined;
-      if (Array.isArray(obj)) return obj.map(nullToUndefined);
-      if (obj && typeof obj === "object") {
-        return Object.fromEntries(
-          Object.entries(obj as Record<string, unknown>).map(
-            ([k, v]) => [k, nullToUndefined(v)]
-          )
-        );
-      }
-      return obj;
-    }
+          // Zod validation
+          const result = ExtractionPayloadSchema.safeParse(nullToUndefined(rawJson));
+          if (!result.success) {
+            console.error("[Jeffrey.AI] Zod validation failed:", JSON.stringify(result.error.flatten()));
+            emit({ type: "error", message: "AI返回格式不完整，请重试或简化输入" });
+            controller.close();
+            return;
+          }
 
-    const result = ExtractionPayloadSchema.safeParse(nullToUndefined(rawJson));
+          const data = result.data;
 
-    if (!result.success) {
-      console.error(
-        "[Jeffrey.AI] Zod validation failed for LLM output:",
-        JSON.stringify(result.error.flatten(), null, 2)
-      );
-      return Response.json(
-        { error: "AI返回格式不完整，请重试或简化输入", status: "error" },
-        { status: 500 }
-      );
-    }
+          // Step 3: Quality check
+          const qualityCheck = validateExtractionQuality(data, normalizedText);
 
-    const data = result.data;
+          // LLM 判定 complete 但服务端发现模糊姓名 → 强制 pending
+          if (!qualityCheck.valid && data.status === "complete") {
+            console.warn("[Jeffrey.AI] Server-side quality check found issues LLM missed:", qualityCheck.issues.map((i) => i.field).join(", "));
+            data.status = "pending";
+            // @ts-ignore - QualityIssue.field is always valid MissingField enum at runtime
+            data.missingFields = qualityCheck.issues.map((issue) => ({
+              field: issue.field,
+              priority: issue.priority,
+              question: issue.question,
+            }));
+            if (!data.followUpQuestion && qualityCheck.issues.length > 0) {
+              data.followUpQuestion = qualityCheck.issues[0].question;
+            }
+          }
 
-    // 服务器端完备性检查：LLM 若标记 complete 但缺字段，强制改为 pending
-    const qualityResult = validateExtractionQuality(data, text);
-    if (!qualityResult.valid && data.status === "complete") {
-      const issueFields = qualityResult.issues.map(i => i.field).join('；');
-      console.warn("[Jeffrey.AI] LLM marked complete but missing fields, forcing pending:", issueFields);
-      data.status = "pending";
-      if (!data.followUpQuestion && qualityResult.issues.length > 0) {
-        const firstIssue = qualityResult.issues[0];
-        data.followUpQuestion = firstIssue.question;
-      }
-    }
+          // LLM pending 但 missingFields 为空 → 填充
+          if (data.status === "pending" && (!data.missingFields || data.missingFields.length === 0)) {
+            if (qualityCheck.issues.length > 0) {
+              // @ts-ignore - QualityIssue.field is always valid MissingField enum at runtime
+              data.missingFields = qualityCheck.issues.map((issue) => ({
+                field: issue.field,
+                priority: issue.priority,
+                question: issue.question,
+              }));
+              console.log("[Jeffrey.AI] Filled missingFields from server-side check:", qualityCheck.issues.map((i) => i.field).join(", "));
+            }
+          }
 
-    // 用于返回给前端的人物ID
-    let personIds: string[] = [];
+          // 合并服务端额外发现的缺失项
+          if (data.status === "pending" && data.missingFields && data.missingFields.length > 0) {
+            const existingFields = new Set(data.missingFields.map((f) => f.field));
+            // @ts-ignore - QualityIssue.field is always valid MissingField enum at runtime
+            const extraIssues = qualityCheck.issues.filter((i) => !existingFields.has(i.field));
+            if (extraIssues.length > 0) {
+              // @ts-ignore - QualityIssue.field is always valid MissingField enum at runtime
+              data.missingFields = [
+                ...data.missingFields,
+                ...extraIssues.map((issue) => ({
+                  field: issue.field,
+                  priority: issue.priority,
+                  question: issue.question,
+                })),
+              ].sort((a, b) => {
+                const order = { high: 0, mid: 1, low: 2 };
+                return order[a.priority] - order[b.priority];
+              });
+              console.log("[Jeffrey.AI] Merged extra missingFields from server-side:", extraIssues.map((i) => i.field).join(", "));
+            }
+          }
 
-    // 当状态为 complete 时写入完整数据（包括互动记录）
-    if (data.status === "complete") {
-      try {
-        // @ts-ignore - Zod output type mismatch with manual interface
-        const saveResult = await saveExtractionToDb(data, true, userId, store, pseudoKey, encKey); // createInteraction=true，确保追问回复后能创建互动
-        personIds = saveResult.personIds;
-        console.log("[Jeffrey.AI] Successfully saved complete data to database");
-      } catch (dbError) {
-        console.error("[Jeffrey.AI] Database save failed:", dbError);
-        console.error("[Jeffrey.AI] Error details:", {
-          message: dbError.message,
-          code: dbError.code,
-          meta: dbError.meta,
-        });
-        // 不抛出错误，继续返回数据给前端
-      }
-    } else if (data.status === "pending" && data.persons && data.persons.length > 0) {
-      // pending 状态时，只要有日期和人物，也创建互动记录（只是数据可能不完整）
-      // 这样用户的每次输入都能留下互动历史
-      try {
-        const saveResult = await saveExtractionToDb({
-          persons: data.persons,
-          date: data.date,
-          location: undefined,
-          contextType: undefined,
-          sentiment: undefined,
-          actionItems: [],
-          coreMemories: [],
-        } as any, true, userId, store, pseudoKey, encKey); // createInteraction=true，确保pending时也创建互动
-        personIds = saveResult.personIds;
-        console.log("[Jeffrey.AI] Saved pending person data with interaction");
-      } catch (dbError) {
-        console.error("[Jeffrey.AI] Database save (pending) failed:", dbError);
-      }
-    } else if (data.status === "ambiguous") {
-      // ambiguous 状态：不创建真正的 Interaction 记录
-      // 仅返回 ambiguousPersons 列表供前端展示确认选项
-      console.log("[Jeffrey.AI] Ambiguous status detected, returning ambiguous persons for user confirmation");
-    }
+          const missingCount = data.missingFields?.length || 0;
 
-    // 生成 Jeffrey 风格的评论（三层结构：基调→主体模板→动态补充）
-    const personNames = data.persons.map(p => p.name).join('、');
-    const hasAnxiety = data.persons.some(p =>
-      p.vibeTags.some(v => v.includes('焦虑') || v.includes('压力'))
-    );
-    const meOwedCount = data.actionItems.filter(a => a.ownedBy === 'me').length;
-    const themOwedCount = data.actionItems.filter(a => a.ownedBy === 'them').length;
-    const allCareers = data.persons.flatMap(p => p.careers.map(c => c.name));
-    const allInterests = data.persons.flatMap(p => p.interests.map(i => i.name));
-    const hasHighValueCareer = allCareers.some(c =>
-      ['投资', '金融', '科技', '创始人', 'CEO', '合伙人', '律师', '医生', '教授'].some(k => c.includes(k))
-    );
-    const hasCareers = allCareers.length > 0;
+          emit({
+            type: "progress",
+            step: "quality_check",
+            message: missingCount > 0
+              ? `检测到 ${missingCount} 个信息缺口`
+              : "所有字段完整",
+            detail: missingCount > 0
+              ? data.missingFields!.map(f => `${f.field}(${f.priority})`).join("、")
+              : "无缺失项",
+          });
 
-    let jeffreyComment = "";
+          // Step 4: DB save
+          let personIds: string[] = [];
+          if (data.status === "complete") {
+            try {
+              // @ts-ignore - Zod output type mismatch with manual interface
+              const saveResult = await saveExtractionToDb(data, true, userId, store, pseudoKey, encKey);
+              personIds = saveResult.personIds;
+              console.log("[Jeffrey.AI] Successfully saved complete data to database");
+            } catch (dbError) {
+              console.error("[Jeffrey.AI] Database save failed:", dbError);
+            }
+          } else if (data.status === "pending" && data.persons && data.persons.length > 0) {
+            try {
+              const saveResult = await saveExtractionToDb({
+                persons: data.persons,
+                date: data.date,
+                location: undefined,
+                contextType: undefined,
+                sentiment: undefined,
+                actionItems: [],
+                coreMemories: [],
+              } as any, true, userId, store, pseudoKey, encKey);
+              personIds = saveResult.personIds;
+              console.log("[Jeffrey.AI] Saved pending person data with interaction");
+            } catch (dbError) {
+              console.error("[Jeffrey.AI] Database save (pending) failed:", dbError);
+            }
+          } else if (data.status === "ambiguous") {
+            console.log("[Jeffrey.AI] Ambiguous status detected, returning ambiguous persons for user confirmation");
+          }
 
-    if (data.persons.length === 0) {
-      jeffreyComment = "先生，您告诉我这么多，却没提到任何人的名字。是在考验我的记忆力吗？";
-    } else {
-      // 第一层：判断基调
-      const mood = getJeffreyMood({ hasAnxiety, hasHighValueCareer, hasCareers, meOwedCount, themOwedCount });
-      // 第二层：随机选主体模板
-      jeffreyComment = getJeffreyOpening(mood, personNames, meOwedCount, themOwedCount);
-      // 第三层：动态补充（避免和 sarcastic 模板内容重复）
-      if (meOwedCount > 0 && themOwedCount > 0) {
-        jeffreyComment += ` 这次互动双方都有承诺要履行——这种"互相亏欠"的状态，其实是最稳固的关系。`;
-      } else if (meOwedCount > 0 && mood !== 'sarcastic') {
-        jeffreyComment += ` 您有${meOwedCount}件事要做。先生，欠人情是要还的，建议您尽快处理。`;
-      } else if (themOwedCount > 0 && mood !== 'sarcastic') {
-        jeffreyComment += ` 对方欠您${themOwedCount}件事。这种人情的债，往往比金钱更值得记住。`;
-      }
-      if (allInterests.length > 0 && (mood === 'neutral' || mood === 'appreciative')) {
-        jeffreyComment += ` 对了，${personNames}对${allInterests[0]}感兴趣——这是个不错的切入点。`;
-      }
-    }
+          // Step 5: Jeffrey comment
+          const personNames = data.persons.map(p => p.name).join('、');
+          const hasAnxiety = data.persons.some(p =>
+            p.vibeTags.some(v => v.includes('焦虑') || v.includes('压力'))
+          );
+          const meOwedCount = data.actionItems.filter(a => a.ownedBy === 'me').length;
+          const themOwedCount = data.actionItems.filter(a => a.ownedBy === 'them').length;
+          const allCareers = data.persons.flatMap(p => p.careers.map(c => c.name));
+          const allInterests = data.persons.flatMap(p => p.interests.map(i => i.name));
+          const hasHighValueCareer = allCareers.some(c =>
+            ['投资', '金融', '科技', '创始人', 'CEO', '合伙人', '律师', '医生', '教授'].some(k => c.includes(k))
+          );
+          const hasCareers = allCareers.length > 0;
 
-    return Response.json({
-      status: data.status,
-      jeffreyComment,
-      persons: data.persons,
-      personIds, // 用于破冰助手预生成
-      followUpQuestion: data.followUpQuestion,
-      actionItems: data.actionItems,
-      ambiguousPersons: data.status === "ambiguous"
-        ? data.persons.filter((p) => p.ambiguous)
-        : undefined,
+          let jeffreyComment = "";
+          if (data.persons.length === 0) {
+            jeffreyComment = "先生，您告诉我这么多，却没提到任何人的名字。是在考验我的记忆力吗？";
+          } else {
+            const mood = getJeffreyMood({ hasAnxiety, hasHighValueCareer, hasCareers, meOwedCount, themOwedCount });
+            jeffreyComment = getJeffreyOpening(mood, personNames, meOwedCount, themOwedCount);
+            if (meOwedCount > 0 && themOwedCount > 0) {
+              jeffreyComment += ` 这次互动双方都有承诺要履行——这种"互相亏欠"的状态，其实是最稳固的关系。`;
+            } else if (meOwedCount > 0 && mood !== 'sarcastic') {
+              jeffreyComment += ` 您有${meOwedCount}件事要做。先生，欠人情是要还的，建议您尽快处理。`;
+            } else if (themOwedCount > 0 && mood !== 'sarcastic') {
+              jeffreyComment += ` 对方欠您${themOwedCount}件事。这种人情的债，往往比金钱更值得记住。`;
+            }
+            if (allInterests.length > 0 && (mood === 'neutral' || mood === 'appreciative')) {
+              jeffreyComment += ` 对了，${personNames}对${allInterests[0]}感兴趣——这是个不错的切入点。`;
+            }
+          }
+
+          emit({
+            type: "progress",
+            step: "done",
+            message: "分析完成",
+            detail: data.status === "complete" ? "所有字段已提取" : `${missingCount} 个字段待补充`,
+          });
+
+          // Final result event
+          emit({
+            type: "result",
+            data: {
+              status: data.status,
+              jeffreyComment,
+              persons: data.persons,
+              personIds,
+              followUpQuestion: data.followUpQuestion,
+              missingFields: data.missingFields || [],
+              date: data.date || null,
+              sentiment: data.sentiment || null,
+              actionItems: data.actionItems,
+              ambiguousPersons: data.status === "ambiguous"
+                ? data.persons.filter((p) => p.ambiguous)
+                : undefined,
+            },
+          });
+
+          controller.close();
+        } catch (error) {
+          console.error("[Jeffrey.AI] SSE stream error:", error);
+          try {
+            emit({ type: "error", message: "Internal server error" });
+          } catch {}
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
     });
   } catch (error) {
     console.error("Error in analyze API:", error);
