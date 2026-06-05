@@ -23,25 +23,89 @@ interface Entity {
   end: number;
 }
 
-/** Extract named entities from Chinese text using jieba POS tagging. */
+/**
+ * Tokens that jieba commonly mis-tags as nr (person) but are actually
+ * brands, places, or other non-person entities. These are left in plain
+ * text so the LLM can correctly interpret them as context.
+ */
+const KNOWN_NON_PERSON = new Set([
+  "星巴克",   // Starbucks — brand name, not a person
+  "麦当劳",   // McDonald's
+  "肯德基",   // KFC
+]);
+
+/** Chinese surnames. Used to validate that a merged nr token is plausibly a name. */
+const CHINESE_SURNAMES = new Set([
+  "王","李","张","刘","陈","杨","黄","赵","周","吴",
+  "徐","孙","马","胡","朱","郭","何","罗","高","林",
+  "郑","梁","谢","宋","唐","许","邓","韩","冯","曹",
+  "彭","曾","肖","田","董","潘","袁","蔡","蒋","余",
+  "于","杜","叶","程","魏","苏","吕","丁","任","卢",
+  "姚","沈","钟","姜","崔","谭","陆","汪","范","金",
+  "石","廖","贾","夏","韦","付","方","白","邹","孟",
+  "熊","秦","邱","江","尹","薛","闫","段","雷","侯",
+  "龙","史","陶","黎","贺","顾","毛","郝","龚","邵",
+  "万","钱","严","覃","武","戴","莫","孔","向","汤",
+]);
+
+/** Extract named entities from Chinese text using jieba POS tagging.
+ *  Merges adjacent nr tokens (up to 3 chars) into compound person names.
+ *  Filters known non-person entities (brands, etc.). */
 function extractEntities(text: string): Entity[] {
   const jieba = getJieba();
   const tagged = jieba.tag(text) as Array<{ word: string; tag: string }>;
 
   const entities: Entity[] = [];
   let pos = 0;
+
+  // Build position map for all tokens
+  const withPos: Array<{ word: string; tag: string; start: number; end: number }> = [];
   for (const item of tagged) {
     const start = text.indexOf(item.word, pos);
     const end = start + item.word.length;
-    if (item.tag === "nr") {
-      entities.push({ text: item.word, type: "person", start, end });
-    } else if (item.tag === "ns") {
-      entities.push({ text: item.word, type: "place", start, end });
-    } else if (item.tag === "nt") {
-      entities.push({ text: item.word, type: "org", start, end });
-    }
+    withPos.push({ word: item.word, tag: item.tag, start, end });
     pos = end;
   }
+
+  let i = 0;
+  while (i < withPos.length) {
+    const item = withPos[i];
+
+    if (item.tag === "nr" && !KNOWN_NON_PERSON.has(item.word)) {
+      // Merge adjacent nr tokens (up to 3 chars total, matching Chinese name lengths)
+      let merged = item.word;
+      let mergeCount = 1;
+      while (
+        i + mergeCount < withPos.length &&
+        withPos[i + mergeCount].tag === "nr" &&
+        !KNOWN_NON_PERSON.has(withPos[i + mergeCount].word) &&
+        (merged.length + withPos[i + mergeCount].word.length) <= 3
+      ) {
+        merged += withPos[i + mergeCount].word;
+        mergeCount++;
+      }
+
+      // Validate: merged name should start with a known surname (if 2+ chars)
+      const firstChar = merged.charAt(0);
+      const plausibleName = merged.length === 1 || CHINESE_SURNAMES.has(firstChar);
+
+      if (plausibleName) {
+        const end = withPos[i + mergeCount - 1].end;
+        entities.push({ text: merged, type: "person", start: item.start, end });
+      }
+      // If not a plausible name, skip pseudonymization for this token
+      i += mergeCount;
+    } else if (item.tag === "ns") {
+      entities.push({ text: item.word, type: "place", start: item.start, end: item.end });
+      i++;
+    } else if (item.tag === "nt") {
+      entities.push({ text: item.word, type: "org", start: item.start, end: item.end });
+      i++;
+    } else {
+      i++;
+    }
+  }
+
   return entities;
 }
 

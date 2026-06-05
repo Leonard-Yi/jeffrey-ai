@@ -276,12 +276,16 @@ const JeffreyInputPage = () => {
   };
 
   // ──────────────────────────────────────────────
-  // Entry point: check name resolution first
+  // Entry point: start analysis immediately, resolve runs in parallel
   // ──────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!inputText.trim()) return;
     setOriginalInputText(inputText);
 
+    // Start analysis immediately — don't block on name resolution
+    handleSubmitWithText(inputText);
+
+    // Check name resolution in background
     try {
       const r = await fetch('/api/persons/resolve', {
         method: 'POST',
@@ -294,12 +298,9 @@ const JeffreyInputPage = () => {
           setNameResolutions(d.resolutions);
           setPendingText(inputText);
           setShowResolutionPrompt(true);
-          return;
         }
       }
     } catch {}
-
-    await handleSubmitWithText(inputText);
   };
 
   // ──────────────────────────────────────────────
@@ -351,7 +352,11 @@ const JeffreyInputPage = () => {
     if (currentRound < missingFields.length - 1) {
       setCurrentRound(currentRound + 1);
     } else {
-      // Build clear, declarative supplement text (not Q&A format)
+      // Go to result immediately — don't make user wait for another LLM call
+      setPhase('result');
+      setIsProcessing(true);
+
+      // Save in background: send accumulated context to LLM for re-extraction
       const fieldLabels: Record<string, string> = {
         name: '人物姓名', company: '公司名称', location: '见面地点',
         career: '职业方向', sentiment: '互动情绪', actionItems: '待办事项', date: '互动日期',
@@ -360,16 +365,22 @@ const JeffreyInputPage = () => {
       for (const h of newHistory) {
         if (h.answer) {
           const label = fieldLabels[h.field] || h.field;
-          supplements.push(`- ${label}：${h.answer}`);
+          supplements.push(`${label}：${h.answer}`);
         }
       }
-      const supplementText = supplements.length > 0
-        ? `\n\n[已确认的补充信息]\n${supplements.join('\n')}`
-        : '';
-      const accumulatedText = originalInputText
-        ? `${originalInputText}${supplementText}`
-        : `${inputText}${supplementText}`;
-      await handleSubmitWithText(accumulatedText, true);
+      if (supplements.length > 0) {
+        const supplementText = `\n\n[已确认的补充信息 — 请直接使用这些值更新记录]\n${supplements.join('\n')}`;
+        const accumulatedText = originalInputText
+          ? `${originalInputText}${supplementText}`
+          : `${inputText}${supplementText}`;
+        try {
+          await handleSubmitWithText(accumulatedText, true);
+        } catch {
+          // Background save failed — result is already shown, user doesn't need to know
+        }
+      } else {
+        setIsProcessing(false);
+      }
     }
   };
 

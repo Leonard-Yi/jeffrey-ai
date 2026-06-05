@@ -10,9 +10,28 @@ const ResolveRequestSchema = z.object({
 });
 
 /**
+ * Chinese surnames for name validation.
+ */
+const CHINESE_SURNAMES = new Set([
+  "王","李","张","刘","陈","杨","黄","赵","周","吴",
+  "徐","孙","马","胡","朱","郭","何","罗","高","林",
+  "郑","梁","谢","宋","唐","许","邓","韩","冯","曹",
+  "彭","曾","肖","田","董","潘","袁","蔡","蒋","余",
+  "于","杜","叶","程","魏","苏","吕","丁","任","卢",
+  "姚","沈","钟","姜","崔","谭","陆","汪","范","金",
+  "石","廖","贾","夏","韦","付","方","白","邹","孟",
+  "熊","秦","邱","江","尹","薛","闫","段","雷","侯",
+  "龙","史","陶","黎","贺","顾","毛","郝","龚","邵",
+  "万","钱","严","覃","武","戴","莫","孔","向","汤",
+]);
+
+const KNOWN_NON_PERSON = new Set([
+  "星巴克", "麦当劳", "肯德基",
+]);
+
+/**
  * Extracts person names from Chinese text using jieba NER.
- * Only returns tokens tagged as "nr" (person name) by jieba's POS tagger.
- * This is the same approach used by pseudonymizer.ts — no regex guessing.
+ * Merges adjacent nr tokens (up to 3 chars) and validates against surname list.
  */
 function extractNames(text: string): string[] {
   try {
@@ -22,16 +41,35 @@ function extractNames(text: string): string[] {
     jieba.loadDict(dict);
 
     const tagged = jieba.tag(text) as Array<{ word: string; tag: string }>;
-    // nr = person name, nrt = transliterated person name
-    const names = tagged
-      .filter(item => item.tag === "nr" || item.tag === "nrt")
-      .map(item => item.word)
-      .filter(name => name.length >= 2); // exclude single-char "names"
 
-    // Deduplicate
+    // Merge adjacent nr tokens (same logic as pseudonymizer)
+    const names: string[] = [];
+    let i = 0;
+    while (i < tagged.length) {
+      const item = tagged[i];
+      if (item.tag === "nr" && !KNOWN_NON_PERSON.has(item.word)) {
+        let merged = item.word;
+        let mergeCount = 1;
+        while (
+          i + mergeCount < tagged.length &&
+          tagged[i + mergeCount].tag === "nr" &&
+          !KNOWN_NON_PERSON.has(tagged[i + mergeCount].word) &&
+          (merged.length + tagged[i + mergeCount].word.length) <= 3
+        ) {
+          merged += tagged[i + mergeCount].word;
+          mergeCount++;
+        }
+        // Validate: must be 2+ chars OR start with known surname
+        if (merged.length >= 2 && CHINESE_SURNAMES.has(merged.charAt(0))) {
+          names.push(merged);
+        }
+        i += mergeCount;
+      } else {
+        i++;
+      }
+    }
     return [...new Set(names)];
   } catch {
-    // If jieba fails, return empty — no names is better than garbage names
     return [];
   }
 }
