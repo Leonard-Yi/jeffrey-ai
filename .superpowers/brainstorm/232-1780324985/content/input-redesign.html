@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jeffrey.AI — 录入页重构原型</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --bg-card: #1a1a1c;
+    --bg-elevated: #1e1e22;
+    --bg-hover: #25252b;
+    --border: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.12);
+    --border-accent: rgba(180,150,100,0.3);
+    --primary: #c9a96e;
+    --primary-dim: rgba(201,169,110,0.1);
+    --text: #e4e0d8;
+    --text-secondary: #a09b8f;
+    --text-muted: #635f58;
+    --accent: #d4a853;
+    --accent-light: rgba(212,168,83,0.1);
+    --success: #6ebf8b;
+    --success-bg: rgba(110,191,139,0.1);
+    --warning: #d4a853;
+    --warning-bg: rgba(212,168,83,0.1);
+    --error: #e0556a;
+    --error-bg: rgba(224,85,106,0.08);
+    --info: #7eb8da;
+    --info-bg: rgba(126,184,218,0.1);
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex; justify-content: center;
+    padding: 20px 16px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; width: 100%; max-width: 620px; }
+
+  /* ── Phase container ── */
+  .phase {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .phase-entering {
+    animation: phaseIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  @keyframes phaseIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0 24px;
+  }
+  .logo {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 17px; color: var(--primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .header-title {
+    font-size: 15px; font-weight: 500; color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+
+  /* ── PHASE 0: Empty State ── */
+  .input-phase { display: flex; flex-direction: column; gap: 16px; }
+
+  .j-effrey-greeting {
+    display: flex; align-items: flex-start; gap: 14px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px 20px;
+  }
+  .j-effrey-greeting .avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-weight: 600; font-size: 17px; color: var(--primary);
+  }
+  .j-effrey-greeting .quote {
+    font-size: 13.5px; color: var(--text-secondary);
+    font-style: italic; line-height: 1.7;
+  }
+
+  .input-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 4px;
+    transition: all 0.3s;
+  }
+  .input-card:focus-within {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 3px rgba(201,169,110,0.06);
+  }
+  .input-card textarea {
+    width: 100%; min-height: 150px; padding: 16px;
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.8; resize: vertical;
+    caret-color: var(--primary);
+  }
+  .input-card textarea::placeholder {
+    color: var(--text-muted); font-style: italic;
+  }
+
+  .action-row {
+    display: flex; gap: 10px;
+  }
+
+  .btn {
+    padding: 12px 0; border-radius: var(--radius-md);
+    font-family: var(--font-body); font-size: 14px; font-weight: 500;
+    cursor: pointer; border: none; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--primary); color: #1a1a1a; flex: 4;
+    font-weight: 600;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #d4b878; transform: translateY(-1px);
+    box-shadow: 0 3px 12px rgba(201,169,110,0.2);
+  }
+  .btn-secondary {
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: 1px solid var(--border-strong); flex: 1;
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--bg-hover); }
+  .btn-ghost {
+    background: transparent; color: var(--text-muted); border: 1px solid var(--border);
+  }
+  .btn-ghost:hover:not(:disabled) { color: var(--text-secondary); border-color: var(--border-strong); }
+
+  /* Voice button */
+  .voice-btn {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; padding: 12px 16px; border-radius: var(--radius-md);
+    border: 1px solid var(--border); background: var(--bg-card);
+    cursor: pointer; transition: all 0.15s; font-family: var(--font-body);
+  }
+  .voice-btn:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+  .voice-btn.recording { border-color: var(--accent); background: var(--accent-light); }
+  .voice-dot {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .voice-dot.recording {
+    border-color: var(--accent);
+    animation: recPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes recPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(212,168,83,0); }
+    50% { box-shadow: 0 0 0 8px rgba(212,168,83,0.15); }
+  }
+
+  /* ── PHASE 1: Analysis ── */
+  .analysis-phase { display: flex; flex-direction: column; gap: 14px; }
+  .analysis-mini-input {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 12px 16px;
+    font-size: 14px; color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    opacity: 0.6;
+  }
+  .analysis-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .analysis-step.active {
+    background: linear-gradient(135deg, rgba(212,168,83,0.08) 0%, rgba(201,169,110,0.04) 100%);
+    border-color: var(--border-accent);
+  }
+  .analysis-step.done {
+    border-color: rgba(110,191,139,0.2);
+  }
+  .step-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 15px;
+  }
+  .step-icon.active {
+    background: var(--accent-light); border: 1.5px solid var(--primary);
+    animation: spinPulse 1.5s ease-in-out infinite;
+  }
+  .step-icon.done {
+    background: var(--success-bg); border: 1.5px solid var(--success);
+  }
+  @keyframes spinPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(201,169,110,0); }
+    50% { box-shadow: 0 0 0 5px rgba(201,169,110,0.12); }
+  }
+  .blink-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--primary); margin-left: 8px;
+    animation: blink 0.8s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── PHASE 2: Follow-up ── */
+  .followup-phase { display: flex; flex-direction: column; gap: 14px; }
+  .followup-card {
+    background: linear-gradient(135deg, rgba(212,168,83,0.06) 0%, rgba(201,169,110,0.03) 100%);
+    border: 1px solid var(--border-accent); border-radius: var(--radius-lg);
+    padding: 20px 22px;
+  }
+
+  /* Step indicator */
+  .step-indicator { display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+  .si-dot {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+    border: 2px solid var(--border-strong); color: var(--text-muted);
+    transition: all 0.35s;
+  }
+  .si-dot.active {
+    border-color: var(--primary); color: var(--primary);
+    background: var(--primary-dim);
+    animation: dotPulse 1.8s ease-in-out infinite;
+  }
+  .si-dot.done { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+  .si-line {
+    width: 32px; height: 2px; background: var(--border); flex-shrink: 0;
+    transition: background 0.35s;
+  }
+  .si-line.done { background: var(--success); }
+  @keyframes dotPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(201,169,110,0); }
+    50% { box-shadow: 0 0 0 6px rgba(201,169,110,0.12); }
+  }
+
+  .si-labels { display: flex; justify-content: space-around; max-width: 260px; margin: 6px auto 0; font-size: 11px; color: var(--text-muted); }
+  .si-labels span.active { color: var(--primary); font-weight: 500; }
+  .si-labels span.done { color: var(--success); }
+
+  .priority-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 100px;
+    font-size: 11px; font-weight: 600;
+  }
+  .priority-high { background: var(--error-bg); color: var(--error); border: 1px solid rgba(224,85,106,0.2); }
+  .priority-mid { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(212,168,83,0.2); }
+  .priority-low { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border-strong); }
+
+  .fu-question {
+    font-size: 15px; color: var(--text); font-style: italic; line-height: 1.75;
+    padding: 12px 16px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+    margin: 14px 0;
+  }
+
+  .fu-input-row { display: flex; gap: 8px; }
+  .fu-input-row input {
+    flex: 1; padding: 10px 14px;
+    border-radius: var(--radius-md); border: 1.5px solid var(--border-strong);
+    background: rgba(255,255,255,0.04); color: var(--text);
+    font-family: var(--font-body); font-size: 14px; outline: none;
+    transition: border-color 0.15s;
+  }
+  .fu-input-row input:focus { border-color: var(--primary); }
+
+  .quick-suggestions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .quick-suggestions button {
+    padding: 4px 10px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 500; font-family: var(--font-body);
+    cursor: pointer; transition: all 0.15s;
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
+  }
+  .quick-suggestions button:hover {
+    border-color: var(--primary); color: var(--primary);
+  }
+
+  .fu-nav { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* ── PHASE 3: Result ── */
+  .result-phase { display: flex; flex-direction: column; gap: 14px; }
+
+  .completion-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 100px;
+    font-size: 13px; font-weight: 500;
+    background: var(--success-bg); color: var(--success);
+    border: 1px solid rgba(110,191,139,0.25);
+    width: fit-content;
+  }
+  .check-icon {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--success); display: flex;
+    align-items: center; justify-content: center;
+    color: #0f0f0f; font-size: 11px; font-weight: 700;
+  }
+
+  .jeffrey-comment-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-lg); padding: 18px 20px;
+  }
+
+  .person-card {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+  }
+  .person-card h4 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 9px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 500;
+  }
+  .tag-career { background: var(--info-bg); color: var(--info); border: 1px solid rgba(126,184,218,0.15); }
+  .tag-interest { background: var(--accent-light); color: var(--primary); border: 1px solid rgba(201,169,110,0.15); }
+  .tag-vibe { background: var(--success-bg); color: var(--success); border: 1px solid rgba(110,191,139,0.15); }
+
+  .interaction-detail { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+  .interaction-row { display: flex; gap: 8px; align-items: center; }
+  .interaction-row .label { color: var(--text-muted); font-size: 12px; min-width: 56px; }
+
+  .debt-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--bg-elevated);
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .debt-badge {
+    padding: 2px 8px; border-radius: 100px;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .debt-me { background: var(--error-bg); color: var(--error); border: 1px solid rgba(224,85,106,0.15); }
+  .debt-them { background: var(--success-bg); color: var(--success); border: 1px solid rgba(110,191,139,0.15); }
+  .debt-both { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(212,168,83,0.15); }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+
+  .error-banner {
+    padding: 12px 16px; border-radius: var(--radius-md);
+    background: var(--error-bg); color: var(--error);
+    border: 1px solid rgba(224,85,106,0.2);
+    font-size: 13px;
+  }
+
+  .hidden { display: none !important; }
+
+  .text-sm { font-size: 13px; }
+  .text-muted { color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="app" id="appRoot">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">J</div>
+    <span class="header-title">Jeffrey.AI</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PHASE 0: Empty / Input                     -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="phase" id="phase-input">
+    <div class="input-phase">
+      <!-- Jeffrey greeting -->
+      <div class="j-effrey-greeting">
+        <div class="avatar">J</div>
+        <p class="quote">先生，今天见了谁？关系是资产，别让它在记忆里贬值。</p>
+      </div>
+
+      <!-- Main input -->
+      <div class="input-card">
+        <textarea id="mainInput" placeholder="今天见了谁？聊了什么？有什么新的发现或约定吗？">我今天见了一个做区块链的技术大佬，跟他约了下周的咖啡，要继续谈谈收购他那家公司的事情。</textarea>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-row">
+        <button class="btn btn-primary" onclick="startFlow()" id="btnSubmit">
+          <span id="btnLabel">告诉 Jeffrey</span>
+        </button>
+      </div>
+
+      <!-- Voice -->
+      <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">
+        <div class="voice-dot" id="voiceDot">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </div>
+        <div style="text-align:left">
+          <p style="font-size:13.5px;color:var(--text-secondary);font-weight:500;margin:0">语音录入</p>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:2px 0 0">点击开始，说完再点击结束</p>
+        </div>
+      </button>
+
+      <!-- Error -->
+      <div id="errorBanner" class="error-banner hidden"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PHASE 1: Analysis Animation                -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="phase hidden" id="phase-analysis">
+    <div class="analysis-phase">
+      <!-- Collapsed input preview -->
+      <div class="analysis-mini-input" id="analysisInputPreview"></div>
+      <!-- Steps rendered dynamically -->
+      <div id="analysisSteps"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PHASE 2: Follow-up Questions               -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="phase hidden" id="phase-followup">
+    <div class="followup-phase" id="followupContent"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PHASE 3: Result                            -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="phase hidden" id="phase-result">
+    <div class="result-phase" id="resultContent"></div>
+  </div>
+</div>
+
+<script>
+  // ─── State ──────────────────────────────────
+  const state = {
+    currentPhase: 'input',
+    inputText: '',
+    // Analysis
+    analysisSteps: [],
+    // Follow-up
+    missingFields: [
+      { field: 'name', label: '姓名', priority: 'high', question: '这位做区块链的技术大佬——他叫什么名字？总得有个称呼吧。', detail: '可以是全名、姓氏+职务（如"王总"）、或你平时怎么称呼他' },
+      { field: 'company', label: '公司', priority: 'mid', question: '你提到「他那家公司」——公司叫什么名字？', detail: '知道公司名可以帮你追踪这笔收购的进展' },
+      { field: 'location', label: '地点', priority: 'low', question: '这次见面是在哪里？咖啡厅、办公室、还是线上？', detail: '地点信息可以帮助回忆互动场景' },
+    ],
+    currentRound: 0,
+    roundAnswers: {},
+    // Result
+    extractedDate: '2026-06-09T12:00:00+08:00',
+    extractedSentiment: '积极期待',
+    resultName: null,
+    resultCompany: null,
+    resultLocation: null,
+    isProcessing: false,
+  };
+
+  // ─── Phase switching ────────────────────────
+  function switchPhase(phase) {
+    document.querySelectorAll('.phase').forEach(el => el.classList.add('hidden'));
+    const target = document.getElementById(`phase-${phase}`);
+    target.classList.remove('hidden');
+    target.classList.add('phase-entering');
+    setTimeout(() => target.classList.remove('phase-entering'), 500);
+    state.currentPhase = phase;
+  }
+
+  // ─── Start the flow ─────────────────────────
+  function startFlow() {
+    const text = document.getElementById('mainInput').value.trim();
+    if (!text) return;
+    state.inputText = text;
+    state.isProcessing = true;
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('btnLabel').textContent = 'Jeffrey 思考中...';
+
+    // Show analysis phase
+    switchPhase('analysis');
+    document.getElementById('analysisInputPreview').textContent = text.slice(0, 80) + (text.length > 80 ? '...' : '');
+    document.getElementById('analysisSteps').innerHTML = '';
+    state.analysisSteps = [];
+
+    // Simulate SSE stream events
+    const events = [
+      { icon: '🔍', title: '解析文本 & 实体识别', detail: '分词、命名实体识别、语境分析', delay: 600 },
+      { icon: '🧠', title: 'LLM 提取结构化数据...', detail: '调用 DeepSeek 模型进行结构化提取', delay: 1500 },
+      { icon: '⚠️', title: '检测到 3 个信息缺口', detail: '姓名(high)、公司(mid)、地点(low)', delay: 800 },
+      { icon: '📋', title: '分析完成', detail: '3 个字段待补充', delay: 400 },
+    ];
+
+    let cumulative = 0;
+    events.forEach((ev, i) => {
+      cumulative += ev.delay;
+      setTimeout(() => {
+        addAnalysisStep(ev.icon, ev.title, ev.detail, i === events.length - 2 ? 'warning' : 'normal');
+        if (i === events.length - 1) {
+          setTimeout(() => {
+            state.isProcessing = false;
+            startFollowUp();
+          }, 500);
+        }
+      }, cumulative);
+    });
+  }
+
+  function addAnalysisStep(icon, title, detail, tone) {
+    const container = document.getElementById('analysisSteps');
+    // Mark previous steps as done
+    container.querySelectorAll('.analysis-step').forEach(s => {
+      s.classList.remove('active');
+      s.classList.add('done');
+      const si = s.querySelector('.step-icon');
+      if (si) { si.classList.remove('active'); si.classList.add('done'); si.textContent = '✓'; }
+    });
+
+    const row = document.createElement('div');
+    row.className = `analysis-step active${tone === 'warning' ? '' : ''}`;
+    if (tone === 'warning') {
+      row.style.borderColor = 'var(--border-accent)';
+    }
+    row.innerHTML = `
+      <div class="step-icon active">${icon}</div>
+      <div style="flex:1">
+        <div style="font-weight:500;margin-bottom:2px;color:var(--text)">
+          ${title}<span class="blink-dot"></span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted)">${detail}</div>
+      </div>
+    `;
+    container.appendChild(row);
+    state.analysisSteps.push({ icon, title, detail });
+  }
+
+  // ─── Follow-up ──────────────────────────────
+  function startFollowUp() {
+    state.currentRound = 0;
+    state.roundAnswers = {};
+    switchPhase('followup');
+    renderRound();
+  }
+
+  function renderRound() {
+    const idx = state.currentRound;
+    const f = state.missingFields[idx];
+    const total = state.missingFields.length;
+    const isLast = idx === total - 1;
+    const prevAnswer = state.roundAnswers[f.field];
+
+    // Build step indicator
+    let siHTML = '<div class="step-indicator">';
+    state.missingFields.forEach((mf, i) => {
+      if (i > 0) siHTML += `<div class="si-line ${i <= idx ? 'done' : ''}"></div>`;
+      const cls = i < idx ? 'done' : i === idx ? 'active' : '';
+      siHTML += `<div class="si-dot ${cls}">${i < idx ? '✓' : i+1}</div>`;
+    });
+    siHTML += '</div><div class="si-labels">';
+    state.missingFields.forEach((mf, i) => {
+      const cls = i < idx ? 'done' : i === idx ? 'active' : '';
+      siHTML += `<span class="${cls}">${mf.label}</span>`;
+    });
+    siHTML += '</div>';
+
+    // Prev answers
+    let prevHTML = '';
+    if (idx > 0) {
+      const parts = state.missingFields.slice(0, idx).map(mf => {
+        const a = state.roundAnswers[mf.field];
+        return `<span style="font-size:12px;color:var(--text-secondary)">✓ ${mf.label}：${a || '<span style="color:var(--text-muted)">已跳过</span>'}</span>`;
+      }).join(' &nbsp;');
+      prevHTML = `<div style="margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);border:1px solid var(--border)">${parts}</div>`;
+    }
+
+    const priCfg = { high: 'priority-high', mid: 'priority-mid', low: 'priority-low' };
+    const priLabel = { high: '🔴 关键', mid: '🟡 重要', low: '⚪ 补充' };
+
+    document.getElementById('followupContent').innerHTML = `
+      <div class="followup-card">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div class="logo" style="width:30px;height:30px;font-size:13px">J</div>
+          <span style="font-size:13px;font-weight:600;color:var(--primary)">Jeffrey 追问</span>
+          <span class="priority-badge ${priCfg[f.priority]}">${priLabel[f.priority]}</span>
+        </div>
+
+        ${siHTML}
+        ${prevHTML}
+
+        <div class="fu-question">
+          <span style="display:block;font-weight:500;font-style:normal;margin-bottom:6px;color:var(--warning)">
+            第 ${idx+1} 问：${f.label}
+          </span>
+          ${f.question}
+          <span style="display:block;font-size:12px;color:var(--text-muted);margin-top:6px;font-style:normal">${f.detail}</span>
+        </div>
+
+        <div class="fu-input-row">
+          <input type="text" id="roundInput" placeholder="${f.priority === 'high' ? '输入回答...' : '输入或留空跳过...'}"
+            value="${prevAnswer || ''}" autofocus
+            onkeydown="if(event.key==='Enter')submitRound()">
+          <button class="btn btn-primary" style="flex:0 0 auto;min-width:80px;" onclick="submitRound()">
+            ${isLast ? '完成 ✓' : '继续 →'}
+          </button>
+        </div>
+
+        ${f.field === 'name' ? `
+        <div class="quick-suggestions">
+          <span style="font-size:11px;color:var(--text-muted);align-self:center">快速选择：</span>
+          ${['王总','张总','李总','刘工','陈老师'].map(s => `
+            <button onclick="quickSelect('${s}')">${s}</button>
+          `).join('')}
+        </div>` : ''}
+
+        <div class="fu-nav">
+          ${idx > 0 ? `<button class="btn btn-ghost" style="flex:0 0 auto;padding:8px 14px;font-size:13px" onclick="goBack()">← 返回修改</button>` : ''}
+          <button class="btn btn-ghost" style="flex:0 0 auto;padding:8px 14px;font-size:13px" onclick="skipRound()">跳过</button>
+          <span style="font-size:12px;color:var(--text-muted);align-self:center;margin-left:auto">${idx+1}/${total}</span>
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => document.getElementById('roundInput')?.focus(), 100);
+  }
+
+  function quickSelect(name) {
+    document.getElementById('roundInput').value = name;
+    submitRound();
+  }
+
+  function submitRound() {
+    if (state.isProcessing) return;
+    const val = document.getElementById('roundInput')?.value?.trim() || null;
+    const f = state.missingFields[state.currentRound];
+    state.roundAnswers[f.field] = val;
+
+    if (state.currentRound < state.missingFields.length - 1) {
+      state.currentRound++;
+      renderRound();
+    } else {
+      state.resultName = state.roundAnswers['name'] || '某人';
+      state.resultCompany = state.roundAnswers['company'] || null;
+      state.resultLocation = state.roundAnswers['location'] || null;
+      showResult();
+    }
+  }
+
+  function skipRound() {
+    if (state.isProcessing) return;
+    const f = state.missingFields[state.currentRound];
+    state.roundAnswers[f.field] = null;
+
+    if (state.currentRound < state.missingFields.length - 1) {
+      state.currentRound++;
+      renderRound();
+    } else {
+      state.resultName = state.roundAnswers['name'] || '某人';
+      state.resultCompany = state.roundAnswers['company'] || null;
+      state.resultLocation = state.roundAnswers['location'] || null;
+      showResult();
+    }
+  }
+
+  function goBack() {
+    if (state.currentRound > 0) state.currentRound--;
+    renderRound();
+  }
+
+  // ─── Result ─────────────────────────────────
+  function showResult() {
+    switchPhase('result');
+    const name = state.resultName;
+    const company = state.resultCompany;
+    const location = state.resultLocation;
+    const hasName = name !== '某人';
+
+    const comments = hasName ? [
+      `${name}在这个圈子里有些分量。这种人主动维护一下，比躺在通讯录里强十倍。`,
+      `${name}？这类资源不常有。建议您主动出击，别等对方先想起来。`,
+    ] : [`某人，已录入。但我得提醒您——没有名字的关系，就像没有锚的船。`];
+    const comment = comments[Math.floor(Math.random() * comments.length)];
+
+    document.getElementById('resultContent').innerHTML = `
+      <div class="completion-badge">
+        <div class="check-icon">✓</div>
+        数据已完整保存到知识图谱
+      </div>
+
+      <!-- Jeffrey Comment -->
+      <div class="jeffrey-comment-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div class="logo" style="width:30px;height:30px;font-size:13px">J</div>
+          <span style="font-size:13px;font-weight:600;color:var(--primary)">Jeffrey 的点评</span>
+        </div>
+        <p style="font-size:14px;color:var(--text);line-height:1.75;font-style:italic">${comment}</p>
+      </div>
+
+      <!-- Person -->
+      <div class="person-card">
+        <div class="logo" style="width:36px;height:36px;font-size:14px;background:${hasName ? 'var(--success-bg)' : 'var(--warning-bg)'};border-color:${hasName ? 'rgba(110,191,139,0.3)' : 'rgba(212,168,83,0.3)'}">
+          ${hasName ? '✓' : '?'}
+        </div>
+        <div style="flex:1">
+          <h4>${name} ${!hasName ? '<span style="font-size:12px;color:var(--warning);font-weight:400">（待补充）</span>' : ''}</h4>
+          <div class="tag-row">
+            <span class="tag tag-career">区块链</span>
+            <span class="tag tag-career">技术</span>
+            ${company ? `<span class="tag tag-career">${company}</span>` : ''}
+            <span class="tag tag-vibe">技术高手</span>
+            <span class="tag tag-vibe">有收购意向</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interaction -->
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px">
+        <div class="section-label">互动记录</div>
+        <div class="interaction-detail">
+          <div class="interaction-row"><span class="label">日期</span><span>2026年6月9日（周一）</span></div>
+          <div class="interaction-row"><span class="label">地点</span><span style="color:${location ? 'var(--text)' : 'var(--text-muted)'}">${location || '（未提供）'}</span></div>
+          <div class="interaction-row"><span class="label">情绪</span><span>${state.extractedSentiment}</span></div>
+          <div class="interaction-row"><span class="label">核心记忆</span><span>约了下周咖啡，继续谈收购${company ? ' ' + company : '他那家公司'}的事情</span></div>
+        </div>
+      </div>
+
+      <!-- Action Items -->
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px">
+        <div class="section-label">社交债务</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="debt-item"><span class="debt-badge debt-me">我欠</span><span>下周赴约咖啡 — 准备收购方案</span></div>
+          <div class="debt-item"><span class="debt-badge debt-both">双方</span><span>继续推进收购谈判</span></div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <button class="btn btn-primary" onclick="resetAll()" style="margin-top:8px">
+        录入新的互动
+      </button>
+    `;
+  }
+
+  function resetAll() {
+    state.currentPhase = 'input'; state.currentRound = 0;
+    state.roundAnswers = {}; state.analysisSteps = [];
+    state.resultName = null; state.isProcessing = false;
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('btnLabel').textContent = '告诉 Jeffrey';
+    document.getElementById('mainInput').value = '我今天见了一个做区块链的技术大佬，跟他约了下周的咖啡，要继续谈谈收购他那家公司的事情。';
+    switchPhase('input');
+  }
+
+  function toggleVoice() {
+    const btn = document.getElementById('voiceBtn');
+    const dot = document.getElementById('voiceDot');
+    btn.classList.toggle('recording');
+    dot.classList.toggle('recording');
+  }
+</script>
+</body>
+</html>

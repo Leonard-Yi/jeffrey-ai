@@ -48,9 +48,19 @@ const CHINESE_SURNAMES = new Set([
   "万","钱","严","覃","武","戴","莫","孔","向","汤",
 ]);
 
+/** Common Chinese titles that follow surnames. When a known surname
+ *  appears immediately before one of these, it's a person reference. */
+const CHINESE_TITLES = new Set([
+  "总", "老师", "教授", "工", "经理", "主任", "博士",
+  "先生", "女士", "小姐", "同志", "局长", "处长", "科长",
+]);
+
 /** Extract named entities from Chinese text using jieba POS tagging.
- *  Merges adjacent nr tokens (up to 3 chars) into compound person names.
- *  Filters known non-person entities (brands, etc.). */
+ *  - Merges adjacent nr tokens (up to 3 chars) into compound person names.
+ *  - Handles English names (eng tag) as person entities, merging across whitespace.
+ *  - Detects 老X/小X/AX patterns where jieba only tags the surname as nr.
+ *  - Detects surname+title patterns (张总, 周教授) even when jieba mis-tags.
+ *  - Filters known non-person entities (brands, etc.). */
 function extractEntities(text: string): Entity[] {
   const jieba = getJieba();
   const tagged = jieba.tag(text) as Array<{ word: string; tag: string }>;
@@ -71,8 +81,25 @@ function extractEntities(text: string): Entity[] {
   while (i < withPos.length) {
     const item = withPos[i];
 
+    // ── Chinese person names (nr tag) ──
     if (item.tag === "nr" && !KNOWN_NON_PERSON.has(item.word)) {
-      // Merge adjacent nr tokens (up to 3 chars total, matching Chinese name lengths)
+      // Check for 小X / 老X / AX prefix pattern: the prefix char is before the nr token
+      if (i > 0 && withPos[i - 1].end === item.start) {
+        const prev = withPos[i - 1];
+        const prevChar = prev.word;
+        // 小X, 老X, AX (where A is a prefix attached to surname)
+        if ((prevChar === "小" || prevChar === "老") && item.word.length === 1
+            && CHINESE_SURNAMES.has(item.word)) {
+          // Remove the previously added non-person entity if prev was mis-tagged
+          // and extend this entity to include the prefix
+          const merged = prevChar + item.word;
+          entities.push({ text: merged, type: "person", start: prev.start, end: item.end });
+          i++;
+          continue;
+        }
+      }
+
+      // Merge adjacent nr tokens (up to 3 chars total)
       let merged = item.word;
       let mergeCount = 1;
       while (
@@ -93,15 +120,77 @@ function extractEntities(text: string): Entity[] {
         const end = withPos[i + mergeCount - 1].end;
         entities.push({ text: merged, type: "person", start: item.start, end });
       }
-      // If not a plausible name, skip pseudonymization for this token
       i += mergeCount;
-    } else if (item.tag === "ns") {
+    }
+
+    // ── English names (eng tag) — treat as person entities, merge across whitespace ──
+    else if (item.tag === "eng") {
+      let merged = item.word;
+      let mergeCount = 1;
+      let end = item.end;
+      while (i + mergeCount < withPos.length) {
+        const next = withPos[i + mergeCount];
+        // Merge consecutive eng tokens, skipping whitespace/punctuation between them
+        if (next.tag === "eng") {
+          const gap = text.slice(end, next.start);
+          if (gap.trim() === "") {
+            merged += " " + next.word;
+            end = next.end;
+            mergeCount++;
+            continue;
+          }
+        } else if (next.tag === "x" || next.tag === "w") {
+          // Skip whitespace/punctuation between eng tokens
+          mergeCount++;
+          continue;
+        }
+        break;
+      }
+      entities.push({ text: merged.trim(), type: "person", start: item.start, end });
+      i += mergeCount;
+    }
+
+    // ── Places and orgs ──
+    else if (item.tag === "ns") {
       entities.push({ text: item.word, type: "place", start: item.start, end: item.end });
       i++;
     } else if (item.tag === "nt") {
       entities.push({ text: item.word, type: "org", start: item.start, end: item.end });
       i++;
-    } else {
+    }
+
+    // ── 老X fallback: jieba sometimes tags 老X as t(time)/a(adj)/nz(other noun) ──
+    else if (item.word.length === 2 && item.word.charAt(0) === "老"
+             && CHINESE_SURNAMES.has(item.word.charAt(1))) {
+      entities.push({ text: item.word, type: "person", start: item.start, end: item.end });
+      i++;
+    }
+
+    // ── Surname+title: when jieba mis-tags a surname, detect by title suffix ──
+    else if (item.word.length === 1
+             && CHINESE_SURNAMES.has(item.word)
+             && i + 1 < withPos.length
+             && CHINESE_TITLES.has(withPos[i + 1].word)) {
+      const titleEnd = withPos[i + 1].end;
+      entities.push({
+        text: item.word + withPos[i + 1].word,
+        type: "person",
+        start: item.start,
+        end: titleEnd,
+      });
+      i += 2;
+    }
+
+    // ── Surname+title merged into one token (e.g., 周教授/n) ──
+    else if (item.tag === "n"
+             && item.word.length >= 2
+             && CHINESE_SURNAMES.has(item.word.charAt(0))
+             && CHINESE_TITLES.has(item.word.slice(1))) {
+      entities.push({ text: item.word, type: "person", start: item.start, end: item.end });
+      i++;
+    }
+
+    else {
       i++;
     }
   }
