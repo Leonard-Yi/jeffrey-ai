@@ -171,7 +171,7 @@ function scanQuotedCandidates(text: string): Candidate[] {
   // Chinese quotes: “” or 「」
   const patterns = [
     /[“「]([一-鿿]{1,4})[”」]/g,
-    /["]([一-鿿]{1,4})["]/g,
+    /[“]([一-鿿]{1,4})[”]/g,
   ];
 
   for (const re of patterns) {
@@ -189,4 +189,225 @@ function scanQuotedCandidates(text: string): Candidate[] {
   }
 
   return candidates;
+}
+
+// ─── Stage 1b: English name candidates ────────
+
+/** Scan for English/Latin name patterns */
+function scanEnglishCandidates(text: string): Candidate[] {
+  const candidates: Candidate[] = [];
+
+  // Pattern: capitalized Latin word (possibly with internal . or - or ')
+  const wordRe = /[A-Z][a-z]*\.?(?:[-\x27][A-Z][a-z]*)?/g;
+
+  for (const m of text.matchAll(wordRe)) {
+    const word = m[0];
+
+    // Skip single letters (except when part of initials like "J.")
+    if (word.length === 1) continue;
+
+    // Skip all-caps tech terms
+    if (/^[A-Z]{2,}$/.test(word)) continue;
+    if (ENGLISH_TECH_TERMS.has(word)) continue;
+    if (ENGLISH_STOP_WORDS.has(word.toLowerCase())) continue;
+
+    // Check if this English word is followed by another English word (first+last)
+    const nextPos = m.index! + word.length;
+    const remaining = text.slice(nextPos);
+    const nextWordMatch = remaining.match(/^\s+([A-Z][a-z]+)/);
+
+    if (nextWordMatch && !ENGLISH_TECH_TERMS.has(nextWordMatch[1])) {
+      // Merge: "Michael Chen"
+      candidates.push({
+        text: word + " " + nextWordMatch[1],
+        start: m.index!,
+        end: nextPos + nextWordMatch[0].length,
+        source: "english",
+      });
+    } else {
+      // Just the single English name
+      candidates.push({
+        text: word,
+        start: m.index!,
+        end: nextPos,
+        source: "english",
+      });
+    }
+  }
+
+  return candidates;
+}
+
+// ─── Stage 2: Context Scoring ─────────────────
+
+interface ScoredCandidate extends Candidate {
+  score: number;
+  dimensions: {
+    nameStructure: number;
+    prefix: number;
+    suffix: number;
+    context: number;
+  };
+}
+
+function scoreCandidates(raw: Candidate[], originalText: string): ScoredCandidate[] {
+  return raw.map(c => scoreOne(c, originalText));
+}
+
+function scoreOne(c: Candidate, text: string): ScoredCandidate {
+  const dims = {
+    nameStructure: scoreNameStructure(c),
+    prefix: scorePrefix(c, text),
+    suffix: scoreSuffix(c, text),
+    context: scoreContext(c, text),
+  };
+
+  const score =
+    dims.nameStructure * SCORE_WEIGHTS.nameStructure +
+    dims.prefix * SCORE_WEIGHTS.prefix +
+    dims.suffix * SCORE_WEIGHTS.suffix +
+    dims.context * SCORE_WEIGHTS.context;
+
+  return { ...c, score, dimensions: dims };
+}
+
+function scoreNameStructure(c: Candidate): number {
+  if (c.source === "english") return 0.9;
+  if (c.source === "prefix") return 0.7;
+  if (c.source === "suffix") return 0.75;
+  if (c.source === "nickname_aa") return 0.5;
+  if (c.source === "quoted") return 0.5;
+
+  // surname_scan: score each char in the given name part
+  const chars = [...c.text];
+  const surnameLen = CHINESE_SURNAMES.has(chars.slice(0, 2).join("")) ? 2 : 1;
+  const givenChars = chars.slice(surnameLen);
+
+  if (givenChars.length === 0) return 0.3;
+
+  let total = 0;
+  for (const ch of givenChars) {
+    total += GIVEN_NAME_CHARS.get(ch) ?? 0.3;
+  }
+  return total / givenChars.length;
+}
+
+function scorePrefix(c: Candidate, text: string): number {
+  if (c.source === "prefix") return 1.0;
+  if (c.start === 0) return 0;
+
+  const prev = text[c.start - 1];
+  if (prev === "老" || prev === "小" || prev === "阿" || prev === "大") {
+    return 0.5;
+  }
+  return 0;
+}
+
+function scoreSuffix(c: Candidate, text: string): number {
+  if (c.source === "suffix") return 1.0;
+  if (c.end >= text.length) return 0;
+
+  const after = text.slice(c.end);
+  for (const title of CHINESE_TITLES) {
+    if (after.startsWith(title)) return 0.8;
+  }
+  return 0;
+}
+
+function scoreContext(c: Candidate, text: string): number {
+  let score = 0.5;
+
+  // Check if preceded by 在/去/到/从 (location context) → likely a place
+  if (c.start > 0) {
+    const before = text[c.start - 1];
+    if (before === "在" || before === "去" || before === "到" || before === "从") {
+      score -= 0.3;
+    }
+  }
+
+  // Check if preceded by 跟/和/与/同/见/找/问/请/叫/派/让 (person context)
+  if (c.start >= 2) {
+    const before2 = text.slice(Math.max(0, c.start - 2), c.start);
+    if (/[跟和与同见找问请叫派让]/.test(before2)) {
+      score += 0.2;
+    }
+  }
+
+  // Check if followed by verbs (person-as-subject context)
+  if (c.end < text.length) {
+    const after2 = text.slice(c.end, Math.min(text.length, c.end + 4));
+    if (/[说说聊聊讲讲谈谈来去给发做搞弄想能会要]/.test(after2)) {
+      score += 0.15;
+    }
+  }
+
+  // Check: is it at sentence start? (likely subject → person)
+  if (c.start === 0 || (c.start >= 1 && /[.。!！?？]/.test(text[c.start - 1]))) {
+    score += 0.1;
+  }
+
+  return Math.max(0, Math.min(1, score));
+}
+
+// ─── Stage 3: Filter & Dedup ──────────────────
+
+function filterAndDedup(scored: ScoredCandidate[]): DetectedEntity[] {
+  // 1. Filter by threshold
+  const aboveThreshold = scored.filter(c => c.score >= PERSON_SCORE_THRESHOLD);
+
+  // 2. Sort by score descending (higher confidence first)
+  aboveThreshold.sort((a, b) => b.score - a.score);
+
+  // 3. Remove overlapping entities, keeping higher-scored one
+  const result: DetectedEntity[] = [];
+  for (const c of aboveThreshold) {
+    const overlaps = result.some(existing =>
+      (c.start >= existing.start && c.start < existing.end) ||
+      (c.end > existing.start && c.end <= existing.end) ||
+      (c.start <= existing.start && c.end >= existing.end)
+    );
+    if (!overlaps) {
+      result.push({
+        text: c.text,
+        type: "person",
+        start: c.start,
+        end: c.end,
+        score: c.score,
+      });
+    }
+  }
+
+  // 4. Sort by position in text
+  result.sort((a, b) => a.start - b.start);
+
+  return result;
+}
+
+// ─── Public API ───────────────────────────────
+
+/**
+ * Detect person names in text.
+ * Does NOT use jieba nr tags — scans raw text using surname dictionaries
+ * and context patterns. English names detected via regex.
+ *
+ * @returns DetectedEntity[] sorted by position in text
+ */
+export function detectNames(text: string): DetectedEntity[] {
+  const normalized = preprocess(text);
+
+  // Stage 1: Generate all candidates
+  const candidates: Candidate[] = [
+    ...scanSurnameCandidates(normalized),
+    ...scanPrefixCandidates(normalized),
+    ...scanSuffixCandidates(normalized),
+    ...scanNicknameAACandidates(normalized),
+    ...scanQuotedCandidates(normalized),
+    ...scanEnglishCandidates(normalized),
+  ];
+
+  // Stage 2: Score each candidate
+  const scored = scoreCandidates(candidates, normalized);
+
+  // Stage 3: Filter and deduplicate
+  return filterAndDedup(scored);
 }
