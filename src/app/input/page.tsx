@@ -222,6 +222,14 @@ const JeffreyInputPage = () => {
 
     if (!isFollowUp) {
       setPhase('analyzing');
+      // Show "parsing" step immediately with a fake delay (2-4s)
+      // This reduces perceived LLM wait time by overlapping it with the animation
+      setAnalysisSteps([{
+        icon: '🔍', title: '解析文本 & 实体识别',
+        detail: '分词、命名实体识别、语境分析',
+        status: 'active' as const,
+      }]);
+      await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
     }
 
     try {

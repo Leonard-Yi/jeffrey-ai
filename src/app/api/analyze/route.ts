@@ -463,7 +463,7 @@ export async function POST(request: Request) {
               temperature: 0.3,
               max_tokens: 4000,
             }),
-            signal: AbortSignal.timeout(30000),
+            signal: AbortSignal.timeout(45000),
           });
 
           if (!apiResponse.ok) {
