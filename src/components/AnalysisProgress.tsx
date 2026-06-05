@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { C } from "@/lib/design-tokens";
 
 export interface ProgressStep {
@@ -18,6 +19,18 @@ interface AnalysisProgressProps {
 
 /** SSE 驱动的分析进度动画：逐步展示解析→提取→检测→完成 */
 export default function AnalysisProgress({ steps, isStreaming }: AnalysisProgressProps) {
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isStreaming) {
+      setElapsed(0);
+      timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isStreaming]);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {steps.map((step, i) => (
@@ -77,14 +90,16 @@ export default function AnalysisProgress({ steps, isStreaming }: AnalysisProgres
               {step.title}
               {step.status === "active" && isStreaming && (
                 <span style={{
-                  display: "inline-block",
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: C.primary,
+                  display: "inline",
+                  fontSize: 12,
+                  color: C.textMuted,
+                  fontWeight: 400,
                   marginLeft: 8,
-                  animation: "blink 0.8s ease-in-out infinite",
-                }} />
+                }}>
+                  {elapsed < 60
+                    ? `${elapsed}s`
+                    : `${Math.floor(elapsed / 60)}m${elapsed % 60}s`}
+                </span>
               )}
             </div>
             {step.detail && (
