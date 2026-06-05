@@ -462,6 +462,7 @@ export async function POST(request: Request) {
               tools: [extractionTool],
               temperature: 0.3,
               max_tokens: 4000,
+              thinking: { type: "disabled" },
             }),
             signal: AbortSignal.timeout(45000),
           });
