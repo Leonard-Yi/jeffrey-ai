@@ -55,7 +55,7 @@ export const GIVEN_NAME_CHARS: ReadonlyMap<string, number> = new Map([
   ["琳",0.8],["鑫",0.8],["凯",0.8],["瑞",0.8],["龙",0.8],
   // Less common but plausible (score 0.5)
   ["宁",0.5],["静",0.5],["雪",0.5],["梅",0.5],["兰",0.5],
-  ["芳",0.5],["丽",0.5],["敏",0.5],["洁",0.5],["晶",0.5],
+  ["芳",0.8],["丽",0.8],["敏",0.8],["洁",0.8],["晶",0.8],
   ["亮",0.5],["刚",0.5],["平",0.5],["志",0.5],["国",0.5],
   ["建",0.5],["成",0.5],["宏",0.5],["海",0.5],["春",0.5],
   ["秀",0.5],["英",0.5],["荣",0.5],["德",0.5],["仁",0.5],
@@ -85,6 +85,11 @@ export const KNOWN_NON_PERSON: ReadonlySet<string> = new Set([
   "互联网","物联网","大数据","云计算",
   // Common dual-char words that look like names
   "黎明","高峰","方向","文章","大家","大佬","某人",
+  // Time words using surname-like characters
+  "周一","周二","周三","周四","周五","周六","周日","星期",
+  "小时","分钟","今天","明天","昨天","前天","后天",
+  // Common non-name compounds
+  "王国",
 ]);
 
 /** English function words / common words that are not person names */
@@ -100,13 +105,14 @@ export const ENGLISH_TECH_TERMS: ReadonlySet<string> = new Set([
   "React","Python","Java","JavaScript","TypeScript","Node","Vue",
   "Angular","Docker","Kubernetes","Linux","Windows","Mac","iOS",
   "Android","Git","GitHub","SQL","MySQL","PostgreSQL","Redis",
+  "Swift","Stripe","PayPal","SaaS","PaaS","IaaS","API","SDK","JSON","XML","HTTP",
 ]);
 
 /** Common English titles/honorifics before names */
 export const ENGLISH_TITLE_PREFIXES = /^(Dr|Mr|Ms|Mrs|Prof|Sir|Madam)\.?\s/i;
 
 /** Minimum score threshold for accepting a candidate as a person entity */
-export const PERSON_SCORE_THRESHOLD = 0.45;
+export const PERSON_SCORE_THRESHOLD = 0.40;
 
 /** Scoring weights for each dimension */
 export const SCORE_WEIGHTS = {

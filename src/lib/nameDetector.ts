@@ -110,9 +110,11 @@ function scanPrefixCandidates(text: string): Candidate[] {
     if (prefixes.includes(text[pos])) {
       const next = text[pos + 1];
       // Require surname or high-score given-name char (rejects 大家, 大佬, etc.)
-      if (isChinese(next) && (CHINESE_SURNAMES.has(next) || (GIVEN_NAME_CHARS.get(next) ?? 0) >= 0.5)) {
+      const combined = text[pos] + next;
+      if (isChinese(next) && !KNOWN_NON_PERSON.has(combined)
+          && (CHINESE_SURNAMES.has(next) || (GIVEN_NAME_CHARS.get(next) ?? 0) >= 0.5)) {
         candidates.push({
-          text: text[pos] + next, start: pos, end: pos + 2,
+          text: combined, start: pos, end: pos + 2,
           source: "prefix",
         });
       }
@@ -198,14 +200,15 @@ function scanQuotedCandidates(text: string): Candidate[] {
 function scanEnglishCandidates(text: string): Candidate[] {
   const candidates: Candidate[] = [];
 
-  // Pattern: capitalized Latin word (possibly with internal . or - or ')
-  const wordRe = /[A-Z][a-z]*\.?(?:[-\x27][A-Z][a-z]*)?/g;
+  // Pattern: capitalized Latin word with word boundaries
+  const wordRe = /\b[A-Z][a-z]+\b\.?(?:[-\x27][A-Z][a-z]+\b)?/g;
 
   for (const m of text.matchAll(wordRe)) {
     const word = m[0];
 
-    // Skip single letters (except when part of initials like "J.")
-    if (word.length === 1) continue;
+    // Skip if only 1 letter + punctuation (e.g., "P." is not a name)
+    const alphaChars = word.replace(/[.\-'\s]/g, '');
+    if (alphaChars.length < 2) continue;
 
     // Skip all-caps tech terms
     if (/^[A-Z]{2,}$/.test(word)) continue;
