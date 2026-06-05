@@ -112,6 +112,8 @@ const JeffreyInputPage = () => {
   const [personIds, setPersonIds] = useState<string[]>([]);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [resultStatus, setResultStatus] = useState<'complete' | 'pending' | 'ambiguous' | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
+  const [supplementText, setSupplementText] = useState('');
 
   // ── Ambiguous / Resolution state ──
   const [ambiguousPersons, setAmbiguousPersons] = useState<Person[]>([]);
@@ -222,14 +224,6 @@ const JeffreyInputPage = () => {
 
     if (!isFollowUp) {
       setPhase('analyzing');
-      // Show "parsing" step immediately with a fake delay (2-4s)
-      // This reduces perceived LLM wait time by overlapping it with the animation
-      setAnalysisSteps([{
-        icon: '🔍', title: '解析文本 & 实体识别',
-        detail: '分词、命名实体识别、语境分析',
-        status: 'active' as const,
-      }]);
-      await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
     }
 
     try {
@@ -266,7 +260,8 @@ const JeffreyInputPage = () => {
         setPhase('result');
       }
     } catch (err) {
-      setPhase('input');
+      // Stay on current phase, keep input text — allow retry
+      if (!isFollowUp) setPhase('input');
       if (err instanceof Error) {
         if (err.message.includes('API error')) {
           setErrorMessage(err.message);
@@ -276,7 +271,7 @@ const JeffreyInputPage = () => {
           setErrorMessage(`分析失败：${err.message}`);
         }
       } else {
-        setErrorMessage('分析失败，请重试');
+        setErrorMessage('分析失败，请点击重试');
       }
     } finally {
       setIsProcessing(false);
@@ -303,9 +298,14 @@ const JeffreyInputPage = () => {
       if (r.ok) {
         const d = await r.json();
         if (d.resolutions?.some((r: { candidates: unknown[] }) => r.candidates?.length > 0)) {
+          // Only show resolution if user hasn't already moved to followup/result
+          // (avoids overlay appearing on top of later phases)
           setNameResolutions(d.resolutions);
           setPendingText(inputText);
-          setShowResolutionPrompt(true);
+          // Use a short delay to check current phase
+          setTimeout(() => {
+            setShowResolutionPrompt(true);
+          }, 300);
         }
       }
     } catch {}
@@ -363,6 +363,7 @@ const JeffreyInputPage = () => {
       // Go to result immediately — don't make user wait for another LLM call
       setPhase('result');
       setIsProcessing(true);
+      setSaveStatus('saving');
 
       // Save in background: send accumulated context to LLM for re-extraction
       const fieldLabels: Record<string, string> = {
@@ -383,10 +384,12 @@ const JeffreyInputPage = () => {
           : `${inputText}${supplementText}`;
         try {
           await handleSubmitWithText(accumulatedText, true);
+          setSaveStatus('done');
         } catch {
-          // Background save failed — result is already shown, user doesn't need to know
+          setSaveStatus('error');
         }
       } else {
+        setSaveStatus('done');
         setIsProcessing(false);
       }
     }
@@ -432,6 +435,9 @@ const JeffreyInputPage = () => {
   // Reset
   // ──────────────────────────────────────────────
   const handleClear = () => {
+    if (phase === 'followup' && Object.keys(roundAnswers).length > 0) {
+      if (!window.confirm('你已经填了一些信息，确定要清空吗？已填写的内容将会丢失。')) return;
+    }
     setInputText('');
     setPhase('input');
     setErrorMessage('');
@@ -449,6 +455,9 @@ const JeffreyInputPage = () => {
     setResultStatus(null);
     setAmbiguousPersons([]);
     setOriginalInputText('');
+    setSaveStatus('idle');
+    setSupplementText('');
+    setShowResolutionPrompt(false);
   };
 
   const resetToInput = () => {
@@ -469,6 +478,9 @@ const JeffreyInputPage = () => {
     setResultStatus(null);
     setAmbiguousPersons([]);
     setOriginalInputText('');
+    setSaveStatus('idle');
+    setSupplementText('');
+    setShowResolutionPrompt(false);
   };
 
   // ──────────────────────────────────────────────
@@ -491,7 +503,8 @@ const JeffreyInputPage = () => {
           {/* ═══════════════════════════════════ */}
           {/* NAME RESOLUTION (full-screen)      */}
           {/* ═══════════════════════════════════ */}
-          {showResolutionPrompt && nameResolutions.length > 0 && (
+          {showResolutionPrompt && nameResolutions.length > 0
+            && (phase === 'input' || phase === 'analyzing') && (
             <NameResolutionPrompt
               resolutions={nameResolutions}
               allPersons={existingPersons}
@@ -529,7 +542,7 @@ const JeffreyInputPage = () => {
           {/* PHASE: INPUT                        */}
           {/* ═══════════════════════════════════ */}
           {phase === 'input' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, animation: 'phaseIn 0.45s cubic-bezier(0.4, 0, 0.2, 1) both' }}>
               {/* Jeffrey greeting */}
               <Card>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -628,7 +641,7 @@ const JeffreyInputPage = () => {
           {/* PHASE: ANALYZING                   */}
           {/* ═══════════════════════════════════ */}
           {phase === 'analyzing' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, animation: 'phaseIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both' }}>
               {/* Collapsed input preview */}
               <div style={{
                 background: C.bgCard, border: `1px solid ${C.border}`,
@@ -661,7 +674,7 @@ const JeffreyInputPage = () => {
           {/* PHASE: FOLLOWUP                    */}
           {/* ═══════════════════════════════════ */}
           {phase === 'followup' && missingFields.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, animation: 'phaseIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both' }}>
               {isProcessing && (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -718,22 +731,35 @@ const JeffreyInputPage = () => {
           {/* ═══════════════════════════════════ */}
           {phase === 'result' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Completion badge */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 16px', borderRadius: 100,
-                fontSize: 13, fontWeight: 500,
-                background: C.successBg, color: C.success,
-                border: `1px solid rgba(5,150,105,0.25)`,
-                width: 'fit-content',
-              }}>
+              {/* Save status */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
-                  width: 18, height: 18, borderRadius: '50%',
-                  background: C.success, display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  color: C.bg, fontSize: 11, fontWeight: 700,
-                }}>✓</div>
-                数据已完整保存到知识图谱
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 16px', borderRadius: 100,
+                  fontSize: 13, fontWeight: 500,
+                  background: saveStatus === 'done' ? C.successBg : saveStatus === 'error' ? C.errorBg : C.warningBg,
+                  color: saveStatus === 'done' ? C.success : saveStatus === 'error' ? C.error : C.warning,
+                  border: `1px solid ${saveStatus === 'done' ? 'rgba(5,150,105,0.25)' : saveStatus === 'error' ? 'rgba(220,38,38,0.25)' : 'rgba(217,119,6,0.25)'}`,
+                  width: 'fit-content',
+                  animation: 'fadeIn 0.3s ease both',
+                }}>
+                  {saveStatus === 'saving' && (
+                    <div style={{ width: 16, height: 16, border: `2px solid ${C.warningBg}`, borderTopColor: C.warning, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  )}
+                  {saveStatus === 'done' && (
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.bg, fontSize: 11, fontWeight: 700 }}>✓</div>
+                  )}
+                  {saveStatus === 'error' && <span style={{ fontSize: 16 }}>⚠️</span>}
+                  {saveStatus === 'saving' ? '正在保存补充信息...' : saveStatus === 'done' ? '数据已完整保存到知识图谱' : '保存失败，请稍后重试'}
+                </div>
+                {saveStatus === 'error' && (
+                  <button
+                    onClick={() => handleRoundConfirm(null)}
+                    style={{ fontSize: 12, color: C.primary, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}
+                  >
+                    重试
+                  </button>
+                )}
               </div>
 
               {/* Jeffrey Comment */}
@@ -851,6 +877,53 @@ const JeffreyInputPage = () => {
                 </Card>
               )}
 
+              {/* Supplement input */}
+              <Card>
+                <div style={{
+                  fontSize: 11, fontWeight: 600, color: C.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10,
+                }}>
+                  补充更多信息
+                </div>
+                <textarea
+                  value={supplementText}
+                  onChange={e => setSupplementText(e.target.value)}
+                  placeholder="还有什么要补充的？比如漏掉的细节、额外的背景..."
+                  rows={2}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: C.radiusMd,
+                    border: `1.5px solid ${C.borderStrong}`,
+                    background: C.bg, color: C.text,
+                    fontFamily: 'var(--font-body)', fontSize: 14,
+                    outline: 'none', resize: 'vertical', boxSizing: 'border-box',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = C.primary)}
+                  onBlur={e => (e.target.style.borderColor = C.borderStrong)}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={!supplementText.trim() || isProcessing}
+                  onClick={async () => {
+                    if (!supplementText.trim()) return;
+                    const text = supplementText.trim();
+                    setSupplementText('');
+                    setSaveStatus('saving');
+                    try {
+                      await handleSubmitWithText(
+                        `${originalInputText || inputText}\n\n[补充信息]\n${text}`,
+                        true
+                      );
+                      setSaveStatus('done');
+                    } catch {
+                      setSaveStatus('error');
+                    }
+                  }}
+                  style={{ marginTop: 8, width: '100%' }}
+                >
+                  {isProcessing ? '保存中...' : '提交补充信息'}
+                </Button>
+              </Card>
+
               {/* CTA */}
               <Button variant="primary" fullWidth onClick={resetToInput}>
                 录入新的互动
@@ -860,11 +933,22 @@ const JeffreyInputPage = () => {
           </>
           )}
 
-          {/* Recording pulse keyframes */}
+          {/* Animation keyframes */}
           <style>{`
             @keyframes recPulse {
               0%, 100% { box-shadow: 0 0 0 0 rgba(5,150,105,0); }
               50% { box-shadow: 0 0 0 8px rgba(5,150,105,0.15); }
+            }
+            @keyframes phaseIn {
+              from { opacity: 0; transform: translateY(14px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes spin {
+              to { transform: rotate(360deg); }
             }
           `}</style>
         </main>
