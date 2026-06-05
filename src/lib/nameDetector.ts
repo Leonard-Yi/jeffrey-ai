@@ -22,8 +22,8 @@ export interface DetectedEntity {
 /** Normalize text: full-width → half-width, collapse whitespace */
 function preprocess(text: string): string {
   let result = text;
-  // Newlines, tabs → space
-  result = result.replace(/[\n\r\t]/g, " ");
+  // Newlines, tabs → strip (Chinese names can span line breaks)
+  result = result.replace(/[\n\r\t]/g, "");
   // Full-width punctuation → half-width
   result = result.replace(/，/g, ",");
   result = result.replace(/、/g, ",");
@@ -77,8 +77,6 @@ function scanSurnameCandidates(text: string): Candidate[] {
         const givenPart = text.slice(pos + slen, pos + slen + glen);
         // All chars in given name must be Chinese
         if (![...givenPart].every(isChinese)) break;
-        // Skip if given name part contains digits
-        if ([...givenPart].some(c => !isChinese(c) || isDigit(c))) break;
 
         const fullName = maybeSurname + givenPart;
         const end = pos + slen + glen;
@@ -111,7 +109,8 @@ function scanPrefixCandidates(text: string): Candidate[] {
   for (let pos = 0; pos < text.length - 1; pos++) {
     if (prefixes.includes(text[pos])) {
       const next = text[pos + 1];
-      if (isChinese(next) && CHINESE_SURNAMES.has(next)) {
+      // Require surname or high-score given-name char (rejects 大家, 大佬, etc.)
+      if (isChinese(next) && (CHINESE_SURNAMES.has(next) || (GIVEN_NAME_CHARS.get(next) ?? 0) >= 0.5)) {
         candidates.push({
           text: text[pos] + next, start: pos, end: pos + 2,
           source: "prefix",
@@ -168,10 +167,12 @@ function scanNicknameAACandidates(text: string): Candidate[] {
 /** Detect quoted nicknames (人称"铁军", 叫他"胖子") */
 function scanQuotedCandidates(text: string): Candidate[] {
   const candidates: Candidate[] = [];
-  // Chinese quotes: “” or 「」
+  // Chinese quotes, corner brackets, ASCII double/single quotes
   const patterns = [
-    /[“「]([一-鿿]{1,4})[”」]/g,
+    /[“「]([一-鿿]{1,4})[”」]/g,   // U+201C left + U+201D right double quotes + corner brackets
     /[“]([一-鿿]{1,4})[”]/g,
+    /\x22([一-鿿]{1,4})\x22/g,               // ASCII double quote U+0022
+    /\x27([一-鿿]{1,4})\x27/g,               // ASCII single quote U+0027
   ];
 
   for (const re of patterns) {
@@ -217,14 +218,19 @@ function scanEnglishCandidates(text: string): Candidate[] {
     const nextWordMatch = remaining.match(/^\s+([A-Z][a-z]+)/);
 
     if (nextWordMatch && !ENGLISH_TECH_TERMS.has(nextWordMatch[1])) {
-      // Merge: "Michael Chen"
+      // Check if first word is a title prefix (Dr., Mr., etc.)
+      const isTitle = /^(Dr|Mr|Ms|Mrs|Prof|Sir|Madam)\.?$/i.test(word);
+      const actualName = isTitle ? nextWordMatch[1] : word + " " + nextWordMatch[1];
+      const actualStart = isTitle ? nextPos + (nextWordMatch[0].length - nextWordMatch[1].length) : m.index!;
       candidates.push({
-        text: word + " " + nextWordMatch[1],
-        start: m.index!,
+        text: actualName,
+        start: actualStart,
         end: nextPos + nextWordMatch[0].length,
         source: "english",
       });
     } else {
+      // Skip standalone English title words (Dr., Mr., etc. without a following name)
+      if (/^(Dr|Mr|Ms|Mrs|Prof|Sir|Madam)\.?$/i.test(word)) continue;
       // Just the single English name
       candidates.push({
         text: word,
@@ -272,11 +278,11 @@ function scoreOne(c: Candidate, text: string): ScoredCandidate {
 }
 
 function scoreNameStructure(c: Candidate): number {
-  if (c.source === "english") return 0.9;
+  if (c.source === "english") return 0.95;
   if (c.source === "prefix") return 0.7;
   if (c.source === "suffix") return 0.75;
-  if (c.source === "nickname_aa") return 0.5;
-  if (c.source === "quoted") return 0.5;
+  if (c.source === "nickname_aa") return 0.8;
+  if (c.source === "quoted") return 0.8;
 
   // surname_scan: score each char in the given name part
   const chars = [...c.text];
@@ -325,10 +331,10 @@ function scoreContext(c: Candidate, text: string): number {
     }
   }
 
-  // Check if preceded by 跟/和/与/同/见/找/问/请/叫/派/让 (person context)
-  if (c.start >= 2) {
-    const before2 = text.slice(Math.max(0, c.start - 2), c.start);
-    if (/[跟和与同见找问请叫派让]/.test(before2)) {
+  // Check if preceded by 跟/和/与/同/见/找/问/请/叫/派/让/称 (person context)
+  if (c.start >= 1) {
+    const before3 = text.slice(Math.max(0, c.start - 3), c.start);
+    if (/[跟和与同见找问请叫派让称]/.test(before3)) {
       score += 0.2;
     }
   }
@@ -355,8 +361,11 @@ function filterAndDedup(scored: ScoredCandidate[]): DetectedEntity[] {
   // 1. Filter by threshold
   const aboveThreshold = scored.filter(c => c.score >= PERSON_SCORE_THRESHOLD);
 
-  // 2. Sort by score descending (higher confidence first)
-  aboveThreshold.sort((a, b) => b.score - a.score);
+  // 2. Sort by score descending, then by length descending (longer = more specific)
+  aboveThreshold.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return b.text.length - a.text.length;
+  });
 
   // 3. Remove overlapping entities, keeping higher-scored one
   const result: DetectedEntity[] = [];
