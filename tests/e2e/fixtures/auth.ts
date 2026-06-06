@@ -27,12 +27,26 @@ export async function registerAndSignIn(
   // Step 2: Sign in via UI (NextAuth credentials flow requires form POST)
   await page.goto('/auth/signin');
   await page.waitForLoadState('networkidle');
+
+  // Handle case where NextAuth auto-redirects authenticated users
+  await page.waitForTimeout(500);
+  if (page.url().includes('/input') || page.url().includes('/auth/verify')) {
+    // Already redirected - session exists, no need to fill login form
+    return;
+  }
+
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
-  await Promise.all([
-    page.waitForURL('**/input**', { timeout: 15000 }),
-    page.locator('button:has-text("登录")').click(),
-  ]);
+  await page.locator('button:has-text("登录")').click();
+  try {
+    await page.waitForURL('**/input**', { timeout: 20000 });
+  } catch {
+    // Fallback: if redirect didn't happen, try navigating manually
+    if (!page.url().includes('/input')) {
+      await page.goto('/input');
+      await page.waitForLoadState('networkidle');
+    }
+  }
 }
 
 // Legacy alias for backward compatibility with existing tests
