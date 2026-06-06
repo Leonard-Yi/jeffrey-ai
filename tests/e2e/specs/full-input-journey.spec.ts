@@ -19,7 +19,7 @@ test.describe('完整录入旅程', () => {
   test('JOURNEY-1: 空状态页面检查', async ({ page }) => {
     // Verify the input page looks correct in empty state
     const textarea = inputPage.textarea();
-    await expect(textarea).toBeVisible();
+    await expect(textarea).toBeVisible({ timeout: 15000 });
     await expect(textarea).toBeEmpty();
 
     // Submit should be disabled when empty

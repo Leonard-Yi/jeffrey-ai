@@ -1,9 +1,18 @@
 import { Page } from '@playwright/test';
 
-const BASE = 'http://localhost:3000';
-
 export function makeEmail(prefix = 'e2e') {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}@test.com`;
+}
+
+/** Derive the base URL from the page's current URL (works for localhost, Vercel, etc.) */
+function getBase(page: Page): string {
+  const pageUrl = page.url();
+  if (!pageUrl || pageUrl.startsWith('about:')) {
+    // Before first navigation — use config's baseURL or default
+    return process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
+  }
+  const url = new URL(pageUrl);
+  return `${url.protocol}//${url.host}`;
 }
 
 /** Register via API (fast), then sign in via UI. Saves ~3s vs UI registration. */
@@ -13,6 +22,12 @@ export async function registerAndSignIn(
   password: string,
   name: string,
 ) {
+  // Navigate first so we can derive the base URL from the page
+  await page.goto('/auth/signin');
+  await page.waitForLoadState('networkidle');
+
+  const BASE = getBase(page);
+
   // Step 1: Register via API (avoids UI signup page round-trips)
   const res = await fetch(`${BASE}/api/auth/register`, {
     method: 'POST',
@@ -25,8 +40,7 @@ export async function registerAndSignIn(
   // 409 = already exists, which is fine
 
   // Step 2: Sign in via UI (NextAuth credentials flow requires form POST)
-  await page.goto('/auth/signin');
-  await page.waitForLoadState('networkidle');
+  // (already on /auth/signin from above — handle auto-redirect)
 
   // Handle case where NextAuth auto-redirects authenticated users
   await page.waitForTimeout(500);
@@ -55,6 +69,7 @@ export async function signIn(
   email = 'test@test.com',
   password = 'testpassword',
 ) {
+  const BASE = getBase(page);
   // Register via API (ignore if already exists)
   try {
     await fetch(`${BASE}/api/auth/register`, {
@@ -83,7 +98,8 @@ export async function navigateTo(page: Page, path: string) {
     await link.click();
     await page.waitForLoadState('networkidle');
   } else {
-    await page.evaluate((p) => { window.location.href = p; }, `${BASE}${path}`);
+    const BASE = getBase(page);
+    await page.evaluate(({base, p}) => { window.location.href = base + p; }, { base: BASE, p: path });
     await page.waitForLoadState('networkidle');
   }
 }
