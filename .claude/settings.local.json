@@ -7,7 +7,23 @@
       "Bash(netstat -ano)",
       "Bash(findstr :3000)",
       "Bash(docker-compose ps:*)",
-      "Bash(curl -s http://localhost:3000/input)"
+      "Bash(curl -s http://localhost:3000/input)",
+      "Bash(git *)",
+      "Bash(rm *)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .claude/auto-commit-message.txt ] && [ -s .claude/auto-commit-message.txt ]; then if ! git diff --quiet || ! git diff --cached --quiet || [ -n \"$(git ls-files --others --exclude-standard)\" ]; then git add -A && git commit -F .claude/auto-commit-message.txt && rm -f .claude/auto-commit-message.txt; fi; fi",
+            "timeout": 30,
+            "statusMessage": "Auto-committing changes..."
+          }
+        ]
+      }
     ]
   }
 }

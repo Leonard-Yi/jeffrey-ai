@@ -37,3 +37,6 @@ temp/
 
 # Claude worktrees
 .claude/worktrees/
+
+# Claude auto-commit
+.claude/auto-commit-message.txt
