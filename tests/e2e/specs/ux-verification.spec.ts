@@ -32,7 +32,7 @@ test.describe('UX Verification — Pseudonymizer v2 + Multi-round Follow-up', ()
     try {
       await resultBadge.first().waitFor({ timeout: 45000 });
       // Got a result — check for expected name
-      const pageText = await page.textContent();
+      const pageText = await page.locator('body').textContent() || '';
       expect(pageText).toContain('王磊');
       console.log('✅ TEST-1 PASS: Clear name completed without excessive follow-up');
     } catch {
@@ -148,7 +148,7 @@ test.describe('UX Verification — Pseudonymizer v2 + Multi-round Follow-up', ()
       const hasResult = await page.locator('text=数据已').first().waitFor({ timeout: 40000 }).catch(() => false);
 
       if (hasResult) {
-        const pageText = await page.textContent();
+        const pageText = await page.locator('body').textContent() || '';
 
         // Verify both Sarah and 赵敏 are detected
         const hasSarah = pageText.includes('Sarah');

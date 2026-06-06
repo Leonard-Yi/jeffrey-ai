@@ -248,10 +248,10 @@ const JeffreyInputPage = () => {
 
       if (isFollowUp) {
         // After collecting follow-up answers, always go to result.
-        // Never loop back to followup — one round of questions is enough.
         setPhase('result');
       } else if (data.status === 'complete') {
         setPhase('result');
+        setSaveStatus('done'); // DB was saved by the SSE handler
       } else if (data.status === 'pending' && data.missingFields && data.missingFields.length > 0) {
         setPhase('followup');
       } else if (data.status === 'ambiguous') {
@@ -420,6 +420,7 @@ const JeffreyInputPage = () => {
   const handleSkipAllRounds = () => {
     setPhase('result');
     setResultStatus('complete');
+    setSaveStatus('done'); // Data was already saved during initial pending extraction
   };
 
   // ──────────────────────────────────────────────
